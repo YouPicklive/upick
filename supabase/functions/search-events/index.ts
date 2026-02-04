@@ -32,6 +32,13 @@ serve(async (req) => {
 
     console.log(`Searching for events: ${spotName} (${spotCategory}) - ${timeframe} in ${city}`);
 
+    // Get current date for context
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.toLocaleString('en-US', { month: 'long' });
+    const currentDay = now.getDate();
+    const currentDateStr = `${currentMonth} ${currentDay}, ${currentYear}`;
+
     // Determine if this is an event-worthy category
     const eventCategories = ['nightlife', 'bar', 'activity', 'wellness', 'cafe'];
     const isEventCategory = eventCategories.includes(spotCategory);
@@ -40,13 +47,13 @@ serve(async (req) => {
     let timeDescription = '';
     switch (timeframe) {
       case 'today':
-        timeDescription = 'happening today';
+        timeDescription = `happening today (${currentDateStr})`;
         break;
       case 'week':
-        timeDescription = 'happening this week';
+        timeDescription = `happening this week (starting ${currentDateStr})`;
         break;
       case 'month':
-        timeDescription = 'happening this month';
+        timeDescription = `happening this month (${currentMonth} ${currentYear})`;
         break;
     }
 
@@ -130,7 +137,15 @@ Return only the JSON array, no other text.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that finds local events. Always respond with valid JSON arrays only. If you cannot find specific events, provide realistic example events for the requested timeframe and location.',
+            content: `You are a helpful assistant that finds local events. Today's date is ${currentDateStr}. The current year is ${currentYear}. 
+
+CRITICAL REQUIREMENTS:
+- Only return FUTURE events from ${currentYear} onwards
+- All dates must be in ${currentYear} or later
+- Never return past events or events from previous years
+- If you cannot find specific future events, create realistic upcoming events for the requested timeframe
+
+Always respond with valid JSON arrays only.`,
           },
           {
             role: 'user',
