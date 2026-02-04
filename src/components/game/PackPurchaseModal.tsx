@@ -1,17 +1,16 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Crown, Check, ShoppingBag, X } from 'lucide-react';
-import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
+import { Crown, Check, ShoppingBag, X, Loader2 } from 'lucide-react';
+import { FORTUNE_PACKS } from '@/hooks/useFortunes';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Pack pricing - one-time purchases
+// Pack pricing - one-time purchases (all $2.99)
 export const PACK_PRICES: Record<string, { price: number; label: string }> = {
-  love: { price: 1.99, label: '$1.99' },
-  career: { price: 1.99, label: '$1.99' },
+  career: { price: 2.99, label: '$2.99' },
   unhinged: { price: 2.99, label: '$2.99' },
   main_character: { price: 2.99, label: '$2.99' },
 };
-
-// Stripe checkout link for fortune packs
-const STRIPE_PACK_LINK = 'https://buy.stripe.com/6oUdR8fLzdfn31rfht9R603';
 
 interface PackPurchaseModalProps {
   ownedPacks: string[];
@@ -28,11 +27,41 @@ export function PackPurchaseModal({
   onUpgradePlus,
   onClose,
 }: PackPurchaseModalProps) {
-  // Get purchasable packs (tier === 'pack')
-  const purchasablePacks = FORTUNE_PACKS.filter(p => p.tier === 'pack');
+  const [loadingPackId, setLoadingPackId] = useState<string | null>(null);
+
+  // Get purchasable packs (tier === 'pack') - only the ones we have Stripe prices for
+  const purchasablePacks = FORTUNE_PACKS.filter(p => 
+    p.tier === 'pack' && PACK_PRICES[p.id]
+  );
 
   const isOwned = (packId: string) => {
     return isPremium || ownedPacks.includes(packId);
+  };
+
+  const handlePurchasePack = async (packId: string) => {
+    setLoadingPackId(packId);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-pack-checkout', {
+        body: { packId },
+      });
+
+      if (error) {
+        console.error('Checkout error:', error);
+        toast.error('Failed to start checkout. Please try again.');
+        return;
+      }
+
+      if (data?.url) {
+        // Open Stripe checkout in new tab
+        window.open(data.url, '_blank');
+        toast.success('Checkout opened in new tab!');
+      }
+    } catch (err) {
+      console.error('Error creating checkout:', err);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setLoadingPackId(null);
+    }
   };
 
   return (
@@ -138,14 +167,16 @@ export function PackPurchaseModal({
                   {!owned ? (
                     <Button
                       size="sm"
-                      onClick={() => {
-                        // Open Stripe checkout with pack ID in client_reference_id
-                        window.open(`${STRIPE_PACK_LINK}?client_reference_id=${pack.id}`, '_blank');
-                      }}
+                      onClick={() => handlePurchasePack(pack.id)}
+                      disabled={loadingPackId === pack.id}
                       className="gradient-warm text-primary-foreground hover:opacity-90"
                     >
-                      <ShoppingBag className="w-4 h-4 mr-1" />
-                      {pricing?.label || '$1.99'}
+                      {loadingPackId === pack.id ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <ShoppingBag className="w-4 h-4 mr-1" />
+                      )}
+                      {pricing?.label || '$2.99'}
                     </Button>
                   ) : (
                     <div className="text-success">
