@@ -18,6 +18,7 @@ export interface Preferences {
   location: 'indoor' | 'outdoor' | 'both';
   smoking: 'yes' | 'no' | 'doesnt-matter';
   vibe: 'chill' | 'active' | 'both';
+  fancy: 'fancy' | 'divey' | 'both';
 }
 
 export interface GameState {

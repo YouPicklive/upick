@@ -33,6 +33,12 @@ export function PreferencesScreen({
     { id: 'both' as const, emoji: '🎭', label: 'Any vibe', description: 'Open to all' },
   ];
 
+  const fancyOptions = [
+    { id: 'fancy' as const, emoji: '✨', label: 'Fancy', description: 'Treat yourself!' },
+    { id: 'divey' as const, emoji: '🍻', label: 'Divey', description: 'Keep it real' },
+    { id: 'both' as const, emoji: '🎲', label: 'Whatever', description: 'Surprise me' },
+  ];
+
   return (
     <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12 relative">
       {/* Floating decorations */}
@@ -114,7 +120,7 @@ export function PreferencesScreen({
         </div>
 
         {/* Vibe Preference */}
-        <div className="gradient-card rounded-3xl p-6 shadow-card mb-8">
+        <div className="gradient-card rounded-3xl p-6 shadow-card mb-4">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <span className="text-2xl">⚡</span> Chill or Active?
           </h2>
@@ -125,6 +131,35 @@ export function PreferencesScreen({
                 <button
                   key={option.id}
                   onClick={() => onPreferencesChange({ vibe: option.id })}
+                  className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 ${
+                    isSelected
+                      ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
+                      : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
+                  }`}
+                >
+                  <span className="text-3xl">{option.emoji}</span>
+                  <span className="font-bold text-sm">{option.label}</span>
+                  <span className={`text-xs text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Fancy/Divey Preference */}
+        <div className="gradient-card rounded-3xl p-6 shadow-card mb-8">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <span className="text-2xl">💎</span> Fancy or Divey?
+          </h2>
+          <div className="grid grid-cols-3 gap-3">
+            {fancyOptions.map((option) => {
+              const isSelected = preferences.fancy === option.id;
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => onPreferencesChange({ fancy: option.id })}
                   className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 ${
                     isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
