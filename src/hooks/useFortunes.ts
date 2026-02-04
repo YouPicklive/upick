@@ -35,11 +35,21 @@ export function useFortunes() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get a random fortune based on tier and pack
+  /**
+   * Get a random fortune - RLS enforces access control server-side.
+   * 
+   * SECURITY: The database RLS policies validate user entitlements:
+   * - Free tier: publicly accessible
+   * - Plus tier: requires user_has_plus(auth.uid()) = true
+   * - Pack tier: requires user_owns_pack(auth.uid(), pack_key) = true
+   * 
+   * If a user tries to access premium content without entitlements,
+   * the query returns empty results (RLS blocks unauthorized access).
+   */
   const getRandomFortune = useCallback(async (
     tier: FortuneTier = 'free',
     packKey?: FortunePackKey
-  ): Promise<string> => {
+  ): Promise<{ fortune: string; accessDenied: boolean }> => {
     setLoading(true);
     setError(null);
 
@@ -60,28 +70,39 @@ export function useFortunes() {
       if (fetchError) {
         console.error('Error fetching fortune:', fetchError);
         setError(fetchError.message);
-        return getFallbackFortune();
+        return { fortune: getFallbackFortune(), accessDenied: false };
       }
 
+      // Empty results mean RLS blocked access (user doesn't have entitlements)
       if (!data || data.length === 0) {
-        console.warn('No fortunes found for tier:', tier, 'pack:', packKey);
-        return getFallbackFortune();
+        // For free tier, this is unexpected - use fallback
+        if (tier === 'free') {
+          console.warn('No free fortunes found');
+          return { fortune: getFallbackFortune(), accessDenied: false };
+        }
+        
+        // For premium tiers, empty results = access denied by RLS
+        console.info('Access denied by RLS for tier:', tier, 'pack:', packKey);
+        return { 
+          fortune: '', 
+          accessDenied: true 
+        };
       }
 
       // Return a random fortune from the results
       const randomIndex = Math.floor(Math.random() * data.length);
-      return data[randomIndex].text;
+      return { fortune: data[randomIndex].text, accessDenied: false };
     } catch (err) {
       console.error('Error in getRandomFortune:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-      return getFallbackFortune();
+      return { fortune: getFallbackFortune(), accessDenied: false };
     } finally {
       setLoading(false);
     }
   }, []);
 
   // Get fortune based on user selection (for UI compatibility)
-  const getFortuneByPackId = useCallback(async (packId: string): Promise<string> => {
+  const getFortuneByPackId = useCallback(async (packId: string): Promise<{ fortune: string; accessDenied: boolean }> => {
     const pack = FORTUNE_PACKS.find(p => p.id === packId);
     
     if (!pack) {
@@ -106,7 +127,7 @@ export function useFortunes() {
   };
 }
 
-// Fallback fortunes in case DB fetch fails
+// Fallback fortunes in case DB fetch fails (network error, etc.)
 function getFallbackFortune(): string {
   const fallbacks = [
     "The universe has something special planned for you ✨",

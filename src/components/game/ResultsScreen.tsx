@@ -48,9 +48,16 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
   const handleSpinComplete = async () => {
     setShowConfetti(true);
     
-    // Fetch fortune from database
-    const fetchedFortune = await getFortuneByPackId(fortunePack);
-    setFortune(fetchedFortune);
+    // Fetch fortune from database - RLS enforces access control server-side
+    const result = await getFortuneByPackId(fortunePack);
+    
+    if (result.accessDenied) {
+      // User doesn't have entitlements for this pack - fallback to free
+      const freeResult = await getFortuneByPackId('free');
+      setFortune(freeResult.fortune || 'Great things are coming your way! ✨');
+    } else {
+      setFortune(result.fortune);
+    }
     
     setTimeout(() => {
       setShowWheel(false);
