@@ -45,7 +45,7 @@ export function SpinLimitModal({ spinsToday, maxFreeSpins, onUpgrade, onClose }:
           <div className="flex items-center gap-2 mb-3">
             <Crown className="w-5 h-5 text-purple-400" />
             <span className="font-bold text-purple-300">YouPick Plus</span>
-            <span className="ml-auto text-sm font-bold text-white">$4.99/mo</span>
+            <span className="ml-auto text-sm font-bold text-white">$5.99/mo</span>
           </div>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center gap-2 text-muted-foreground">
