@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { Trophy, Star, DollarSign, MapPin, RotateCcw, ExternalLink, PartyPopper } from 'lucide-react';
+import { RotateCcw, ExternalLink } from 'lucide-react';
 
 interface ResultsScreenProps {
   winner: Spot;
   onPlayAgain: () => void;
 }
+
+const categoryEmojis: Record<string, string> = {
+  restaurant: '🍽️',
+  activity: '🎮',
+  bar: '🍸',
+  cafe: '☕',
+  nightlife: '🌙',
+  wellness: '🧘',
+};
 
 export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
   const [showConfetti, setShowConfetti] = useState(true);
@@ -21,14 +30,23 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
       {/* Confetti */}
       {showConfetti && <Confetti />}
 
-      <div className="w-full max-w-md animate-bounce-in">
+      {/* Floating celebration */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <span className="absolute top-20 left-10 text-5xl animate-float">🎉</span>
+        <span className="absolute top-32 right-16 text-4xl animate-float" style={{ animationDelay: '0.3s' }}>🎊</span>
+        <span className="absolute bottom-40 left-20 text-5xl animate-float" style={{ animationDelay: '0.6s' }}>🥳</span>
+        <span className="absolute bottom-32 right-12 text-4xl animate-float" style={{ animationDelay: '0.9s' }}>✨</span>
+      </div>
+
+      <div className="w-full max-w-md animate-bounce-in relative z-10">
         {/* Winner Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl gradient-warm shadow-glow mb-4">
-            <Trophy className="w-10 h-10 text-primary-foreground" />
+          <div className="inline-block mb-4 relative">
+            <span className="text-7xl">🏆</span>
+            <span className="absolute -top-2 -right-2 text-3xl animate-bounce">✨</span>
           </div>
           <h1 className="text-4xl font-extrabold mb-2">We Have a Winner!</h1>
-          <p className="text-muted-foreground text-lg">Time to head out! 🎉</p>
+          <p className="text-muted-foreground text-lg">Time to head out! 🚗💨</p>
         </div>
 
         {/* Winner Card */}
@@ -45,8 +63,14 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
             {/* Winner Badge */}
             <div className="absolute top-4 right-4">
               <span className="gradient-warm text-primary-foreground px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-glow">
-                <PartyPopper className="w-4 h-4" />
-                Winner!
+                <span className="text-lg">🥇</span> Winner!
+              </span>
+            </div>
+
+            {/* Category */}
+            <div className="absolute top-4 left-4">
+              <span className="bg-background/90 backdrop-blur-sm px-3 py-1 rounded-full text-2xl">
+                {categoryEmojis[winner.category] || '📍'}
               </span>
             </div>
           </div>
@@ -61,7 +85,7 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
                 </span>
               </div>
               <div className="flex items-center gap-1 text-warning bg-warning/10 px-3 py-1 rounded-full">
-                <Star className="w-5 h-5 fill-current" />
+                <span>⭐</span>
                 <span className="font-bold">{winner.rating}</span>
               </div>
             </div>
@@ -71,18 +95,22 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
             <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center gap-1">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <DollarSign
+                  <span
                     key={i}
-                    className={`w-5 h-5 ${
-                      i < winner.priceLevel ? 'text-foreground' : 'text-muted'
+                    className={`text-base ${
+                      i < winner.priceLevel ? 'opacity-100' : 'opacity-30'
                     }`}
-                  />
+                  >
+                    💵
+                  </span>
                 ))}
               </div>
               <div className="flex items-center gap-1 text-muted-foreground">
-                <MapPin className="w-5 h-5" />
+                <span>📍</span>
                 <span>Nearby</span>
               </div>
+              {winner.isOutdoor && <span>🌳</span>}
+              {winner.smokingFriendly && <span>🚬</span>}
             </div>
 
             {/* Tags */}
@@ -101,12 +129,13 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-3">
-          <Button variant="hero" size="xl" className="w-full">
-            <ExternalLink className="w-5 h-5 mr-2" />
+          <Button variant="hero" size="xl" className="w-full group">
+            <span className="text-2xl mr-2">🗺️</span>
             Get Directions
+            <ExternalLink className="w-5 h-5 ml-2" />
           </Button>
           <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
-            <RotateCcw className="w-5 h-5 mr-2" />
+            <span className="text-xl mr-2">🔄</span>
             Play Again
           </Button>
         </div>
@@ -116,24 +145,24 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
 }
 
 function Confetti() {
-  const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'];
-  const confettiPieces = Array.from({ length: 50 });
+  const emojis = ['🎉', '🎊', '✨', '⭐', '💫', '🌟', '🎈', '🥳'];
+  const confettiPieces = Array.from({ length: 30 });
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
       {confettiPieces.map((_, i) => (
         <div
           key={i}
-          className="absolute w-3 h-3 rounded-sm"
+          className="absolute text-2xl"
           style={{
-            backgroundColor: colors[i % colors.length],
             left: `${Math.random() * 100}%`,
             top: `${100 + Math.random() * 20}%`,
             animation: `confetti ${2 + Math.random() * 2}s ease-out forwards`,
             animationDelay: `${Math.random() * 0.5}s`,
-            transform: `rotate(${Math.random() * 360}deg)`,
           }}
-        />
+        >
+          {emojis[i % emojis.length]}
+        </div>
       ))}
     </div>
   );

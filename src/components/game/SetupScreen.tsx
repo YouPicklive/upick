@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { GameState } from '@/types/game';
-import { User, Users, Utensils, Gamepad2, Wine, Coffee, ArrowRight, ArrowLeft, Moon, Sparkles } from 'lucide-react';
+import { User, Users, Utensils, Gamepad2, Wine, Coffee, ArrowRight, ArrowLeft, Moon, Sparkles, Heart } from 'lucide-react';
 
 interface SetupScreenProps {
   playerCount: number;
@@ -20,18 +20,26 @@ export function SetupScreen({
   onBack,
 }: SetupScreenProps) {
   const categories = [
-    { id: 'all' as const, label: 'Everything', icon: Sparkles, description: 'Mix it all up!' },
-    { id: 'restaurant' as const, label: 'Restaurants', icon: Utensils, description: 'Time to eat!' },
-    { id: 'activity' as const, label: 'Activities', icon: Gamepad2, description: 'Let\'s do something' },
-    { id: 'bar' as const, label: 'Bars', icon: Wine, description: 'Drinks & vibes' },
-    { id: 'cafe' as const, label: 'Cafes', icon: Coffee, description: 'Coffee & chill' },
-    { id: 'nightlife' as const, label: 'Nightlife', icon: Moon, description: 'After dark fun' },
-    { id: 'wellness' as const, label: 'Wellness', icon: Sparkles, description: 'Relax & recharge' },
+    { id: 'all' as const, label: 'Everything', icon: Sparkles, emoji: '🎯', description: 'Mix it all up!' },
+    { id: 'restaurant' as const, label: 'Restaurants', icon: Utensils, emoji: '🍽️', description: 'Time to eat!' },
+    { id: 'activity' as const, label: 'Activities', icon: Gamepad2, emoji: '🎮', description: 'Let\'s do something' },
+    { id: 'bar' as const, label: 'Bars', icon: Wine, emoji: '🍸', description: 'Drinks & vibes' },
+    { id: 'cafe' as const, label: 'Cafes', icon: Coffee, emoji: '☕', description: 'Coffee & chill' },
+    { id: 'nightlife' as const, label: 'Nightlife', icon: Moon, emoji: '🌙', description: 'After dark fun' },
+    { id: 'wellness' as const, label: 'Wellness', icon: Heart, emoji: '🧘', description: 'Relax & recharge' },
   ];
 
+  const playerEmojis = ['🙋', '👫', '👨‍👩‍👧', '👨‍👩‍👧‍👦'];
+
   return (
-    <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-lg animate-slide-up">
+    <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12 relative">
+      {/* Floating decorations */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <span className="absolute top-20 right-20 text-4xl animate-float opacity-50">🎲</span>
+        <span className="absolute bottom-32 left-12 text-3xl animate-float opacity-50" style={{ animationDelay: '0.8s' }}>✨</span>
+      </div>
+
+      <div className="w-full max-w-lg animate-slide-up relative z-10">
         {/* Back Button */}
         <button
           onClick={onBack}
@@ -43,7 +51,9 @@ export function SetupScreen({
 
         {/* Player Count */}
         <div className="gradient-card rounded-3xl p-8 shadow-card mb-6">
-          <h2 className="text-2xl font-bold mb-2">How many players?</h2>
+          <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+            <span className="text-3xl">👥</span> How many players?
+          </h2>
           <p className="text-muted-foreground mb-6">Everyone gets a turn to vote!</p>
 
           <div className="flex gap-4">
@@ -57,11 +67,7 @@ export function SetupScreen({
                     : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                 }`}
               >
-                {count === 1 ? (
-                  <User className="w-8 h-8" />
-                ) : (
-                  <Users className="w-8 h-8" />
-                )}
+                <span className="text-3xl">{playerEmojis[count - 1]}</span>
                 <span className="font-bold text-lg">{count}</span>
               </button>
             ))}
@@ -70,12 +76,13 @@ export function SetupScreen({
 
         {/* Category Selection */}
         <div className="gradient-card rounded-3xl p-8 shadow-card mb-8">
-          <h2 className="text-2xl font-bold mb-2">What are you looking for?</h2>
+          <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+            <span className="text-3xl">🎪</span> What are you looking for?
+          </h2>
           <p className="text-muted-foreground mb-6">Pick a category to explore</p>
 
           <div className="grid grid-cols-2 gap-3">
             {categories.map((cat) => {
-              const Icon = cat.icon;
               return (
                 <button
                   key={cat.id}
@@ -86,7 +93,7 @@ export function SetupScreen({
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   } ${cat.id === 'all' ? 'col-span-2' : ''}`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <span className="text-3xl">{cat.emoji}</span>
                   <span className="font-bold">{cat.label}</span>
                   <span className={`text-xs ${category === cat.id ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                     {cat.description}
@@ -98,7 +105,8 @@ export function SetupScreen({
         </div>
 
         {/* Continue Button */}
-        <Button variant="hero" size="xl" className="w-full" onClick={onContinue}>
+        <Button variant="hero" size="xl" className="w-full group" onClick={onContinue}>
+          <span className="text-2xl mr-2">⚡</span>
           Set Your Vibe
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
