@@ -42,7 +42,7 @@ export function PreferencesScreen({
   const distanceOptions = [
     { id: 'walking' as const, emoji: '🚶', label: 'Walking', description: '< 1 mile' },
     { id: 'short-drive' as const, emoji: '🚗', label: 'Short Drive', description: '1-5 miles' },
-    { id: 'road-trip' as const, emoji: '🛣️', label: 'Road Trip', description: '5+ miles' },
+    { id: 'road-trip' as const, emoji: '🛣️', label: 'Road Trip', description: '5-45 miles' },
     { id: 'any' as const, emoji: '🌍', label: 'Anywhere', description: 'No limit' },
   ];
 
