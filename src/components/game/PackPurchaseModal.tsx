@@ -10,6 +10,9 @@ export const PACK_PRICES: Record<string, { price: number; label: string }> = {
   main_character: { price: 2.99, label: '$2.99' },
 };
 
+// Stripe checkout link for fortune packs
+const STRIPE_PACK_LINK = 'https://buy.stripe.com/6oUdR8fLzdfn31rfht9R603';
+
 interface PackPurchaseModalProps {
   ownedPacks: string[];
   isPremium: boolean;
@@ -135,7 +138,10 @@ export function PackPurchaseModal({
                   {!owned ? (
                     <Button
                       size="sm"
-                      onClick={() => onPurchase(pack.id)}
+                      onClick={() => {
+                        // Open Stripe checkout with pack ID in client_reference_id
+                        window.open(`${STRIPE_PACK_LINK}?client_reference_id=${pack.id}`, '_blank');
+                      }}
                       className="gradient-warm text-primary-foreground hover:opacity-90"
                     >
                       <ShoppingBag className="w-4 h-4 mr-1" />
