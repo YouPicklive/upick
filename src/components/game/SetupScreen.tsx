@@ -77,9 +77,9 @@ export function SetupScreen({
         {/* Category Selection */}
         <div className="gradient-card rounded-3xl p-8 shadow-card mb-8">
           <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-            <span className="text-3xl">🎪</span> What are you looking for?
+            <span className="text-3xl">🥢</span> What are you picking?
           </h2>
-          <p className="text-muted-foreground mb-6">Pick a category to explore</p>
+          <p className="text-muted-foreground mb-6">The toothpick will decide!</p>
 
           <div className="grid grid-cols-2 gap-3">
             {categories.map((cat) => {

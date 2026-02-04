@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Utensils, Users, Sparkles, ArrowRight, MapPin, Heart, Shuffle } from 'lucide-react';
+import { Utensils, Users, ArrowRight, MapPin, Heart, Shuffle } from 'lucide-react';
 import heroImage from '@/assets/hero-illustration.jpg';
 
 interface LandingScreenProps {
@@ -16,7 +16,7 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
         <span className="absolute top-48 left-1/4 text-3xl animate-float opacity-60" style={{ animationDelay: '1s' }}>🍜</span>
         <span className="absolute bottom-40 right-10 text-4xl animate-float opacity-60" style={{ animationDelay: '1.5s' }}>🎯</span>
         <span className="absolute bottom-32 left-16 text-3xl animate-float opacity-60" style={{ animationDelay: '0.7s' }}>🍸</span>
-        <span className="absolute top-1/3 right-1/4 text-3xl animate-float opacity-60" style={{ animationDelay: '1.2s' }}>🎪</span>
+        <span className="absolute top-1/3 right-1/4 text-3xl animate-float opacity-60" style={{ animationDelay: '1.2s' }}>🥢</span>
       </div>
 
       {/* Hero Section */}
@@ -25,15 +25,15 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
           {/* Logo/Title */}
           <div className="mb-8">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl gradient-warm shadow-glow mb-6 relative">
-              <Shuffle className="w-12 h-12 text-primary-foreground" />
+              <span className="text-5xl">🥢</span>
               <span className="absolute -top-2 -right-2 text-2xl">✨</span>
             </div>
             <h1 className="text-5xl md:text-7xl font-extrabold mb-4">
-              <span className="text-gradient">SpotPicker</span>
+              <span className="text-gradient">You Pick</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground font-semibold flex items-center justify-center gap-2">
-              <span>Can't decide where to eat or what to do?</span>
-              <span className="text-2xl">🤔</span>
+              <span>Can't decide? Let the toothpick decide!</span>
+              <span className="text-2xl">🎲</span>
             </p>
           </div>
 
@@ -44,8 +44,8 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
               alt="Food and activity icons"
               className="w-full max-w-2xl mx-auto rounded-3xl shadow-card"
             />
-            <div className="absolute -bottom-4 -right-4 text-5xl">🎲</div>
-            <div className="absolute -top-4 -left-4 text-4xl">🎉</div>
+            <div className="absolute -bottom-4 -right-4 text-5xl">🎡</div>
+            <div className="absolute -top-4 -left-4 text-4xl">🔮</div>
           </div>
 
           {/* Features */}
@@ -57,23 +57,23 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
               description="Play alone or with friends to find the perfect spot"
             />
             <FeatureCard
-              emoji="💖"
-              icon={<Heart className="w-6 h-6" />}
-              title="Swipe to Vote"
-              description="Quick and fun voting on restaurants & activities"
+              emoji="🎡"
+              icon={<Shuffle className="w-6 h-6" />}
+              title="Spin the Wheel"
+              description="Let fate decide with our fortune wheel"
             />
             <FeatureCard
-              emoji="📍"
+              emoji="🔮"
               icon={<MapPin className="w-6 h-6" />}
-              title="Find Your Spot"
-              description="Discover the winning choice together"
+              title="Get Your Fortune"
+              description="Every pick comes with today's fortune"
             />
           </div>
 
           {/* CTA Button */}
           <Button variant="hero" size="xl" onClick={onStart} className="group">
-            <span className="text-2xl mr-2 group-hover:animate-bounce">🚀</span>
-            Let's Find a Spot
+            <span className="text-2xl mr-2 group-hover:animate-bounce">🥢</span>
+            Let's Pick!
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
         </div>
@@ -81,7 +81,7 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
 
       {/* Footer */}
       <footer className="py-6 text-center text-muted-foreground text-sm">
-        Made with ❤️ for hungry friends everywhere 🍴
+        Made with ❤️ for indecisive friends everywhere 🍴
       </footer>
     </div>
   );
