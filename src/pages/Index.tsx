@@ -79,7 +79,7 @@ const Index = () => {
   };
 
   const handleUpgrade = () => {
-    upgradeToPremium();
+    window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
     setShowSpinLimit(false);
   };
 

@@ -42,9 +42,8 @@ export function PreferencesScreen({
     await purchasePack(packId);
   };
 
-  const handleUpgradePlus = async () => {
-    // In a real app, this would trigger Stripe checkout
-    await upgradeToPremium();
+  const handleUpgradePlus = () => {
+    window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
     setShowPackShop(false);
   };
 
