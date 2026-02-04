@@ -102,7 +102,7 @@ export function PlayingScreen({
           {/* Vibe indicator */}
           <div className="absolute top-4 right-4">
             <span className="bg-background/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
-              {spot.vibeLevel === 'chill' ? '😌' : spot.vibeLevel === 'active' ? '🏃' : '🎭'}
+              {spot.vibeLevel === 'chill' ? '😌' : spot.vibeLevel === 'active' ? '🏃' : spot.vibeLevel === 'dancing' ? '💃' : spot.vibeLevel === 'lazy' ? '😴' : '🎭'}
             </span>
           </div>
         </div>

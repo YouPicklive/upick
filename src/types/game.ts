@@ -11,13 +11,13 @@ export interface Spot {
   // Preference filters
   isOutdoor: boolean;
   smokingFriendly: boolean;
-  vibeLevel: 'chill' | 'moderate' | 'active'; // chill = relaxed, active = moving around
+  vibeLevel: 'chill' | 'moderate' | 'active' | 'dancing' | 'lazy'; // energy level of the spot
 }
 
 export interface Preferences {
   location: 'indoor' | 'outdoor' | 'both';
   smoking: 'yes' | 'no' | 'doesnt-matter';
-  vibe: 'chill' | 'active' | 'both';
+  vibe: 'chill' | 'active' | 'dancing' | 'lazy' | 'both';
   fancy: 'fancy' | 'divey' | 'both';
   distance: 'walking' | 'short-drive' | 'road-trip' | 'epic-adventure' | 'any';
   mood: 'solo' | 'date' | 'squad' | 'chaotic' | 'cozy' | 'any';
