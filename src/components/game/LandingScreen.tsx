@@ -75,7 +75,7 @@ export function LandingScreen({ onStart, spinsRemaining, isPremium, isTrialMode 
               <span className="text-gradient">You Pick</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground font-semibold flex items-center justify-center gap-2">
-              <span>Can't decide? Let the toothpick decide!</span>
+              <span>Can't decide? Let the chopstick decide!</span>
               <span className="text-2xl">🎲</span>
             </p>
           </div>
