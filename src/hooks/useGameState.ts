@@ -65,8 +65,17 @@ export function useGameState() {
       if (prefs.fancy === 'divey' && spot.priceLevel > 2) return false;
 
       // Vibe filter
-      if (prefs.vibe === 'chill' && spot.vibeLevel === 'active') return false;
+      if (prefs.vibe === 'chill' && (spot.vibeLevel === 'active' || spot.vibeLevel === 'dancing')) return false;
       if (prefs.vibe === 'active' && spot.vibeLevel === 'chill') return false;
+      // Dancing filter: only show spots with dance floors, DJs, or dancing vibe
+      if (prefs.vibe === 'dancing') {
+        const hasDancingTags = spot.tags?.some(tag => 
+          ['Dancing', 'DJ', 'Dance Floor', 'Events'].includes(tag)
+        );
+        const isDancingVibe = spot.vibeLevel === 'dancing';
+        if (!hasDancingTags && !isDancingVibe) return false;
+      }
+      if (prefs.vibe === 'lazy' && (spot.vibeLevel === 'active' || spot.vibeLevel === 'dancing')) return false;
 
       return true;
     });
