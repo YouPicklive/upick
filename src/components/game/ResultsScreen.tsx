@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { RotateCcw, Navigation } from 'lucide-react';
+import { RotateCcw, Navigation, Share2, Download } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { getRandomFortune } from '@/data/fortunes';
+import html2canvas from 'html2canvas';
 
 interface ResultsScreenProps {
   winner: Spot;
@@ -25,6 +26,8 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
   const [showResult, setShowResult] = useState(false);
   const [fortune, setFortune] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Start spinning after a brief delay
@@ -82,6 +85,49 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
       // Desktop - open Google Maps in new tab
       mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
       window.open(mapsUrl, '_blank');
+    }
+  };
+
+  const handleShareMyFate = async () => {
+    if (!shareCardRef.current) return;
+    
+    setIsSharing(true);
+    
+    try {
+      // Render the share card to canvas
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: '#1a1625',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), 'image/png', 1.0);
+      });
+      
+      const file = new File([blob], 'my-fate-youpick.png', { type: 'image/png' });
+      
+      // Try Web Share API first (mobile)
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: 'YouPick chose my fate! 🥢',
+          text: `The toothpick picked ${winner.name} for me! 🎯\n\n"${fortune}"`,
+          files: [file],
+        });
+      } else {
+        // Fallback: download the image
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'my-fate-youpick.png';
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -234,6 +280,20 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
               Open in Maps
               <Navigation className="w-5 h-5 ml-2" />
             </Button>
+            
+            {/* Share My Fate Button */}
+            <Button 
+              variant="default" 
+              size="lg" 
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+              onClick={handleShareMyFate}
+              disabled={isSharing}
+            >
+              <span className="text-xl mr-2">✨</span>
+              {isSharing ? 'Creating...' : 'Share My Fate'}
+              <Share2 className="w-5 h-5 ml-2" />
+            </Button>
+            
             <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
               <span className="text-xl mr-2">🔄</span>
               Pick Again
@@ -241,6 +301,61 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
           </div>
         </div>
       )}
+
+      {/* Hidden Shareable Card - rendered offscreen for capture */}
+      <div className="fixed -left-[9999px] top-0" aria-hidden="true">
+        <div
+          ref={shareCardRef}
+          className="w-[400px] p-6 flex flex-col items-center"
+          style={{
+            background: 'linear-gradient(135deg, #1a1625 0%, #2d1f3d 50%, #1a1625 100%)',
+          }}
+        >
+          {/* YouPick Branding */}
+          <div className="text-center mb-4">
+            <span className="text-4xl">🥢</span>
+            <h2 className="text-2xl font-extrabold text-white mt-2">YouPick</h2>
+            <p className="text-purple-300 text-sm">The universe has spoken!</p>
+          </div>
+
+          {/* Fortune */}
+          <div className="w-full bg-gradient-to-r from-orange-400 to-pink-500 rounded-xl p-4 mb-4 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="text-xl">🥠</span>
+              <span className="text-white font-bold text-sm">Your Fortune</span>
+              <span className="text-xl">🥠</span>
+            </div>
+            <p className="text-white/90 italic text-sm">"{fortune}"</p>
+          </div>
+
+          {/* Winner Spot */}
+          <div className="w-full bg-white/10 backdrop-blur rounded-xl overflow-hidden">
+            <img
+              src={winner.image}
+              alt={winner.name}
+              className="w-full h-32 object-cover"
+              crossOrigin="anonymous"
+            />
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-2xl">{categoryEmojis[winner.category] || '📍'}</span>
+                <h3 className="text-xl font-bold text-white">{winner.name}</h3>
+              </div>
+              <p className="text-purple-200 text-sm mb-2">{winner.cuisine || winner.category}</p>
+              <div className="flex items-center justify-center gap-1 text-yellow-400">
+                <span>⭐</span>
+                <span className="font-bold">{winner.rating}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-4 text-center">
+            <p className="text-purple-300/60 text-xs">I had no choice 🤷‍♀️</p>
+            <p className="text-purple-400 text-xs font-semibold mt-1">youpick.app</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
