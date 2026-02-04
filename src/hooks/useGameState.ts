@@ -9,6 +9,7 @@ const initialPreferences: Preferences = {
   distance: 'any',
   mood: 'any',
   budget: 'any',
+  fortunePack: 'classic',
 };
 
 const initialState: GameState = {

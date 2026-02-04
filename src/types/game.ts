@@ -22,6 +22,7 @@ export interface Preferences {
   distance: 'walking' | 'short-drive' | 'road-trip' | 'epic-adventure' | 'any';
   mood: 'solo' | 'date' | 'squad' | 'chaotic' | 'cozy' | 'any';
   budget: 'budget' | 'mid' | 'splurge' | 'any';
+  fortunePack: 'classic' | 'love' | 'career' | 'unhinged' | 'main-character';
 }
 
 export interface GameState {
