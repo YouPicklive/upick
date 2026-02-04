@@ -19,6 +19,7 @@ export interface Preferences {
   smoking: 'yes' | 'no' | 'doesnt-matter';
   vibe: 'chill' | 'active' | 'both';
   fancy: 'fancy' | 'divey' | 'both';
+  distance: 'walking' | 'short-drive' | 'road-trip' | 'any';
 }
 
 export interface GameState {
