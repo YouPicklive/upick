@@ -76,7 +76,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_has_plus: { Args: { check_user_id: string }; Returns: boolean }
+      user_owns_pack: {
+        Args: { check_user_id: string; pack_key: string }
+        Returns: boolean
+      }
     }
     Enums: {
       fortune_tier: "free" | "plus" | "pack"
