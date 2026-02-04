@@ -317,7 +317,7 @@ export default function Auth() {
               {/* Apple Sign-In */}
               <Button
                 type="button"
-                variant="outline"
+                variant="apple"
                 size="lg"
                 className="w-full"
                 onClick={handleAppleSignIn}
