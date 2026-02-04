@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { Navigation, Share2 } from 'lucide-react';
+import { Navigation, Share2, Calendar, Music, Trophy, Loader2 } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
+import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import html2canvas from 'html2canvas';
 
 interface ResultsScreenProps {
@@ -32,9 +33,13 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
   const shareCardRef = useRef<HTMLDivElement>(null);
   
   const { getFortuneByPackId, getPackInfo } = useFortunes();
+  const { events, isLoading: eventsLoading, timeframe, setTimeframe, searchEvents } = useEventSearch();
 
   // Get the pack info for display
   const packInfo = getPackInfo(fortunePack);
+
+  // Check if this is an event-worthy category
+  const isEventCategory = ['nightlife', 'bar', 'activity'].includes(winner.category);
 
   useEffect(() => {
     // Start spinning after a brief delay
@@ -62,10 +67,22 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
     setTimeout(() => {
       setShowWheel(false);
       setShowResult(true);
+      
+      // Search for events if this is an event-worthy category
+      if (isEventCategory) {
+        searchEvents(winner.name, winner.category);
+      }
     }, 1500);
 
     setTimeout(() => setShowConfetti(false), 4000);
   };
+
+  // Re-search when timeframe changes
+  useEffect(() => {
+    if (showResult && isEventCategory) {
+      searchEvents(winner.name, winner.category);
+    }
+  }, [timeframe]);
 
   const handleGetDirections = () => {
     // Create a search query for the spot
@@ -285,6 +302,16 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
             </div>
           </div>
 
+          {/* Live Events Section */}
+          {isEventCategory && (
+            <EventsSection 
+              events={events} 
+              isLoading={eventsLoading} 
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
+            />
+          )}
+
           {/* Action Buttons */}
           <div className="flex flex-col gap-3">
             <Button 
@@ -383,20 +410,122 @@ function Confetti() {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
-      {confettiPieces.map((_, i) => (
-        <div
-          key={i}
-          className="absolute text-2xl"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${100 + Math.random() * 20}%`,
-            animation: `confetti ${2 + Math.random() * 2}s ease-out forwards`,
-            animationDelay: `${Math.random() * 0.5}s`,
-          }}
-        >
-          {emojis[i % emojis.length]}
+      {confettiPieces.map((_, i) => {
+        const left = Math.random() * 100;
+        const top = 100 + Math.random() * 20;
+        const duration = 2 + Math.random() * 2;
+        const delay = Math.random() * 0.5;
+        
+        return (
+          <div
+            key={i}
+            className="absolute text-2xl"
+            style={{
+              left: `${left}%`,
+              top: `${top}%`,
+              animation: `confetti ${duration}s ease-out forwards`,
+              animationDelay: `${delay}s`,
+            }}
+          >
+            {emojis[i % emojis.length]}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Events Section Component
+interface EventsSectionProps {
+  events: LocalEvent[];
+  isLoading: boolean;
+  timeframe: Timeframe;
+  onTimeframeChange: (tf: Timeframe) => void;
+}
+
+function EventsSection({ events, isLoading, timeframe, onTimeframeChange }: EventsSectionProps) {
+  const timeframeOptions: { value: Timeframe; label: string; emoji: string }[] = [
+    { value: 'today', label: 'Today', emoji: '📅' },
+    { value: 'week', label: 'This Week', emoji: '🗓️' },
+    { value: 'month', label: 'This Month', emoji: '📆' },
+  ];
+
+  const getEventIcon = (type?: string) => {
+    switch (type) {
+      case 'music': return '🎵';
+      case 'sports': return '🏆';
+      case 'festival': return '🎉';
+      case 'comedy': return '🎭';
+      case 'food': return '🍽️';
+      default: return '✨';
+    }
+  };
+
+  return (
+    <div className="gradient-card rounded-2xl p-4 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-primary" />
+          <h3 className="font-bold text-lg">Live Events</h3>
         </div>
-      ))}
+      </div>
+
+      {/* Timeframe Selector */}
+      <div className="flex gap-2 mb-4">
+        {timeframeOptions.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onTimeframeChange(option.value)}
+            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              timeframe === option.value
+                ? 'bg-primary text-primary-foreground shadow-glow'
+                : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+            }`}
+          >
+            <span className="mr-1">{option.emoji}</span>
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Events List */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Finding events...</span>
+        </div>
+      ) : events.length > 0 ? (
+        <div className="space-y-3">
+          {events.slice(0, 3).map((event, index) => (
+            <div
+              key={index}
+              className="bg-background/50 rounded-xl p-3 flex items-start gap-3"
+            >
+              <span className="text-2xl">{getEventIcon(event.type)}</span>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-sm truncate">{event.name}</h4>
+                <p className="text-xs text-muted-foreground">
+                  {event.date} {event.time && `• ${event.time}`}
+                </p>
+                {event.venue && (
+                  <p className="text-xs text-primary truncate">📍 {event.venue}</p>
+                )}
+                {event.description && (
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {event.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-6 text-muted-foreground">
+          <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No events found for this timeframe</p>
+          <p className="text-xs mt-1">Try a different date range!</p>
+        </div>
+      )}
     </div>
   );
 }
