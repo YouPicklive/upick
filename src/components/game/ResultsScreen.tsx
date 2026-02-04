@@ -38,8 +38,8 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
   // Get the pack info for display
   const packInfo = getPackInfo(fortunePack);
 
-  // Check if this is an event-worthy category
-  const isEventCategory = ['nightlife', 'bar', 'activity'].includes(winner.category);
+  // All categories can show events now
+  const isEventCategory = true;
 
   useEffect(() => {
     // Start spinning after a brief delay
@@ -457,6 +457,7 @@ function EventsSection({ events, isLoading, timeframe, onTimeframeChange }: Even
       case 'festival': return '🎉';
       case 'comedy': return '🎭';
       case 'food': return '🍽️';
+      case 'art': return '🎨';
       default: return '✨';
     }
   };
