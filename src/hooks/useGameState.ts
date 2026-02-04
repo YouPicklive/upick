@@ -49,8 +49,11 @@ export function useGameState() {
 
   const filterSpotsByPreferences = useCallback((spots: Spot[], prefs: Preferences): Spot[] => {
     return spots.filter((spot) => {
-      // Free only filter
-      if (prefs.freeOnly && spot.priceLevel > 1) return false;
+      // Free only filter - must have "Free" tag (truly no-cost activities)
+      if (prefs.freeOnly) {
+        const isTrulyFree = spot.tags?.includes('Free');
+        if (!isTrulyFree) return false;
+      }
 
       // Location filter
       if (prefs.location === 'indoor' && spot.isOutdoor) return false;
