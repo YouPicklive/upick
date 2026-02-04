@@ -1,5 +1,11 @@
 project_id = "dbiakjwnlokcwddybhsl"
 
+[auth]
+site_url = "https://upick.lovable.app"
+
+[auth.email]
+sender_name = "You Pick"
+
 [functions.stripe-webhook]
 verify_jwt = false
 
