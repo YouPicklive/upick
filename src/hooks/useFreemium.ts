@@ -87,11 +87,11 @@ export function useFreemium() {
 
   const isFortunePackAllowed = useCallback((pack: string): boolean => {
     if (data.isPremium) return true;
-    // Only 'classic' is free
-    return pack === 'classic';
+    // Only 'free' tier is free
+    return pack === 'free';
   }, [data.isPremium]);
 
-  const getPremiumFortunePacks = () => ['love', 'career', 'unhinged', 'main-character'];
+  const getPremiumFortunePacks = () => ['plus', 'love', 'career', 'unhinged', 'main_character'];
 
   const upgradeToPremium = useCallback(() => {
     const newData = { ...data, isPremium: true };
