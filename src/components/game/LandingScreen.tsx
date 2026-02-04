@@ -3,6 +3,7 @@ import { Utensils, Users, ArrowRight, MapPin, Heart, Shuffle, Crown, User, LogOu
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import heroImage from '@/assets/hero-illustration.jpg';
+import appIcon from '@/assets/app-icon.png';
 
 interface LandingScreenProps {
   onStart: () => void;
@@ -67,9 +68,8 @@ export function LandingScreen({ onStart, spinsRemaining, isPremium, isTrialMode 
         <div className="max-w-4xl mx-auto text-center animate-slide-up">
           {/* Logo/Title */}
           <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl gradient-warm shadow-glow mb-6 relative">
-              <span className="text-5xl">🥢</span>
-              <span className="absolute -top-2 -right-2 text-2xl">✨</span>
+            <div className="inline-flex items-center justify-center mb-6 relative">
+              <img src={appIcon} alt="YouPick" className="w-28 h-28 rounded-3xl shadow-glow" />
             </div>
             <h1 className="text-5xl md:text-7xl font-extrabold mb-4">
               <span className="text-gradient">You Pick</span>
