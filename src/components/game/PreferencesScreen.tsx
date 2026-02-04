@@ -43,6 +43,7 @@ export function PreferencesScreen({
     { id: 'walking' as const, emoji: '🚶', label: 'Walking', description: '< 1 mile' },
     { id: 'short-drive' as const, emoji: '🚗', label: 'Short Drive', description: '1-5 miles' },
     { id: 'road-trip' as const, emoji: '🛣️', label: 'Road Trip', description: '5-45 miles' },
+    { id: 'epic-adventure' as const, emoji: '🚀', label: 'Epic Adventure', description: '45+ miles' },
     { id: 'any' as const, emoji: '🌍', label: 'Anywhere', description: 'No limit' },
   ];
 

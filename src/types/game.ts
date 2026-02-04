@@ -19,7 +19,7 @@ export interface Preferences {
   smoking: 'yes' | 'no' | 'doesnt-matter';
   vibe: 'chill' | 'active' | 'both';
   fancy: 'fancy' | 'divey' | 'both';
-  distance: 'walking' | 'short-drive' | 'road-trip' | 'any';
+  distance: 'walking' | 'short-drive' | 'road-trip' | 'epic-adventure' | 'any';
   mood: 'solo' | 'date' | 'squad' | 'chaotic' | 'cozy' | 'any';
   budget: 'budget' | 'mid' | 'splurge' | 'any';
 }
