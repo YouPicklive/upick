@@ -7,7 +7,7 @@ export interface LocalEvent {
   time?: string;
   venue?: string;
   description?: string;
-  type?: 'music' | 'sports' | 'festival' | 'comedy' | 'food' | 'other';
+  type?: 'music' | 'sports' | 'festival' | 'comedy' | 'food' | 'art' | 'other';
 }
 
 export type Timeframe = 'today' | 'week' | 'month';

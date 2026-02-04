@@ -18,6 +18,7 @@ interface Event {
   time?: string;
   venue?: string;
   description?: string;
+  type?: 'music' | 'sports' | 'festival' | 'comedy' | 'food' | 'art' | 'other';
 }
 
 serve(async (req) => {
@@ -32,7 +33,7 @@ serve(async (req) => {
     console.log(`Searching for events: ${spotName} (${spotCategory}) - ${timeframe} in ${city}`);
 
     // Determine if this is an event-worthy category
-    const eventCategories = ['nightlife', 'bar', 'activity'];
+    const eventCategories = ['nightlife', 'bar', 'activity', 'wellness', 'cafe'];
     const isEventCategory = eventCategories.includes(spotCategory);
 
     // Build the search prompt based on category and timeframe
@@ -51,7 +52,7 @@ serve(async (req) => {
 
     let searchQuery = '';
     
-    // Check if this is a music venue or sports venue
+    // Check venue type for targeted searches
     const isMusicVenue = spotName.toLowerCase().includes('club') || 
                          spotName.toLowerCase().includes('lounge') || 
                          spotName.toLowerCase().includes('venue') ||
@@ -62,28 +63,35 @@ serve(async (req) => {
                           spotName.toLowerCase().includes('field') ||
                           spotName.toLowerCase().includes('court');
 
+    const isArtVenue = spotName.toLowerCase().includes('gallery') || 
+                       spotName.toLowerCase().includes('museum') || 
+                       spotName.toLowerCase().includes('art') ||
+                       spotName.toLowerCase().includes('studio');
+
     if (isMusicVenue) {
       searchQuery = `Find live music events, concerts, or DJ performances ${timeDescription} at music venues or clubs in ${city}. List up to 3 events with the event name, date, time, and venue. If no specific events found, suggest general music nights.`;
     } else if (isSportsVenue) {
       searchQuery = `Find upcoming sporting events ${timeDescription} in ${city}. Include professional and local sports games, matches, or tournaments. List up to 3 events with team names, sport type, date, time, and venue.`;
+    } else if (isArtVenue) {
+      searchQuery = `Find art exhibitions, gallery openings, and art shows ${timeDescription} in ${city}. List up to 3 events with exhibition name, artist (if applicable), date, time, and venue.`;
     } else if (isEventCategory) {
       searchQuery = `Find fun events or activities ${timeDescription} related to ${spotCategory} in ${city}. List up to 3 events with name, date, time, and location.`;
     } else {
-      // Not an event category, return empty
-      return new Response(
-        JSON.stringify({ events: [], message: 'Not an event-based venue' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Still search for general events even if not a specific event category
+      searchQuery = `Find popular local events ${timeDescription} in ${city}. Include concerts, sports, art shows, festivals, and community events.`;
     }
 
-    // Add general local events search
+    // Add comprehensive local events search
     const generalSearchQuery = `${searchQuery}
 
 Also include any notable local events ${timeDescription}:
-- Concerts and live music
+- Concerts and live music performances
 - Sporting events (NBA, NFL, MLB, NHL, college sports, local leagues)
-- Festivals or special events
-- Comedy shows
+- Art gallery openings and exhibitions
+- Art festivals and cultural events
+- Museum special exhibits
+- Festivals or special community events
+- Comedy shows and theater performances
 - Food and drink events
 
 Format your response as a JSON array with this structure:
@@ -94,7 +102,7 @@ Format your response as a JSON array with this structure:
     "time": "Time (if known)",
     "venue": "Venue Name",
     "description": "Brief description",
-    "type": "music|sports|festival|comedy|food|other"
+    "type": "music|sports|festival|comedy|food|art|other"
   }
 ]
 
