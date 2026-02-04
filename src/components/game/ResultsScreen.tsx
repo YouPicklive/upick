@@ -166,10 +166,15 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
     }
   };
 
-  // Create wheel items from liked spots (or fallback to winner if no likes)
-  const wheelItems = likedSpots.length > 0 
-    ? likedSpots.map(spot => spot.name)
-    : [winner.name];
+  // Create wheel items with category emojis only (don't reveal the answer)
+  const getWheelEmojis = () => {
+    if (likedSpots.length === 0) {
+      return ['🎯', '✨', '🎲', '🌟', '💫', '🎯'];
+    }
+    // Use category emojis for each liked spot
+    return likedSpots.map(spot => categoryEmojis[spot.category] || '📍');
+  };
+  const wheelItems = getWheelEmojis();
 
   return (
     <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
