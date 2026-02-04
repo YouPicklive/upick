@@ -85,6 +85,14 @@ export function useFreemium() {
 
   const getPremiumDistances = () => ['road-trip', 'epic-adventure', 'any'];
 
+  const isFortunePackAllowed = useCallback((pack: string): boolean => {
+    if (data.isPremium) return true;
+    // Only 'classic' is free
+    return pack === 'classic';
+  }, [data.isPremium]);
+
+  const getPremiumFortunePacks = () => ['love', 'career', 'unhinged', 'main-character'];
+
   const upgradeToPremium = useCallback(() => {
     const newData = { ...data, isPremium: true };
     setData(newData);
@@ -111,6 +119,8 @@ export function useFreemium() {
     useSpin,
     isDistanceAllowed,
     getPremiumDistances,
+    isFortunePackAllowed,
+    getPremiumFortunePacks,
     freeMaxDistance: FREE_MAX_DISTANCE,
     upgradeToPremium,
     resetToFree,

@@ -118,7 +118,13 @@ const Index = () => {
   }
 
   if (state.mode === 'results' && state.winner) {
-    return <ResultsScreen winner={state.winner} onPlayAgain={resetGame} />;
+    return (
+      <ResultsScreen 
+        winner={state.winner} 
+        fortunePack={state.preferences.fortunePack}
+        onPlayAgain={resetGame} 
+      />
+    );
   }
 
   return null;

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Preferences } from '@/types/game';
 import { ArrowLeft, ArrowRight, Lock, Crown } from 'lucide-react';
 import { useFreemium } from '@/hooks/useFreemium';
+import { FORTUNE_PACKS, FortunePack } from '@/data/fortunes';
 
 interface PreferencesScreenProps {
   preferences: Preferences;
@@ -16,8 +17,9 @@ export function PreferencesScreen({
   onStart,
   onBack,
 }: PreferencesScreenProps) {
-  const { isPremium, isDistanceAllowed, getPremiumDistances } = useFreemium();
+  const { isPremium, isDistanceAllowed, getPremiumDistances, isFortunePackAllowed, getPremiumFortunePacks } = useFreemium();
   const premiumDistances = getPremiumDistances();
+  const premiumFortunePacks = getPremiumFortunePacks();
   const locationOptions = [
     { id: 'indoor' as const, emoji: '🏠', label: 'Inside', description: 'Stay cozy indoors' },
     { id: 'outdoor' as const, emoji: '🌳', label: 'Outside', description: 'Fresh air vibes' },
@@ -257,8 +259,8 @@ export function PreferencesScreen({
           </div>
         </div>
 
-        {/* Budget Preference - NEW PREMIUM FILTER */}
-        <div className="gradient-card rounded-3xl p-5 shadow-card mb-6">
+        {/* Budget Preference */}
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="text-2xl">💰</span> Budget?
           </h2>
@@ -284,6 +286,62 @@ export function PreferencesScreen({
               );
             })}
           </div>
+        </div>
+
+        {/* Fortune Pack Selection - NEW PREMIUM FEATURE */}
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <span className="text-2xl">🥠</span> Fortune Pack
+            </h2>
+            {!isPremium && (
+              <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                <Crown className="w-3 h-3" />
+                Plus
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-2">
+            {FORTUNE_PACKS.map((pack) => {
+              const isSelected = preferences.fortunePack === pack.id;
+              const isLocked = !isPremium && pack.isPremium;
+              
+              return (
+                <button
+                  key={pack.id}
+                  onClick={() => {
+                    if (!isLocked) {
+                      onPreferencesChange({ fortunePack: pack.id as FortunePack });
+                    }
+                  }}
+                  disabled={isLocked}
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 relative ${
+                    isLocked
+                      ? 'bg-secondary/50 opacity-60 cursor-not-allowed'
+                      : isSelected
+                      ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
+                      : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
+                  }`}
+                >
+                  {isLocked && (
+                    <div className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full p-1">
+                      <Lock className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                  <span className="text-xl">{pack.emoji}</span>
+                  <span className="font-bold text-[10px] text-center leading-tight">{pack.name}</span>
+                  <span className={`text-[8px] text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {pack.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {!isPremium && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              🔓 Unlock Love, Career, Unhinged & Main Character with <span className="text-purple-400 font-semibold">YouPick Plus</span>
+            </p>
+          )}
         </div>
 
         {/* Start Button */}

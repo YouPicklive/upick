@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
 import { RotateCcw, Navigation, Share2, Download } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
-import { getRandomFortune } from '@/data/fortunes';
+import { getRandomFortune, FortunePack, FORTUNE_PACKS } from '@/data/fortunes';
 import html2canvas from 'html2canvas';
 
 interface ResultsScreenProps {
   winner: Spot;
+  fortunePack?: FortunePack;
   onPlayAgain: () => void;
 }
 
@@ -20,7 +21,7 @@ const categoryEmojis: Record<string, string> = {
   wellness: '🧘',
 };
 
-export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
+export function ResultsScreen({ winner, fortunePack = 'classic', onPlayAgain }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -28,6 +29,9 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
+
+  // Get the pack info for display
+  const packInfo = FORTUNE_PACKS.find(p => p.id === fortunePack) || FORTUNE_PACKS[0];
 
   useEffect(() => {
     // Start spinning after a brief delay
@@ -40,7 +44,7 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
 
   const handleSpinComplete = () => {
     setShowConfetti(true);
-    setFortune(getRandomFortune());
+    setFortune(getRandomFortune(fortunePack));
     
     setTimeout(() => {
       setShowWheel(false);
@@ -186,9 +190,9 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
           {/* Fortune Cookie */}
           <div className="gradient-warm rounded-2xl p-4 mb-6 shadow-glow text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <span className="text-2xl">🥠</span>
-              <span className="text-primary-foreground font-bold">Today's Fortune</span>
-              <span className="text-2xl">🥠</span>
+              <span className="text-2xl">{packInfo.emoji}</span>
+              <span className="text-primary-foreground font-bold">{packInfo.name} Fortune</span>
+              <span className="text-2xl">{packInfo.emoji}</span>
             </div>
             <p className="text-primary-foreground/90 italic text-lg">"{fortune}"</p>
           </div>
@@ -321,9 +325,9 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
           {/* Fortune */}
           <div className="w-full bg-gradient-to-r from-orange-400 to-pink-500 rounded-xl p-4 mb-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <span className="text-xl">🥠</span>
-              <span className="text-white font-bold text-sm">Your Fortune</span>
-              <span className="text-xl">🥠</span>
+              <span className="text-xl">{packInfo.emoji}</span>
+              <span className="text-white font-bold text-sm">{packInfo.name} Fortune</span>
+              <span className="text-xl">{packInfo.emoji}</span>
             </div>
             <p className="text-white/90 italic text-sm">"{fortune}"</p>
           </div>
