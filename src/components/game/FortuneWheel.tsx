@@ -119,9 +119,28 @@ export function FortuneWheel({ items, onSpinComplete, spinning }: FortuneWheelPr
         <span className="text-2xl">🎯</span>
       </div>
 
-      {/* Glow effect when spinning */}
+      {/* Golden shimmer effect when spinning */}
       {spinning && (
-        <div className="absolute inset-0 rounded-full animate-pulse-glow pointer-events-none" />
+        <div className="absolute inset-0 rounded-full pointer-events-none overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"
+            style={{
+              animation: 'shimmer 0.8s ease-in-out infinite',
+            }}
+          />
+          <div 
+            className="absolute inset-0 bg-gradient-to-b from-transparent via-yellow-200/30 to-transparent"
+            style={{
+              animation: 'shimmer 1.2s ease-in-out infinite 0.4s',
+            }}
+          />
+          <div 
+            className="absolute inset-0 bg-gradient-to-tr from-transparent via-amber-400/25 to-transparent"
+            style={{
+              animation: 'shimmer 1s ease-in-out infinite 0.2s',
+            }}
+          />
+        </div>
       )}
     </div>
   );
