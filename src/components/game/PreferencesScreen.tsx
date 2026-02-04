@@ -39,8 +39,15 @@ export function PreferencesScreen({
     { id: 'both' as const, emoji: '🎲', label: 'Whatever', description: 'Surprise me' },
   ];
 
+  const distanceOptions = [
+    { id: 'walking' as const, emoji: '🚶', label: 'Walking', description: '< 1 mile' },
+    { id: 'short-drive' as const, emoji: '🚗', label: 'Short Drive', description: '1-5 miles' },
+    { id: 'road-trip' as const, emoji: '🛣️', label: 'Road Trip', description: '5+ miles' },
+    { id: 'any' as const, emoji: '🌍', label: 'Anywhere', description: 'No limit' },
+  ];
+
   return (
-    <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12 relative">
+    <div className="min-h-screen gradient-sunset flex flex-col items-center justify-start px-6 py-8 relative overflow-y-auto">
       {/* Floating decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <span className="absolute top-24 left-8 text-4xl animate-float opacity-50">🌟</span>
@@ -52,41 +59,70 @@ export function PreferencesScreen({
         {/* Back Button */}
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-block mb-4">
-            <span className="text-6xl">✨</span>
+        <div className="text-center mb-6">
+          <div className="inline-block mb-3">
+            <span className="text-5xl">✨</span>
           </div>
           <h1 className="text-3xl font-extrabold mb-2">Set Your Vibe</h1>
           <p className="text-muted-foreground">A few quick questions to find your perfect spot</p>
         </div>
 
+        {/* Distance Preference - NEW */}
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+            <span className="text-2xl">📍</span> How far are you willing to go?
+          </h2>
+          <div className="grid grid-cols-4 gap-2">
+            {distanceOptions.map((option) => {
+              const isSelected = preferences.distance === option.id;
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => onPreferencesChange({ distance: option.id })}
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
+                    isSelected
+                      ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
+                      : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
+                  }`}
+                >
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className="font-bold text-xs">{option.label}</span>
+                  <span className={`text-[10px] text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Location Preference */}
-        <div className="gradient-card rounded-3xl p-6 shadow-card mb-4">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="text-2xl">🏠</span> Inside or Outside?
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {locationOptions.map((option) => {
               const isSelected = preferences.location === option.id;
               return (
                 <button
                   key={option.id}
                   onClick={() => onPreferencesChange({ location: option.id })}
-                  className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 ${
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
                     isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <span className="text-3xl">{option.emoji}</span>
-                  <span className="font-bold text-sm">{option.label}</span>
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className="font-bold text-xs">{option.label}</span>
                 </button>
               );
             })}
@@ -94,24 +130,24 @@ export function PreferencesScreen({
         </div>
 
         {/* Smoking Preference */}
-        <div className="gradient-card rounded-3xl p-6 shadow-card mb-4">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="text-2xl">💨</span> Smoking?
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {smokingOptions.map((option) => {
               const isSelected = preferences.smoking === option.id;
               return (
                 <button
                   key={option.id}
                   onClick={() => onPreferencesChange({ smoking: option.id })}
-                  className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 ${
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
                     isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <span className="text-3xl">{option.emoji}</span>
+                  <span className="text-2xl">{option.emoji}</span>
                   <span className="font-bold text-xs text-center leading-tight">{option.label}</span>
                 </button>
               );
@@ -120,28 +156,25 @@ export function PreferencesScreen({
         </div>
 
         {/* Vibe Preference */}
-        <div className="gradient-card rounded-3xl p-6 shadow-card mb-4">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="text-2xl">⚡</span> Chill or Active?
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {vibeOptions.map((option) => {
               const isSelected = preferences.vibe === option.id;
               return (
                 <button
                   key={option.id}
                   onClick={() => onPreferencesChange({ vibe: option.id })}
-                  className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 ${
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
                     isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <span className="text-3xl">{option.emoji}</span>
-                  <span className="font-bold text-sm">{option.label}</span>
-                  <span className={`text-xs text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                    {option.description}
-                  </span>
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className="font-bold text-xs">{option.label}</span>
                 </button>
               );
             })}
@@ -149,28 +182,25 @@ export function PreferencesScreen({
         </div>
 
         {/* Fancy/Divey Preference */}
-        <div className="gradient-card rounded-3xl p-6 shadow-card mb-8">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-6">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="text-2xl">💎</span> Fancy or Divey?
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {fancyOptions.map((option) => {
               const isSelected = preferences.fancy === option.id;
               return (
                 <button
                   key={option.id}
                   onClick={() => onPreferencesChange({ fancy: option.id })}
-                  className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 ${
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
                     isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <span className="text-3xl">{option.emoji}</span>
-                  <span className="font-bold text-sm">{option.label}</span>
-                  <span className={`text-xs text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                    {option.description}
-                  </span>
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className="font-bold text-xs">{option.label}</span>
                 </button>
               );
             })}
@@ -178,7 +208,7 @@ export function PreferencesScreen({
         </div>
 
         {/* Start Button */}
-        <Button variant="hero" size="xl" className="w-full group" onClick={onStart}>
+        <Button variant="hero" size="xl" className="w-full group mb-8" onClick={onStart}>
           <span className="text-2xl mr-2 group-hover:animate-bounce">🎲</span>
           Let's Go!
           <ArrowRight className="w-5 h-5 ml-2" />

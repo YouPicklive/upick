@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { RotateCcw, ExternalLink } from 'lucide-react';
+import { RotateCcw, Navigation } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { getRandomFortune } from '@/data/fortunes';
 
@@ -45,6 +45,44 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
     }, 1500);
 
     setTimeout(() => setShowConfetti(false), 4000);
+  };
+
+  const handleGetDirections = () => {
+    // Create a search query for the spot
+    const searchQuery = encodeURIComponent(`${winner.name} ${winner.cuisine || winner.category} near me`);
+    
+    // Check if on mobile to use appropriate maps URL
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    let mapsUrl: string;
+    
+    if (isMobile) {
+      if (isIOS) {
+        // Apple Maps URL scheme - opens Apple Maps on iOS
+        mapsUrl = `maps://maps.apple.com/?q=${searchQuery}`;
+      } else {
+        // Google Maps intent for Android
+        mapsUrl = `geo:0,0?q=${searchQuery}`;
+      }
+      
+      // Try to open native app, fallback to Google Maps web
+      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+      
+      // Create a hidden link and try to open native maps
+      const link = document.createElement('a');
+      link.href = mapsUrl;
+      link.click();
+      
+      // Fallback after a short delay if native app doesn't open
+      setTimeout(() => {
+        window.open(fallbackUrl, '_blank');
+      }, 1000);
+    } else {
+      // Desktop - open Google Maps in new tab
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+      window.open(mapsUrl, '_blank');
+    }
   };
 
   // Create wheel items from winner name (we just show the winner spinning to build suspense)
@@ -186,10 +224,15 @@ export function ResultsScreen({ winner, onPlayAgain }: ResultsScreenProps) {
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-3">
-            <Button variant="hero" size="xl" className="w-full group">
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="w-full group"
+              onClick={handleGetDirections}
+            >
               <span className="text-2xl mr-2">🗺️</span>
-              Get Directions
-              <ExternalLink className="w-5 h-5 ml-2" />
+              Open in Maps
+              <Navigation className="w-5 h-5 ml-2" />
             </Button>
             <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
               <span className="text-xl mr-2">🔄</span>

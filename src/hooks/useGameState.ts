@@ -6,6 +6,7 @@ const initialPreferences: Preferences = {
   smoking: 'doesnt-matter',
   vibe: 'both',
   fancy: 'both',
+  distance: 'any',
 };
 
 const initialState: GameState = {
