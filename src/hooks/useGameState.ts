@@ -9,7 +9,7 @@ const initialPreferences: Preferences = {
   distance: 'any',
   mood: 'any',
   budget: 'any',
-  fortunePack: 'classic',
+  fortunePack: 'free',
 };
 
 const initialState: GameState = {

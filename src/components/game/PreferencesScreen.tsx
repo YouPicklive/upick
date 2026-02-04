@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Preferences } from '@/types/game';
 import { ArrowLeft, ArrowRight, Lock, Crown } from 'lucide-react';
 import { useFreemium } from '@/hooks/useFreemium';
-import { FORTUNE_PACKS, FortunePack } from '@/data/fortunes';
+import { FORTUNE_PACKS } from '@/hooks/useFortunes';
 
 interface PreferencesScreenProps {
   preferences: Preferences;
@@ -301,17 +301,17 @@ export function PreferencesScreen({
               </span>
             )}
           </div>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             {FORTUNE_PACKS.map((pack) => {
               const isSelected = preferences.fortunePack === pack.id;
-              const isLocked = !isPremium && pack.isPremium;
+              const isLocked = !isPremium && pack.id !== 'free';
               
               return (
                 <button
                   key={pack.id}
                   onClick={() => {
                     if (!isLocked) {
-                      onPreferencesChange({ fortunePack: pack.id as FortunePack });
+                      onPreferencesChange({ fortunePack: pack.id as Preferences['fortunePack'] });
                     }
                   }}
                   disabled={isLocked}

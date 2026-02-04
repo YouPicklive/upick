@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { RotateCcw, Navigation, Share2, Download } from 'lucide-react';
+import { Navigation, Share2 } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
-import { getRandomFortune, FortunePack, FORTUNE_PACKS } from '@/data/fortunes';
+import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import html2canvas from 'html2canvas';
 
 interface ResultsScreenProps {
   winner: Spot;
-  fortunePack?: FortunePack;
+  fortunePack?: string;
   onPlayAgain: () => void;
 }
 
@@ -21,7 +21,7 @@ const categoryEmojis: Record<string, string> = {
   wellness: '🧘',
 };
 
-export function ResultsScreen({ winner, fortunePack = 'classic', onPlayAgain }: ResultsScreenProps) {
+export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -29,9 +29,11 @@ export function ResultsScreen({ winner, fortunePack = 'classic', onPlayAgain }: 
   const [showConfetti, setShowConfetti] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  
+  const { getFortuneByPackId, getPackInfo } = useFortunes();
 
   // Get the pack info for display
-  const packInfo = FORTUNE_PACKS.find(p => p.id === fortunePack) || FORTUNE_PACKS[0];
+  const packInfo = getPackInfo(fortunePack);
 
   useEffect(() => {
     // Start spinning after a brief delay
@@ -42,9 +44,12 @@ export function ResultsScreen({ winner, fortunePack = 'classic', onPlayAgain }: 
     return () => clearTimeout(spinTimer);
   }, []);
 
-  const handleSpinComplete = () => {
+  const handleSpinComplete = async () => {
     setShowConfetti(true);
-    setFortune(getRandomFortune(fortunePack));
+    
+    // Fetch fortune from database
+    const fetchedFortune = await getFortuneByPackId(fortunePack);
+    setFortune(fetchedFortune);
     
     setTimeout(() => {
       setShowWheel(false);
