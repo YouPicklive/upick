@@ -10,6 +10,7 @@ const initialPreferences: Preferences = {
   mood: 'any',
   budget: 'any',
   fortunePack: 'free',
+  freeOnly: false,
 };
 
 const initialState: GameState = {
@@ -48,6 +49,9 @@ export function useGameState() {
 
   const filterSpotsByPreferences = useCallback((spots: Spot[], prefs: Preferences): Spot[] => {
     return spots.filter((spot) => {
+      // Free only filter
+      if (prefs.freeOnly && spot.priceLevel > 1) return false;
+
       // Location filter
       if (prefs.location === 'indoor' && spot.isOutdoor) return false;
       if (prefs.location === 'outdoor' && !spot.isOutdoor) return false;

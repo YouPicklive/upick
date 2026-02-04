@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Preferences } from '@/types/game';
 import { ArrowLeft, ArrowRight, Lock, Crown, ShoppingBag } from 'lucide-react';
 import { useFreemium } from '@/hooks/useFreemium';
@@ -291,7 +292,23 @@ export function PreferencesScreen({
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="text-2xl">💰</span> Budget?
           </h2>
-          <div className="grid grid-cols-4 gap-2">
+          
+          {/* Free Only Toggle */}
+          <div className="flex items-center justify-between mb-4 p-3 rounded-2xl bg-secondary/50">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🆓</span>
+              <div>
+                <span className="font-bold text-sm">Free Only</span>
+                <p className="text-xs text-muted-foreground">Show only free activities</p>
+              </div>
+            </div>
+            <Switch
+              checked={preferences.freeOnly}
+              onCheckedChange={(checked) => onPreferencesChange({ freeOnly: checked })}
+            />
+          </div>
+          
+          <div className={`grid grid-cols-4 gap-2 transition-opacity ${preferences.freeOnly ? 'opacity-50 pointer-events-none' : ''}`}>
             {budgetOptions.map((option) => {
               const isSelected = preferences.budget === option.id;
               return (
