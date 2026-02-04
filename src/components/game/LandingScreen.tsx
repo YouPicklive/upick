@@ -1,12 +1,14 @@
 import { Button } from '@/components/ui/button';
-import { Utensils, Users, ArrowRight, MapPin, Heart, Shuffle } from 'lucide-react';
+import { Utensils, Users, ArrowRight, MapPin, Heart, Shuffle, Crown } from 'lucide-react';
 import heroImage from '@/assets/hero-illustration.jpg';
 
 interface LandingScreenProps {
   onStart: () => void;
+  spinsRemaining?: number;
+  isPremium?: boolean;
 }
 
-export function LandingScreen({ onStart }: LandingScreenProps) {
+export function LandingScreen({ onStart, spinsRemaining, isPremium }: LandingScreenProps) {
   return (
     <div className="min-h-screen gradient-sunset flex flex-col">
       {/* Floating decorative elements */}
@@ -69,6 +71,27 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
               description="Every pick comes with today's fortune"
             />
           </div>
+
+          {/* Spins Remaining Badge */}
+          {!isPremium && spinsRemaining !== undefined && (
+            <div className="mb-4 inline-flex items-center gap-2 bg-secondary/80 backdrop-blur-sm px-4 py-2 rounded-full">
+              <span className="text-lg">🎡</span>
+              <span className="text-sm font-semibold">
+                {spinsRemaining > 0 ? (
+                  <>{spinsRemaining} free spin{spinsRemaining !== 1 ? 's' : ''} left today</>
+                ) : (
+                  <span className="text-orange-400">No spins left — try again tomorrow!</span>
+                )}
+              </span>
+            </div>
+          )}
+
+          {isPremium && (
+            <div className="mb-4 inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm px-4 py-2 rounded-full">
+              <Crown className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-semibold text-purple-300">YouPick Plus — Unlimited Spins!</span>
+            </div>
+          )}
 
           {/* CTA Button */}
           <Button variant="hero" size="xl" onClick={onStart} className="group">
