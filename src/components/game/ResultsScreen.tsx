@@ -302,18 +302,8 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
             </div>
           </div>
 
-          {/* Live Events Section */}
-          {isEventCategory && (
-            <EventsSection 
-              events={events} 
-              isLoading={eventsLoading} 
-              timeframe={timeframe}
-              onTimeframeChange={setTimeframe}
-            />
-          )}
-
           {/* Action Buttons */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 mb-6">
             <Button 
               variant="hero" 
               size="xl" 
@@ -353,6 +343,16 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
               Report a Problem
             </Button>
           </div>
+
+          {/* Live Events Section */}
+          {isEventCategory && (
+            <EventsSection 
+              events={events} 
+              isLoading={eventsLoading} 
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
+            />
+          )}
         </div>
       )}
 
