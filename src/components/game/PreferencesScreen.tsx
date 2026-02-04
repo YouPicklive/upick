@@ -35,15 +35,15 @@ export function PreferencesScreen({
   const premiumDistances = getPremiumDistances();
   const premiumFortunePacks = getPremiumFortunePacks();
   
-  const handlePurchasePack = (packId: string) => {
+  const handlePurchasePack = async (packId: string) => {
     // In a real app, this would trigger Stripe checkout
-    // For now, simulate purchase
-    purchasePack(packId);
+    // For now, simulate purchase (saves to DB if authenticated)
+    await purchasePack(packId);
   };
 
-  const handleUpgradePlus = () => {
+  const handleUpgradePlus = async () => {
     // In a real app, this would trigger Stripe checkout
-    upgradeToPremium();
+    await upgradeToPremium();
     setShowPackShop(false);
   };
 
