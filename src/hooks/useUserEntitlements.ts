@@ -47,26 +47,11 @@ export function useUserEntitlements() {
             owned_packs: data.owned_packs || [],
           });
         } else {
-          // Create default entitlements for new user
-          const { data: newData, error: createError } = await supabase
-            .from('user_entitlements')
-            .insert({
-              user_id: user.id,
-              plus_active: false,
-              owned_packs: [],
-            })
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('Error creating entitlements:', createError);
-            setError(createError.message);
-          } else if (newData) {
-            setEntitlements({
-              ...newData,
-              owned_packs: newData.owned_packs || [],
-            });
-          }
+          // Entitlements should be auto-created by database trigger on signup
+          // If not found, user may have signed up before trigger was added
+          // Set default values - entitlements will be created by Stripe webhook on purchase
+          console.info('No entitlements found for user - will be created on first purchase');
+          setEntitlements(null);
         }
       } catch (err) {
         console.error('Error in fetchEntitlements:', err);
@@ -79,58 +64,21 @@ export function useUserEntitlements() {
     fetchEntitlements();
   }, [isAuthenticated, user]);
 
-  // Upgrade to Plus
+  // Note: Premium upgrades are handled by Stripe webhook, not client-side
+  // This function is kept for UI compatibility but redirects to Stripe checkout
   const upgradeToPremium = useCallback(async () => {
-    if (!user || !entitlements) return { success: false };
+    // Redirect to Stripe checkout - webhook will update entitlements
+    window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
+    return { success: true, message: 'Redirecting to checkout...' };
+  }, []);
 
-    try {
-      const { error: updateError } = await supabase
-        .from('user_entitlements')
-        .update({ plus_active: true })
-        .eq('user_id', user.id);
-
-      if (updateError) {
-        console.error('Error upgrading to premium:', updateError);
-        return { success: false, error: updateError.message };
-      }
-
-      setEntitlements(prev => prev ? { ...prev, plus_active: true } : null);
-      return { success: true };
-    } catch (err) {
-      console.error('Error in upgradeToPremium:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
-    }
-  }, [user, entitlements]);
-
-  // Purchase a pack
+  // Note: Pack purchases are handled by Stripe webhook, not client-side
+  // This function is kept for UI compatibility but would redirect to Stripe
   const purchasePack = useCallback(async (packId: string) => {
-    if (!user || !entitlements) return { success: false };
-
-    // Check if already owned
-    if (entitlements.owned_packs.includes(packId)) {
-      return { success: true }; // Already owned
-    }
-
-    try {
-      const newOwnedPacks = [...entitlements.owned_packs, packId];
-
-      const { error: updateError } = await supabase
-        .from('user_entitlements')
-        .update({ owned_packs: newOwnedPacks })
-        .eq('user_id', user.id);
-
-      if (updateError) {
-        console.error('Error purchasing pack:', updateError);
-        return { success: false, error: updateError.message };
-      }
-
-      setEntitlements(prev => prev ? { ...prev, owned_packs: newOwnedPacks } : null);
-      return { success: true };
-    } catch (err) {
-      console.error('Error in purchasePack:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
-    }
-  }, [user, entitlements]);
+    // TODO: Implement pack-specific Stripe checkout links
+    console.info('Pack purchase requested:', packId);
+    return { success: false, error: 'Pack purchases coming soon via Stripe' };
+  }, []);
 
   return {
     entitlements,
