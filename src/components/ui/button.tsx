@@ -20,6 +20,7 @@ const buttonVariants = cva(
         game: "bg-card text-card-foreground border-2 border-border hover:border-primary hover:scale-105 active:scale-95 shadow-card",
         swipeYes: "bg-success text-success-foreground hover:bg-success/90 hover:scale-110 active:scale-95 shadow-lg",
         swipeNo: "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:scale-110 active:scale-95 shadow-lg",
+        apple: "bg-black text-white hover:bg-black/90 hover:scale-105 active:scale-95 border border-white/10",
       },
       size: {
         default: "h-10 px-4 py-2",
