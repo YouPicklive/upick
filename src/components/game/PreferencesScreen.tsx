@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Preferences } from '@/types/game';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Lock, Crown } from 'lucide-react';
+import { useFreemium } from '@/hooks/useFreemium';
 
 interface PreferencesScreenProps {
   preferences: Preferences;
@@ -15,6 +16,8 @@ export function PreferencesScreen({
   onStart,
   onBack,
 }: PreferencesScreenProps) {
+  const { isPremium, isDistanceAllowed, getPremiumDistances } = useFreemium();
+  const premiumDistances = getPremiumDistances();
   const locationOptions = [
     { id: 'indoor' as const, emoji: '🏠', label: 'Inside', description: 'Stay cozy indoors' },
     { id: 'outdoor' as const, emoji: '🌳', label: 'Outside', description: 'Fresh air vibes' },
@@ -91,33 +94,60 @@ export function PreferencesScreen({
           <p className="text-muted-foreground">A few quick questions to find your perfect spot</p>
         </div>
 
-        {/* Distance Preference - NEW */}
+        {/* Distance Preference */}
         <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
-          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <span className="text-2xl">📍</span> How far are you willing to go?
-          </h2>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <span className="text-2xl">📍</span> How far are you willing to go?
+            </h2>
+            {!isPremium && (
+              <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                <Crown className="w-3 h-3" />
+                Plus
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-2">
             {distanceOptions.map((option) => {
               const isSelected = preferences.distance === option.id;
+              const isLocked = !isPremium && premiumDistances.includes(option.id);
+              
               return (
                 <button
                   key={option.id}
-                  onClick={() => onPreferencesChange({ distance: option.id })}
-                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
-                    isSelected
+                  onClick={() => {
+                    if (!isLocked) {
+                      onPreferencesChange({ distance: option.id });
+                    }
+                  }}
+                  disabled={isLocked}
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 relative ${
+                    isLocked
+                      ? 'bg-secondary/50 opacity-60 cursor-not-allowed'
+                      : isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <span className="text-2xl">{option.emoji}</span>
-                  <span className="font-bold text-xs">{option.label}</span>
-                  <span className={`text-[10px] text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                  {isLocked && (
+                    <div className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full p-1">
+                      <Lock className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                  <span className="text-xl">{option.emoji}</span>
+                  <span className="font-bold text-[10px]">{option.label}</span>
+                  <span className={`text-[9px] text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                     {option.description}
                   </span>
                 </button>
               );
             })}
           </div>
+          {!isPremium && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              🔓 Unlock Road Trip, Epic Adventure & Anywhere with <span className="text-purple-400 font-semibold">YouPick Plus</span>
+            </p>
+          )}
         </div>
 
         {/* Location Preference */}
