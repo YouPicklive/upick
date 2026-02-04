@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Preferences } from '@/types/game';
-import { ArrowLeft, ArrowRight, Lock, Crown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Lock, Crown, ShoppingBag } from 'lucide-react';
 import { useFreemium } from '@/hooks/useFreemium';
 import { FORTUNE_PACKS } from '@/hooks/useFortunes';
+import { PackPurchaseModal } from './PackPurchaseModal';
 
 interface PreferencesScreenProps {
   preferences: Preferences;
@@ -17,9 +19,34 @@ export function PreferencesScreen({
   onStart,
   onBack,
 }: PreferencesScreenProps) {
-  const { isPremium, isDistanceAllowed, getPremiumDistances, isFortunePackAllowed, getPremiumFortunePacks } = useFreemium();
+  const { 
+    isPremium, 
+    ownedPacks,
+    isDistanceAllowed, 
+    getPremiumDistances, 
+    isFortunePackAllowed, 
+    getPremiumFortunePacks,
+    purchasePack,
+    upgradeToPremium,
+  } = useFreemium();
+  
+  const [showPackShop, setShowPackShop] = useState(false);
+  
   const premiumDistances = getPremiumDistances();
   const premiumFortunePacks = getPremiumFortunePacks();
+  
+  const handlePurchasePack = (packId: string) => {
+    // In a real app, this would trigger Stripe checkout
+    // For now, simulate purchase
+    purchasePack(packId);
+  };
+
+  const handleUpgradePlus = () => {
+    // In a real app, this would trigger Stripe checkout
+    upgradeToPremium();
+    setShowPackShop(false);
+  };
+
   const locationOptions = [
     { id: 'indoor' as const, emoji: '🏠', label: 'Inside', description: 'Stay cozy indoors' },
     { id: 'outdoor' as const, emoji: '🌳', label: 'Outside', description: 'Fresh air vibes' },
@@ -288,23 +315,28 @@ export function PreferencesScreen({
           </div>
         </div>
 
-        {/* Fortune Pack Selection - NEW PREMIUM FEATURE */}
+        {/* Fortune Pack Selection - NOW WITH PURCHASE OPTION */}
         <div className="gradient-card rounded-3xl p-5 shadow-card mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <span className="text-2xl">🥠</span> Fortune Pack
             </h2>
-            {!isPremium && (
-              <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full flex items-center gap-1">
-                <Crown className="w-3 h-3" />
-                Plus
-              </span>
-            )}
+            <button
+              onClick={() => setShowPackShop(true)}
+              className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full flex items-center gap-1 hover:opacity-90 transition-opacity"
+            >
+              <ShoppingBag className="w-3 h-3" />
+              Shop
+            </button>
           </div>
           <div className="grid grid-cols-6 gap-2">
             {FORTUNE_PACKS.map((pack) => {
               const isSelected = preferences.fortunePack === pack.id;
-              const isLocked = !isPremium && pack.id !== 'free';
+              // Pack is unlocked if: free, premium user, or individually owned
+              const isUnlocked = pack.id === 'free' || isPremium || ownedPacks.includes(pack.id);
+              const isLocked = !isUnlocked;
+              // Special case: 'plus' pack requires Plus subscription, can't be bought individually
+              const isPlusOnly = pack.id === 'plus';
               
               return (
                 <button
@@ -312,20 +344,26 @@ export function PreferencesScreen({
                   onClick={() => {
                     if (!isLocked) {
                       onPreferencesChange({ fortunePack: pack.id as Preferences['fortunePack'] });
+                    } else {
+                      // Open shop when clicking locked pack
+                      setShowPackShop(true);
                     }
                   }}
-                  disabled={isLocked}
                   className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 relative ${
                     isLocked
-                      ? 'bg-secondary/50 opacity-60 cursor-not-allowed'
+                      ? 'bg-secondary/50 opacity-60 cursor-pointer hover:opacity-80'
                       : isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
                   {isLocked && (
-                    <div className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full p-1">
-                      <Lock className="w-2.5 h-2.5 text-white" />
+                    <div className={`absolute -top-1 -right-1 ${isPlusOnly ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-orange-500 to-amber-500'} rounded-full p-1`}>
+                      {isPlusOnly ? (
+                        <Crown className="w-2.5 h-2.5 text-white" />
+                      ) : (
+                        <ShoppingBag className="w-2.5 h-2.5 text-white" />
+                      )}
                     </div>
                   )}
                   <span className="text-xl">{pack.emoji}</span>
@@ -339,7 +377,7 @@ export function PreferencesScreen({
           </div>
           {!isPremium && (
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              🔓 Unlock Love, Career, Unhinged & Main Character with <span className="text-purple-400 font-semibold">YouPick Plus</span>
+              🛒 Tap to buy individual packs or <button onClick={() => setShowPackShop(true)} className="text-purple-400 font-semibold hover:underline">get Plus</button> for all!
             </p>
           )}
         </div>
@@ -351,6 +389,17 @@ export function PreferencesScreen({
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
       </div>
+
+      {/* Pack Purchase Modal */}
+      {showPackShop && (
+        <PackPurchaseModal
+          ownedPacks={ownedPacks}
+          isPremium={isPremium}
+          onPurchase={handlePurchasePack}
+          onUpgradePlus={handleUpgradePlus}
+          onClose={() => setShowPackShop(false)}
+        />
+      )}
     </div>
   );
 }
