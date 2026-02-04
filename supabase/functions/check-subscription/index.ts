@@ -7,8 +7,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// YouPick Plus subscription product ID
+// YouPick Plus subscription product ID and price IDs
 const PLUS_PRODUCT_ID = "prod_Tummobc6d7L8Qe";
+const PLUS_PRICE_IDS = [
+  "price_1SxAyfC3xPeU0PAgoYHXcyEX", // $5.99/month (current)
+  "price_1SwxCjC3xPeU0PAg3QHE4iHg", // $4.99/month (legacy)
+  "price_1Sx9jOC3xPeU0PAgVxH6M4PQ", // legacy price
+];
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -79,21 +84,31 @@ serve(async (req) => {
       limit: 10,
     });
 
-    // Find a subscription for YouPick Plus product
+    logStep("Subscriptions found", { count: subscriptions.data.length });
+
+    // Find a subscription for YouPick Plus product or price
     let hasActivePlus = false;
     let subscriptionEnd: string | null = null;
 
     for (const subscription of subscriptions.data) {
+      logStep("Checking subscription", { subscriptionId: subscription.id });
+      
       for (const item of subscription.items.data) {
+        const priceId = item.price.id;
         const productId = typeof item.price.product === 'string' 
           ? item.price.product 
           : item.price.product.id;
         
-        if (productId === PLUS_PRODUCT_ID) {
+        logStep("Subscription item", { priceId, productId });
+        
+        // Check if this is a Plus subscription by product ID or price ID
+        if (productId === PLUS_PRODUCT_ID || PLUS_PRICE_IDS.includes(priceId)) {
           hasActivePlus = true;
           subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
           logStep("Active Plus subscription found", { 
             subscriptionId: subscription.id, 
+            priceId,
+            productId,
             endDate: subscriptionEnd 
           });
           break;
