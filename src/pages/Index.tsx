@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useGameState } from '@/hooks/useGameState';
 import { useFreemium } from '@/hooks/useFreemium';
+import { useAuth } from '@/hooks/useAuth';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { SetupScreen } from '@/components/game/SetupScreen';
 import { PreferencesScreen } from '@/components/game/PreferencesScreen';
@@ -9,6 +11,21 @@ import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
 
 const Index = () => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  // Redirect to auth if not logged in
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
   const {
     state,
     currentSpot,
