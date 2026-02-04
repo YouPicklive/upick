@@ -20,6 +20,8 @@ export interface Preferences {
   vibe: 'chill' | 'active' | 'both';
   fancy: 'fancy' | 'divey' | 'both';
   distance: 'walking' | 'short-drive' | 'road-trip' | 'any';
+  mood: 'solo' | 'date' | 'squad' | 'chaotic' | 'cozy' | 'any';
+  budget: 'budget' | 'mid' | 'splurge' | 'any';
 }
 
 export interface GameState {

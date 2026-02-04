@@ -46,6 +46,22 @@ export function PreferencesScreen({
     { id: 'any' as const, emoji: '🌍', label: 'Anywhere', description: 'No limit' },
   ];
 
+  const moodOptions = [
+    { id: 'solo' as const, emoji: '🎧', label: 'Solo', description: 'Me time' },
+    { id: 'date' as const, emoji: '💕', label: 'Date', description: 'Romantic vibes' },
+    { id: 'squad' as const, emoji: '👯', label: 'Squad', description: 'Group hangout' },
+    { id: 'chaotic' as const, emoji: '🤪', label: 'Chaotic', description: 'Wild card!' },
+    { id: 'cozy' as const, emoji: '🧸', label: 'Cozy', description: 'Comfort zone' },
+    { id: 'any' as const, emoji: '🎲', label: 'Surprise me', description: 'Dealer\'s choice' },
+  ];
+
+  const budgetOptions = [
+    { id: 'budget' as const, emoji: '💵', label: 'Budget', description: '$' },
+    { id: 'mid' as const, emoji: '💸', label: 'Mid-range', description: '$$' },
+    { id: 'splurge' as const, emoji: '💎', label: 'Splurge', description: '$$$+' },
+    { id: 'any' as const, emoji: '🤷', label: 'Any', description: 'No limit' },
+  ];
+
   return (
     <div className="min-h-screen gradient-sunset flex flex-col items-center justify-start px-6 py-8 relative overflow-y-auto">
       {/* Floating decorations */}
@@ -181,18 +197,18 @@ export function PreferencesScreen({
           </div>
         </div>
 
-        {/* Fancy/Divey Preference */}
-        <div className="gradient-card rounded-3xl p-5 shadow-card mb-6">
+        {/* Mood Preference - NEW PREMIUM FILTER */}
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <span className="text-2xl">💎</span> Fancy or Divey?
+            <span className="text-2xl">🎭</span> What's the vibe?
           </h2>
           <div className="grid grid-cols-3 gap-2">
-            {fancyOptions.map((option) => {
-              const isSelected = preferences.fancy === option.id;
+            {moodOptions.map((option) => {
+              const isSelected = preferences.mood === option.id;
               return (
                 <button
                   key={option.id}
-                  onClick={() => onPreferencesChange({ fancy: option.id })}
+                  onClick={() => onPreferencesChange({ mood: option.id })}
                   className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
                     isSelected
                       ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
@@ -201,6 +217,38 @@ export function PreferencesScreen({
                 >
                   <span className="text-2xl">{option.emoji}</span>
                   <span className="font-bold text-xs">{option.label}</span>
+                  <span className={`text-[10px] text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Budget Preference - NEW PREMIUM FILTER */}
+        <div className="gradient-card rounded-3xl p-5 shadow-card mb-6">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+            <span className="text-2xl">💰</span> Budget?
+          </h2>
+          <div className="grid grid-cols-4 gap-2">
+            {budgetOptions.map((option) => {
+              const isSelected = preferences.budget === option.id;
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => onPreferencesChange({ budget: option.id })}
+                  className={`p-3 rounded-2xl flex flex-col items-center gap-1 transition-all duration-200 ${
+                    isSelected
+                      ? 'gradient-warm text-primary-foreground shadow-glow scale-105'
+                      : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
+                  }`}
+                >
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className="font-bold text-xs">{option.label}</span>
+                  <span className={`text-[10px] text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {option.description}
+                  </span>
                 </button>
               );
             })}
