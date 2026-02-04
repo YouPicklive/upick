@@ -20,8 +20,12 @@ const PRICE_TO_PACK_MAP: Record<string, string> = {
   "price_1Sx9qmC3xPeU0PAgKdTJQ6PR": "main_character", // Main Character Energy Fortune Pack
 };
 
-// YouPick Plus subscription price ID
-const PLUS_PRICE_ID = "price_1Sx9jOC3xPeU0PAgVxH6M4PQ";
+// YouPick Plus subscription price IDs ($7.99/month)
+const PLUS_PRICE_IDS = [
+  "price_1SxAyfC3xPeU0PAgoYHXcyEX", // $7.99/month (current)
+  "price_1SwxCjC3xPeU0PAg3QHE4iHg", // $4.99/month (legacy)
+  "price_1Sx9jOC3xPeU0PAgVxH6M4PQ", // legacy price
+];
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -130,9 +134,9 @@ serve(async (req) => {
           const priceId = item.price?.id;
           logStep("Processing line item", { priceId, productName: item.description });
 
-          if (priceId === PLUS_PRICE_ID) {
+          if (priceId && PLUS_PRICE_IDS.includes(priceId)) {
             isSubscription = true;
-            logStep("Plus subscription detected");
+            logStep("Plus subscription detected", { priceId });
           } else if (priceId && PRICE_TO_PACK_MAP[priceId]) {
             packKeys.push(PRICE_TO_PACK_MAP[priceId]);
             logStep("Pack purchase detected", { packKey: PRICE_TO_PACK_MAP[priceId] });
