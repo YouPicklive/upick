@@ -8,9 +8,10 @@ interface LandingScreenProps {
   onStart: () => void;
   spinsRemaining?: number;
   isPremium?: boolean;
+  isTrialMode?: boolean;
 }
 
-export function LandingScreen({ onStart, spinsRemaining, isPremium }: LandingScreenProps) {
+export function LandingScreen({ onStart, spinsRemaining, isPremium, isTrialMode }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
 
@@ -113,7 +114,16 @@ export function LandingScreen({ onStart, spinsRemaining, isPremium }: LandingScr
           </div>
 
           {/* Spins Remaining Badge */}
-          {!isPremium && spinsRemaining !== undefined && (
+          {isTrialMode && (
+            <div className="mb-4 inline-flex items-center gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm px-4 py-2 rounded-full">
+              <span className="text-lg">🎁</span>
+              <span className="text-sm font-semibold text-emerald-300">
+                Try 1 free spin — no account needed!
+              </span>
+            </div>
+          )}
+
+          {!isTrialMode && !isPremium && spinsRemaining !== undefined && (
             <div className="mb-4 inline-flex items-center gap-2 bg-secondary/80 backdrop-blur-sm px-4 py-2 rounded-full">
               <span className="text-lg">🎡</span>
               <span className="text-sm font-semibold">

@@ -10,6 +10,7 @@ interface ResultsScreenProps {
   winner: Spot;
   fortunePack?: string;
   onPlayAgain: () => void;
+  isTrialMode?: boolean;
 }
 
 const categoryEmojis: Record<string, string> = {
@@ -21,7 +22,7 @@ const categoryEmojis: Record<string, string> = {
   wellness: '🧘',
 };
 
-export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain }: ResultsScreenProps) {
+export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTrialMode }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -304,8 +305,8 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain }: Res
             </Button>
             
             <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
-              <span className="text-xl mr-2">🔄</span>
-              Pick Again
+              <span className="text-xl mr-2">{isTrialMode ? '✨' : '🔄'}</span>
+              {isTrialMode ? 'Create Account to Keep Playing' : 'Pick Again'}
             </Button>
           </div>
         </div>

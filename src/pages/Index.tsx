@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useGameState } from '@/hooks/useGameState';
 import { useFreemium } from '@/hooks/useFreemium';
 import { useAuth } from '@/hooks/useAuth';
+import { useTrialSpin } from '@/hooks/useTrialSpin';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { SetupScreen } from '@/components/game/SetupScreen';
 import { PreferencesScreen } from '@/components/game/PreferencesScreen';
@@ -11,21 +12,10 @@ import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { isAuthenticated, loading } = useAuth();
+  const { canUseTrial, useTrialSpin: markTrialUsed, hasUsedTrial } = useTrialSpin();
   
-  // Show loading state while checking auth
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
-  // Redirect to auth if not logged in
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
-  }
   const {
     state,
     currentSpot,
@@ -50,8 +40,34 @@ const Index = () => {
   } = useFreemium();
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
+  const [isTrialMode, setIsTrialMode] = useState(false);
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  // Allow unauthenticated users if they can use trial OR are in the middle of a trial game
+  const allowTrialAccess = canUseTrial || isTrialMode;
+  
+  // Redirect to auth if not logged in AND can't use trial
+  if (!isAuthenticated && !allowTrialAccess) {
+    return <Navigate to="/auth" replace />;
+  }
 
   const handleStartGame = () => {
+    if (!isAuthenticated) {
+      // Trial mode - use the free trial spin
+      markTrialUsed();
+      setIsTrialMode(true);
+      startGame();
+      return;
+    }
+
     if (canSpin) {
       const spinUsed = useSpin();
       if (spinUsed) {
@@ -63,9 +79,17 @@ const Index = () => {
   };
 
   const handleUpgrade = () => {
-    // In a real app, this would trigger Stripe checkout
     upgradeToPremium();
     setShowSpinLimit(false);
+  };
+
+  const handlePlayAgain = () => {
+    // If trial mode ended, redirect to auth
+    if (!isAuthenticated) {
+      navigate('/auth');
+      return;
+    }
+    resetGame();
   };
 
   if (state.mode === 'landing') {
@@ -73,8 +97,9 @@ const Index = () => {
       <>
         <LandingScreen 
           onStart={() => setMode('setup')} 
-          spinsRemaining={spinsRemaining}
+          spinsRemaining={isAuthenticated ? spinsRemaining : (canUseTrial ? 1 : 0)}
           isPremium={isPremium}
+          isTrialMode={!isAuthenticated && canUseTrial}
         />
         {showSpinLimit && (
           <SpinLimitModal
@@ -139,7 +164,8 @@ const Index = () => {
       <ResultsScreen 
         winner={state.winner} 
         fortunePack={state.preferences.fortunePack}
-        onPlayAgain={resetGame} 
+        onPlayAgain={handlePlayAgain}
+        isTrialMode={!isAuthenticated}
       />
     );
   }
