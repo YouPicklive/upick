@@ -13,6 +13,16 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+// Map Stripe price IDs to pack keys
+const PRICE_TO_PACK_MAP: Record<string, string> = {
+  "price_1Sx9o1C3xPeU0PAg4tyGgK7n": "career",      // Career Fortune Pack
+  "price_1Sx9qmC3xPeU0PAg3TQs8EDG": "unhinged",    // Unhinged Fortune Pack
+  "price_1Sx9qmC3xPeU0PAgKdTJQ6PR": "main_character", // Main Character Energy Fortune Pack
+};
+
+// YouPick Plus subscription price ID
+const PLUS_PRICE_ID = "price_1Sx9jOC3xPeU0PAgVxH6M4PQ";
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -108,12 +118,47 @@ serve(async (req) => {
 
         logStep("User found", { userId: user.id });
 
-        // Activate Plus membership
+        // Retrieve the line items to determine what was purchased
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+        logStep("Line items retrieved", { count: lineItems.data.length });
+
+        let isSubscription = session.mode === "subscription";
+        let packKeys: string[] = [];
+
+        // Check each line item for pack purchases
+        for (const item of lineItems.data) {
+          const priceId = item.price?.id;
+          logStep("Processing line item", { priceId, productName: item.description });
+
+          if (priceId === PLUS_PRICE_ID) {
+            isSubscription = true;
+            logStep("Plus subscription detected");
+          } else if (priceId && PRICE_TO_PACK_MAP[priceId]) {
+            packKeys.push(PRICE_TO_PACK_MAP[priceId]);
+            logStep("Pack purchase detected", { packKey: PRICE_TO_PACK_MAP[priceId] });
+          }
+        }
+
+        // Get current entitlements to merge owned_packs
+        const { data: currentEntitlements } = await supabaseAdmin
+          .from("user_entitlements")
+          .select("owned_packs, plus_active")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const currentPacks = currentEntitlements?.owned_packs || [];
+        const currentPlusActive = currentEntitlements?.plus_active || false;
+
+        // Merge new packs with existing ones (avoid duplicates)
+        const mergedPacks = [...new Set([...currentPacks, ...packKeys])];
+
+        // Update entitlements
         const { error: updateError } = await supabaseAdmin
           .from("user_entitlements")
           .upsert({
             user_id: user.id,
-            plus_active: true,
+            plus_active: isSubscription ? true : currentPlusActive,
+            owned_packs: mergedPacks,
             updated_at: new Date().toISOString(),
           }, { 
             onConflict: "user_id" 
@@ -124,7 +169,11 @@ serve(async (req) => {
           throw new Error(`Failed to update entitlements: ${updateError.message}`);
         }
 
-        logStep("Plus membership activated successfully", { userId: user.id });
+        logStep("Entitlements updated successfully", { 
+          userId: user.id, 
+          plusActive: isSubscription ? true : currentPlusActive,
+          ownedPacks: mergedPacks 
+        });
         break;
       }
 
