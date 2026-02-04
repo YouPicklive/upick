@@ -99,14 +99,14 @@ export function FortuneWheel({ items, onSpinComplete, spinning }: FortuneWheelPr
                   x={textX}
                   y={textY}
                   fill="white"
-                  fontSize="4"
+                  fontSize={item.length <= 2 ? "10" : "4"}
                   fontWeight="bold"
                   textAnchor="middle"
                   dominantBaseline="middle"
                   transform={`rotate(${textRotation}, ${textX}, ${textY})`}
                   style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
                 >
-                  {item.length > 12 ? item.substring(0, 10) + '...' : item}
+                  {item}
                 </text>
               </g>
             );
