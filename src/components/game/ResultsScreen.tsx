@@ -186,7 +186,7 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
         <div className="w-full max-w-md animate-bounce-in relative z-10 text-center">
           <div className="mb-6">
             <span className="text-5xl mb-4 block">🥢</span>
-            <h1 className="text-3xl font-extrabold mb-2">The Toothpick Decides...</h1>
+            <h1 className="text-3xl font-extrabold mb-2">Let the Chopstick Pick...</h1>
             <p className="text-muted-foreground">Spinning the wheel of fortune!</p>
           </div>
 
@@ -213,7 +213,7 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
               <span className="text-7xl">🏆</span>
               <span className="absolute -top-2 -right-2 text-3xl animate-bounce">✨</span>
             </div>
-            <h1 className="text-4xl font-extrabold mb-2">The Toothpick Has Spoken!</h1>
+            <h1 className="text-4xl font-extrabold mb-2">The Chopstick Has Spoken!</h1>
             <p className="text-muted-foreground text-lg">Time to head out! 🚗💨</p>
           </div>
 
