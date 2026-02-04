@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Preferences } from '@/types/game';
-import { ArrowLeft, ArrowRight, Home, Trees, Cigarette, CigaretteOff, Sofa, Zap, HelpCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface PreferencesScreenProps {
   preferences: Preferences;
@@ -16,26 +16,33 @@ export function PreferencesScreen({
   onBack,
 }: PreferencesScreenProps) {
   const locationOptions = [
-    { id: 'indoor' as const, label: 'Inside', icon: Home, description: 'Stay cozy indoors' },
-    { id: 'outdoor' as const, label: 'Outside', icon: Trees, description: 'Fresh air vibes' },
-    { id: 'both' as const, label: 'Either', icon: HelpCircle, description: 'Surprise me!' },
+    { id: 'indoor' as const, emoji: '🏠', label: 'Inside', description: 'Stay cozy indoors' },
+    { id: 'outdoor' as const, emoji: '🌳', label: 'Outside', description: 'Fresh air vibes' },
+    { id: 'both' as const, emoji: '🤷', label: 'Either', description: 'Surprise me!' },
   ];
 
   const smokingOptions = [
-    { id: 'yes' as const, label: 'Smoke-friendly', icon: Cigarette, description: 'Hookah, patio smoking, etc.' },
-    { id: 'no' as const, label: 'Smoke-free', icon: CigaretteOff, description: 'No smoking areas' },
-    { id: 'doesnt-matter' as const, label: "Don't care", icon: HelpCircle, description: 'Whatever works' },
+    { id: 'yes' as const, emoji: '🚬', label: 'Smoke-friendly', description: 'Hookah, patio, etc.' },
+    { id: 'no' as const, emoji: '🚭', label: 'Smoke-free', description: 'Clean air only' },
+    { id: 'doesnt-matter' as const, emoji: '🤷', label: "Don't care", description: 'Whatever works' },
   ];
 
   const vibeOptions = [
-    { id: 'chill' as const, label: 'Chill', icon: Sofa, description: 'Relax & hang out' },
-    { id: 'active' as const, label: 'Active', icon: Zap, description: 'Move around & do stuff' },
-    { id: 'both' as const, label: 'Any vibe', icon: HelpCircle, description: 'Open to anything' },
+    { id: 'chill' as const, emoji: '🛋️', label: 'Chill', description: 'Relax & hang' },
+    { id: 'active' as const, emoji: '🏃', label: 'Active', description: 'Move around!' },
+    { id: 'both' as const, emoji: '🎭', label: 'Any vibe', description: 'Open to all' },
   ];
 
   return (
-    <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-lg animate-slide-up">
+    <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12 relative">
+      {/* Floating decorations */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <span className="absolute top-24 left-8 text-4xl animate-float opacity-50">🌟</span>
+        <span className="absolute top-40 right-12 text-3xl animate-float opacity-50" style={{ animationDelay: '0.6s' }}>🎨</span>
+        <span className="absolute bottom-40 right-20 text-4xl animate-float opacity-50" style={{ animationDelay: '1.2s' }}>🌈</span>
+      </div>
+
+      <div className="w-full max-w-lg animate-slide-up relative z-10">
         {/* Back Button */}
         <button
           onClick={onBack}
@@ -47,7 +54,10 @@ export function PreferencesScreen({
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold mb-2">Set Your Vibe ✨</h1>
+          <div className="inline-block mb-4">
+            <span className="text-6xl">✨</span>
+          </div>
+          <h1 className="text-3xl font-extrabold mb-2">Set Your Vibe</h1>
           <p className="text-muted-foreground">A few quick questions to find your perfect spot</p>
         </div>
 
@@ -58,7 +68,6 @@ export function PreferencesScreen({
           </h2>
           <div className="grid grid-cols-3 gap-3">
             {locationOptions.map((option) => {
-              const Icon = option.icon;
               const isSelected = preferences.location === option.id;
               return (
                 <button
@@ -70,7 +79,7 @@ export function PreferencesScreen({
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <span className="text-3xl">{option.emoji}</span>
                   <span className="font-bold text-sm">{option.label}</span>
                 </button>
               );
@@ -81,11 +90,10 @@ export function PreferencesScreen({
         {/* Smoking Preference */}
         <div className="gradient-card rounded-3xl p-6 shadow-card mb-4">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="text-2xl">🚬</span> Smoking?
+            <span className="text-2xl">💨</span> Smoking?
           </h2>
           <div className="grid grid-cols-3 gap-3">
             {smokingOptions.map((option) => {
-              const Icon = option.icon;
               const isSelected = preferences.smoking === option.id;
               return (
                 <button
@@ -97,8 +105,8 @@ export function PreferencesScreen({
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <Icon className="w-6 h-6" />
-                  <span className="font-bold text-sm text-center leading-tight">{option.label}</span>
+                  <span className="text-3xl">{option.emoji}</span>
+                  <span className="font-bold text-xs text-center leading-tight">{option.label}</span>
                 </button>
               );
             })}
@@ -112,7 +120,6 @@ export function PreferencesScreen({
           </h2>
           <div className="grid grid-cols-3 gap-3">
             {vibeOptions.map((option) => {
-              const Icon = option.icon;
               const isSelected = preferences.vibe === option.id;
               return (
                 <button
@@ -124,7 +131,7 @@ export function PreferencesScreen({
                       : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
                   }`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <span className="text-3xl">{option.emoji}</span>
                   <span className="font-bold text-sm">{option.label}</span>
                   <span className={`text-xs text-center leading-tight ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                     {option.description}
@@ -136,7 +143,8 @@ export function PreferencesScreen({
         </div>
 
         {/* Start Button */}
-        <Button variant="hero" size="xl" className="w-full" onClick={onStart}>
+        <Button variant="hero" size="xl" className="w-full group" onClick={onStart}>
+          <span className="text-2xl mr-2 group-hover:animate-bounce">🎲</span>
           Let's Go!
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
