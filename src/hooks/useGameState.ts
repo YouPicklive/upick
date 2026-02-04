@@ -5,6 +5,7 @@ const initialPreferences: Preferences = {
   location: 'both',
   smoking: 'doesnt-matter',
   vibe: 'both',
+  fancy: 'both',
 };
 
 const initialState: GameState = {
@@ -49,7 +50,11 @@ export function useGameState() {
 
       // Smoking filter
       if (prefs.smoking === 'yes' && !spot.smokingFriendly) return false;
-      if (prefs.smoking === 'no' && spot.smokingFriendly) return false; // Might want to reconsider this - non-smokers can still go to smoking-friendly places
+      if (prefs.smoking === 'no' && spot.smokingFriendly) return false;
+
+      // Fancy/Divey filter (fancy = 3-4 price, divey = 1-2 price)
+      if (prefs.fancy === 'fancy' && spot.priceLevel < 3) return false;
+      if (prefs.fancy === 'divey' && spot.priceLevel > 2) return false;
 
       // Vibe filter
       if (prefs.vibe === 'chill' && spot.vibeLevel === 'active') return false;
