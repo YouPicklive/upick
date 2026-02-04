@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from './useAuth';
+import { useUserEntitlements } from './useUserEntitlements';
 
 const STORAGE_KEY = 'youpick_freemium';
 const FREE_DAILY_SPINS = 2;
@@ -53,51 +55,63 @@ const saveData = (data: FreemiumData) => {
 };
 
 export function useFreemium() {
-  const [data, setData] = useState<FreemiumData>(getStoredData);
+  const { isAuthenticated } = useAuth();
+  const { 
+    isPremium: dbIsPremium, 
+    ownedPacks: dbOwnedPacks, 
+    upgradeToPremium: dbUpgradeToPremium,
+    purchasePack: dbPurchasePack,
+  } = useUserEntitlements();
+
+  const [localData, setLocalData] = useState<FreemiumData>(getStoredData);
 
   // Sync with localStorage on mount and handle day changes
   useEffect(() => {
     const freshData = getStoredData();
-    setData(freshData);
+    setLocalData(freshData);
     saveData(freshData);
   }, []);
 
-  const spinsRemaining = data.isPremium ? Infinity : Math.max(0, FREE_DAILY_SPINS - data.spinsToday);
-  const canSpin = data.isPremium || spinsRemaining > 0;
+  // Use DB values when authenticated, localStorage when not
+  const isPremium = isAuthenticated ? dbIsPremium : localData.isPremium;
+  const ownedPacks = isAuthenticated ? dbOwnedPacks : localData.ownedPacks;
+
+  const spinsRemaining = isPremium ? Infinity : Math.max(0, FREE_DAILY_SPINS - localData.spinsToday);
+  const canSpin = isPremium || spinsRemaining > 0;
 
   const useSpin = useCallback(() => {
-    if (data.isPremium) return true;
+    if (isPremium) return true;
     
     if (spinsRemaining > 0) {
       const newData = {
-        ...data,
-        spinsToday: data.spinsToday + 1,
+        ...localData,
+        spinsToday: localData.spinsToday + 1,
         lastSpinDate: getToday(),
       };
-      setData(newData);
+      setLocalData(newData);
       saveData(newData);
       return true;
     }
     return false;
-  }, [data, spinsRemaining]);
+  }, [isPremium, localData, spinsRemaining]);
 
   const isDistanceAllowed = useCallback((distance: string): boolean => {
-    if (data.isPremium) return true;
+    if (isPremium) return true;
     
     // Free users can only use walking and short-drive
     const freeDistances = ['walking', 'short-drive'];
     return freeDistances.includes(distance);
-  }, [data.isPremium]);
+  }, [isPremium]);
 
   const getPremiumDistances = () => ['road-trip', 'epic-adventure', 'any'];
 
   // Check if a fortune pack is unlocked (owned individually or has Plus)
   const isFortunePackAllowed = useCallback((pack: string): boolean => {
-    if (data.isPremium) return true;
+    if (isPremium) return true;
     if (pack === 'free') return true;
     // Check if pack is individually owned
-    return data.ownedPacks.includes(pack);
-  }, [data.isPremium, data.ownedPacks]);
+    return ownedPacks.includes(pack);
+  }, [isPremium, ownedPacks]);
 
   // Packs that require Plus OR individual purchase
   const getPremiumFortunePacks = () => ['plus', 'love', 'career', 'unhinged', 'main_character'];
@@ -106,22 +120,34 @@ export function useFreemium() {
   const getPurchasablePacks = () => ['love', 'career', 'unhinged', 'main_character'];
 
   // Purchase a pack (add to ownedPacks)
-  const purchasePack = useCallback((packId: string) => {
-    if (data.ownedPacks.includes(packId)) return; // Already owned
-    
-    const newData = {
-      ...data,
-      ownedPacks: [...data.ownedPacks, packId],
-    };
-    setData(newData);
-    saveData(newData);
-  }, [data]);
+  const purchasePack = useCallback(async (packId: string) => {
+    if (isAuthenticated) {
+      // Save to database
+      await dbPurchasePack(packId);
+    } else {
+      // Save to localStorage
+      if (localData.ownedPacks.includes(packId)) return;
+      
+      const newData = {
+        ...localData,
+        ownedPacks: [...localData.ownedPacks, packId],
+      };
+      setLocalData(newData);
+      saveData(newData);
+    }
+  }, [isAuthenticated, dbPurchasePack, localData]);
 
-  const upgradeToPremium = useCallback(() => {
-    const newData = { ...data, isPremium: true };
-    setData(newData);
-    saveData(newData);
-  }, [data]);
+  const upgradeToPremium = useCallback(async () => {
+    if (isAuthenticated) {
+      // Save to database
+      await dbUpgradeToPremium();
+    } else {
+      // Save to localStorage
+      const newData = { ...localData, isPremium: true };
+      setLocalData(newData);
+      saveData(newData);
+    }
+  }, [isAuthenticated, dbUpgradeToPremium, localData]);
 
   // For testing: reset to free
   const resetToFree = useCallback(() => {
@@ -131,15 +157,15 @@ export function useFreemium() {
       isPremium: false,
       ownedPacks: [],
     };
-    setData(newData);
+    setLocalData(newData);
     saveData(newData);
   }, []);
 
   return {
-    isPremium: data.isPremium,
-    ownedPacks: data.ownedPacks,
+    isPremium,
+    ownedPacks,
     spinsRemaining,
-    spinsToday: data.spinsToday,
+    spinsToday: localData.spinsToday,
     maxFreeSpins: FREE_DAILY_SPINS,
     canSpin,
     useSpin,

@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button';
-import { Utensils, Users, ArrowRight, MapPin, Heart, Shuffle, Crown } from 'lucide-react';
+import { Utensils, Users, ArrowRight, MapPin, Heart, Shuffle, Crown, User, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import heroImage from '@/assets/hero-illustration.jpg';
 
 interface LandingScreenProps {
@@ -9,8 +11,46 @@ interface LandingScreenProps {
 }
 
 export function LandingScreen({ onStart, spinsRemaining, isPremium }: LandingScreenProps) {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, signOut, loading } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <div className="min-h-screen gradient-sunset flex flex-col">
+      {/* Header with Auth */}
+      <header className="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex justify-end">
+        {loading ? null : isAuthenticated ? (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-secondary/80 backdrop-blur-sm px-3 py-2 rounded-full">
+              <User className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium truncate max-w-[120px]">
+                {user?.email?.split('@')[0]}
+              </span>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="p-2 rounded-full bg-secondary/80 backdrop-blur-sm hover:bg-secondary transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/auth')}
+            className="bg-secondary/80 backdrop-blur-sm border-0 rounded-full"
+          >
+            <User className="w-4 h-4 mr-2" />
+            Sign In
+          </Button>
+        )}
+      </header>
+
       {/* Floating decorative elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <span className="absolute top-20 left-10 text-4xl animate-float opacity-60">🍕</span>
