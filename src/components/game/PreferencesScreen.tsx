@@ -62,6 +62,8 @@ export function PreferencesScreen({
   const vibeOptions = [
     { id: 'chill' as const, emoji: '🛋️', label: 'Chill', description: 'Relax & hang' },
     { id: 'active' as const, emoji: '🏃', label: 'Active', description: 'Move around!' },
+    { id: 'dancing' as const, emoji: '💃', label: 'Dancing', description: 'Hit the floor' },
+    { id: 'lazy' as const, emoji: '😴', label: 'Lazy', description: 'Low effort' },
     { id: 'both' as const, emoji: '🎭', label: 'Any vibe', description: 'Open to all' },
   ];
 
@@ -234,9 +236,9 @@ export function PreferencesScreen({
         {/* Vibe Preference */}
         <div className="gradient-card rounded-3xl p-5 shadow-card mb-4">
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <span className="text-2xl">⚡</span> Chill or Active?
+            <span className="text-2xl">⚡</span> What's Your Energy?
           </h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {vibeOptions.map((option) => {
               const isSelected = preferences.vibe === option.id;
               return (
