@@ -20,6 +20,7 @@ const initialState: GameState = {
   spots: [],
   remainingSpots: [],
   votes: {},
+  likedSpots: [],
   winner: null,
   category: 'all',
   preferences: initialPreferences,
@@ -122,6 +123,7 @@ export function useGameState() {
       spots: shuffled,
       remainingSpots: shuffled,
       votes: shuffled.reduce((acc, spot) => ({ ...acc, [spot.id]: 0 }), {}),
+      likedSpots: [],
       currentPlayer: 1,
       winner: null,
     }));
@@ -130,8 +132,15 @@ export function useGameState() {
   const vote = useCallback((spotId: string, liked: boolean) => {
     setState((prev) => {
       const newVotes = { ...prev.votes };
+      let newLikedSpots = [...prev.likedSpots];
+      
       if (liked) {
         newVotes[spotId] = (newVotes[spotId] || 0) + 1;
+        // Add to liked spots if not already there
+        const likedSpot = prev.spots.find(s => s.id === spotId);
+        if (likedSpot && !newLikedSpots.find(s => s.id === spotId)) {
+          newLikedSpots.push(likedSpot);
+        }
       }
 
       const newRemainingSpots = prev.remainingSpots.slice(1);
@@ -149,6 +158,7 @@ export function useGameState() {
           return {
             ...prev,
             votes: newVotes,
+            likedSpots: newLikedSpots,
             remainingSpots: [],
             mode: 'results',
             winner: topSpots[Math.floor(Math.random() * topSpots.length)],
@@ -158,6 +168,7 @@ export function useGameState() {
           return {
             ...prev,
             votes: Object.fromEntries(topSpots.map((s) => [s.id, 0])),
+            likedSpots: newLikedSpots,
             remainingSpots: [...topSpots].sort(() => Math.random() - 0.5),
             spots: topSpots,
             currentPlayer: prev.currentPlayer + 1,
@@ -168,6 +179,7 @@ export function useGameState() {
       return {
         ...prev,
         votes: newVotes,
+        likedSpots: newLikedSpots,
         remainingSpots: newRemainingSpots,
       };
     });

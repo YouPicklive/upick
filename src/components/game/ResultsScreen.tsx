@@ -9,6 +9,7 @@ import html2canvas from 'html2canvas';
 
 interface ResultsScreenProps {
   winner: Spot;
+  likedSpots?: Spot[];
   fortunePack?: string;
   onPlayAgain: () => void;
   isTrialMode?: boolean;
@@ -23,7 +24,7 @@ const categoryEmojis: Record<string, string> = {
   wellness: '🧘',
 };
 
-export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTrialMode }: ResultsScreenProps) {
+export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', onPlayAgain, isTrialMode }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -165,8 +166,10 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
     }
   };
 
-  // Create wheel items from winner name (we just show the winner spinning to build suspense)
-  const wheelItems = [winner.name, '???', winner.name, '???', winner.name, '???'];
+  // Create wheel items from liked spots (or fallback to winner if no likes)
+  const wheelItems = likedSpots.length > 0 
+    ? likedSpots.map(spot => spot.name)
+    : [winner.name];
 
   return (
     <div className="min-h-screen gradient-sunset flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">

@@ -33,6 +33,7 @@ export interface GameState {
   spots: Spot[];
   remainingSpots: Spot[];
   votes: Record<string, number>;
+  likedSpots: Spot[];
   winner: Spot | null;
   category: 'all' | 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness';
   preferences: Preferences;

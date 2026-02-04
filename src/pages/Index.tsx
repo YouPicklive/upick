@@ -187,7 +187,8 @@ const Index = () => {
   if (state.mode === 'results' && state.winner) {
     return (
       <ResultsScreen 
-        winner={state.winner} 
+        winner={state.winner}
+        likedSpots={state.likedSpots}
         fortunePack={state.preferences.fortunePack}
         onPlayAgain={handlePlayAgain}
         isTrialMode={!isAuthenticated}
