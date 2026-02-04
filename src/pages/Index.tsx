@@ -1,6 +1,7 @@
 import { useGameState } from '@/hooks/useGameState';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { SetupScreen } from '@/components/game/SetupScreen';
+import { PreferencesScreen } from '@/components/game/PreferencesScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 
@@ -12,6 +13,7 @@ const Index = () => {
     setMode,
     setPlayerCount,
     setCategory,
+    setPreferences,
     startGame,
     vote,
     resetGame,
@@ -28,8 +30,19 @@ const Index = () => {
         category={state.category}
         onPlayerCountChange={setPlayerCount}
         onCategoryChange={setCategory}
-        onStart={startGame}
+        onContinue={() => setMode('preferences')}
         onBack={() => setMode('landing')}
+      />
+    );
+  }
+
+  if (state.mode === 'preferences') {
+    return (
+      <PreferencesScreen
+        preferences={state.preferences}
+        onPreferencesChange={setPreferences}
+        onStart={startGame}
+        onBack={() => setMode('setup')}
       />
     );
   }

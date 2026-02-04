@@ -1,5 +1,11 @@
 import { useState, useCallback } from 'react';
-import { GameState, Spot, SAMPLE_SPOTS } from '@/types/game';
+import { GameState, Spot, SAMPLE_SPOTS, Preferences } from '@/types/game';
+
+const initialPreferences: Preferences = {
+  location: 'both',
+  smoking: 'doesnt-matter',
+  vibe: 'both',
+};
 
 const initialState: GameState = {
   mode: 'landing',
@@ -10,6 +16,7 @@ const initialState: GameState = {
   votes: {},
   winner: null,
   category: 'all',
+  preferences: initialPreferences,
 };
 
 export function useGameState() {
@@ -27,10 +34,59 @@ export function useGameState() {
     setState((prev) => ({ ...prev, category }));
   }, []);
 
+  const setPreferences = useCallback((preferences: Partial<Preferences>) => {
+    setState((prev) => ({
+      ...prev,
+      preferences: { ...prev.preferences, ...preferences },
+    }));
+  }, []);
+
+  const filterSpotsByPreferences = useCallback((spots: Spot[], prefs: Preferences): Spot[] => {
+    return spots.filter((spot) => {
+      // Location filter
+      if (prefs.location === 'indoor' && spot.isOutdoor) return false;
+      if (prefs.location === 'outdoor' && !spot.isOutdoor) return false;
+
+      // Smoking filter
+      if (prefs.smoking === 'yes' && !spot.smokingFriendly) return false;
+      if (prefs.smoking === 'no' && spot.smokingFriendly) return false; // Might want to reconsider this - non-smokers can still go to smoking-friendly places
+
+      // Vibe filter
+      if (prefs.vibe === 'chill' && spot.vibeLevel === 'active') return false;
+      if (prefs.vibe === 'active' && spot.vibeLevel === 'chill') return false;
+
+      return true;
+    });
+  }, []);
+
   const startGame = useCallback(() => {
-    const filteredSpots = state.category === 'all' 
+    // First filter by category
+    let filteredSpots = state.category === 'all' 
       ? SAMPLE_SPOTS 
       : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+    
+    // Then filter by preferences
+    filteredSpots = filterSpotsByPreferences(filteredSpots, state.preferences);
+    
+    // If too few spots after filtering, relax some filters
+    if (filteredSpots.length < 4) {
+      // Try without vibe filter
+      filteredSpots = state.category === 'all' 
+        ? SAMPLE_SPOTS 
+        : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+      filteredSpots = filteredSpots.filter((spot) => {
+        if (state.preferences.location === 'indoor' && spot.isOutdoor) return false;
+        if (state.preferences.location === 'outdoor' && !spot.isOutdoor) return false;
+        return true;
+      });
+    }
+
+    // If still too few, just use category filter
+    if (filteredSpots.length < 4) {
+      filteredSpots = state.category === 'all' 
+        ? SAMPLE_SPOTS 
+        : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+    }
     
     // Shuffle spots
     const shuffled = [...filteredSpots].sort(() => Math.random() - 0.5);
@@ -44,7 +100,7 @@ export function useGameState() {
       currentPlayer: 1,
       winner: null,
     }));
-  }, [state.category]);
+  }, [state.category, state.preferences, filterSpotsByPreferences]);
 
   const vote = useCallback((spotId: string, liked: boolean) => {
     setState((prev) => {
@@ -108,6 +164,7 @@ export function useGameState() {
     setMode,
     setPlayerCount,
     setCategory,
+    setPreferences,
     startGame,
     vote,
     resetGame,
