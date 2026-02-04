@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGameState } from '@/hooks/useGameState';
 import { useFreemium } from '@/hooks/useFreemium';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,9 +10,11 @@ import { PreferencesScreen } from '@/components/game/PreferencesScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
+import { toast } from 'sonner';
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, loading } = useAuth();
   const { canUseTrial, useTrialSpin: markTrialUsed, hasUsedTrial } = useTrialSpin();
   
@@ -41,6 +43,29 @@ const Index = () => {
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
+
+  // Handle checkout success/cancelled query params
+  useEffect(() => {
+    const packPurchase = searchParams.get('pack_purchase');
+    
+    if (packPurchase === 'success') {
+      toast.success('🎉 Pack purchased successfully!', {
+        description: 'Your new fortune pack is now unlocked.',
+        duration: 5000,
+      });
+      // Clean up URL
+      searchParams.delete('pack_purchase');
+      setSearchParams(searchParams, { replace: true });
+    } else if (packPurchase === 'cancelled') {
+      toast.info('Purchase cancelled', {
+        description: 'No worries, you can try again anytime!',
+        duration: 4000,
+      });
+      // Clean up URL
+      searchParams.delete('pack_purchase');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Show loading state while checking auth
   if (loading) {
