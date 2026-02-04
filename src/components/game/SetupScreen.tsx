@@ -1,13 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { GameState } from '@/types/game';
-import { User, Users, Utensils, Gamepad2, Wine, Coffee, ArrowRight, ArrowLeft } from 'lucide-react';
+import { User, Users, Utensils, Gamepad2, Wine, Coffee, ArrowRight, ArrowLeft, Moon, Sparkles } from 'lucide-react';
 
 interface SetupScreenProps {
   playerCount: number;
   category: GameState['category'];
   onPlayerCountChange: (count: number) => void;
   onCategoryChange: (category: GameState['category']) => void;
-  onStart: () => void;
+  onContinue: () => void;
   onBack: () => void;
 }
 
@@ -16,15 +16,17 @@ export function SetupScreen({
   category,
   onPlayerCountChange,
   onCategoryChange,
-  onStart,
+  onContinue,
   onBack,
 }: SetupScreenProps) {
   const categories = [
-    { id: 'all' as const, label: 'Everything', icon: Utensils, description: 'Food, drinks & fun' },
+    { id: 'all' as const, label: 'Everything', icon: Sparkles, description: 'Mix it all up!' },
     { id: 'restaurant' as const, label: 'Restaurants', icon: Utensils, description: 'Time to eat!' },
     { id: 'activity' as const, label: 'Activities', icon: Gamepad2, description: 'Let\'s do something' },
     { id: 'bar' as const, label: 'Bars', icon: Wine, description: 'Drinks & vibes' },
     { id: 'cafe' as const, label: 'Cafes', icon: Coffee, description: 'Coffee & chill' },
+    { id: 'nightlife' as const, label: 'Nightlife', icon: Moon, description: 'After dark fun' },
+    { id: 'wellness' as const, label: 'Wellness', icon: Sparkles, description: 'Relax & recharge' },
   ];
 
   return (
@@ -95,9 +97,9 @@ export function SetupScreen({
           </div>
         </div>
 
-        {/* Start Button */}
-        <Button variant="hero" size="xl" className="w-full" onClick={onStart}>
-          Start the Game
+        {/* Continue Button */}
+        <Button variant="hero" size="xl" className="w-full" onClick={onContinue}>
+          Set Your Vibe
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
       </div>

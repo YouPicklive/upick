@@ -70,10 +70,15 @@ export function PlayingScreen({
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
           
           {/* Category Badge */}
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 flex gap-2">
             <span className="bg-background/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold capitalize">
               {spot.cuisine || spot.category}
             </span>
+            {spot.isOutdoor && (
+              <span className="bg-success/90 text-success-foreground backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold">
+                Outdoor
+              </span>
+            )}
           </div>
         </div>
 
