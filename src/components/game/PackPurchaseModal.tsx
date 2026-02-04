@@ -102,7 +102,7 @@ export function PackPurchaseModal({
                 <span className="font-bold text-purple-300">YouPick Plus</span>
               </div>
               <div className="text-right">
-                <span className="text-lg font-bold text-white">$4.99</span>
+                <span className="text-lg font-bold text-white">$5.99</span>
                 <span className="text-xs text-muted-foreground">/month</span>
               </div>
             </div>
