@@ -7,6 +7,8 @@ const initialPreferences: Preferences = {
   vibe: 'both',
   fancy: 'both',
   distance: 'any',
+  mood: 'any',
+  budget: 'any',
 };
 
 const initialState: GameState = {
