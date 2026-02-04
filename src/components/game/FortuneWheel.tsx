@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface FortuneWheelProps {
   items: string[];
@@ -8,27 +8,32 @@ interface FortuneWheelProps {
 
 export function FortuneWheel({ items, onSpinComplete, spinning }: FortuneWheelProps) {
   const [rotation, setRotation] = useState(0);
-  const [currentRotation, setCurrentRotation] = useState(0);
+  const rotationRef = useRef(0);
+  const hasSpunRef = useRef(false);
 
   useEffect(() => {
-    if (spinning && items.length > 0) {
+    if (spinning && items.length > 0 && !hasSpunRef.current) {
+      hasSpunRef.current = true;
+      
       // Calculate winning segment
       const winningIndex = Math.floor(Math.random() * items.length);
       const segmentAngle = 360 / items.length;
       
       // Spin multiple times plus land on winner
       const spins = 5 + Math.random() * 3; // 5-8 full rotations
-      const targetRotation = currentRotation + (spins * 360) + (360 - (winningIndex * segmentAngle) - segmentAngle / 2);
+      const targetRotation = rotationRef.current + (spins * 360) + (360 - (winningIndex * segmentAngle) - segmentAngle / 2);
       
       setRotation(targetRotation);
-      setCurrentRotation(targetRotation);
+      rotationRef.current = targetRotation;
 
       // Announce winner after spin
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         onSpinComplete(items[winningIndex]);
       }, 4000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [spinning, items, onSpinComplete, currentRotation]);
+  }, [spinning, items, onSpinComplete]);
 
   const colors = [
     'hsl(15, 85%, 60%)',   // coral
