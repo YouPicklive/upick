@@ -68,8 +68,8 @@ export function LandingScreen({ onStart, spinsRemaining, isPremium, isTrialMode 
         <div className="max-w-4xl mx-auto text-center animate-slide-up">
           {/* Logo/Title */}
           <div className="mb-8">
-            <div className="inline-flex items-center justify-center mb-6 relative">
-              <img src={appIcon} alt="YouPick" className="w-28 h-28 rounded-3xl shadow-glow" />
+            <div className="inline-flex items-center justify-center w-28 h-28 rounded-3xl bg-primary mb-6 overflow-hidden">
+              <img src={appIcon} alt="YouPick" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-5xl md:text-7xl font-extrabold mb-4">
               <span className="text-gradient">You Pick</span>
