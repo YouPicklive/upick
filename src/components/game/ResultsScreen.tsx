@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { Navigation, Share2, Calendar, Music, Trophy, Loader2 } from 'lucide-react';
+import { Navigation, Share2, Calendar, Music, Trophy, Loader2, Flag } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
@@ -341,6 +341,16 @@ export function ResultsScreen({ winner, fortunePack = 'free', onPlayAgain, isTri
             <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
               <span className="text-xl mr-2">{isTrialMode ? '✨' : '🔄'}</span>
               {isTrialMode ? 'Create Account to Keep Playing' : 'Pick Again'}
+            </Button>
+
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full text-muted-foreground hover:text-foreground"
+              onClick={() => window.open('mailto:support@youpick.app?subject=Problem Report - YouPick&body=Hi, I encountered an issue with the app:%0A%0ASpot: ' + encodeURIComponent(winner.name) + '%0ACategory: ' + encodeURIComponent(winner.category) + '%0A%0ADescribe the problem:%0A', '_blank')}
+            >
+              <Flag className="w-4 h-4 mr-2" />
+              Report a Problem
             </Button>
           </div>
         </div>
