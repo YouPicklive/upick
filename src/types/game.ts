@@ -1,7 +1,7 @@
 export interface Spot {
   id: string;
   name: string;
-  category: 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness';
+  category: 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch';
   cuisine?: string;
   description: string;
   priceLevel: 1 | 2 | 3 | 4;
@@ -35,7 +35,7 @@ export interface GameState {
   votes: Record<string, number>;
   likedSpots: Spot[];
   winner: Spot | null;
-  category: 'all' | 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness';
+  category: 'all' | 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch';
   preferences: Preferences;
 }
 
@@ -868,3 +868,122 @@ export const SAMPLE_SPOTS: Spot[] = [
     vibeLevel: 'active',
   },
 ];
+
+// BRUNCH SPOTS
+export const BRUNCH_SPOTS: Spot[] = [
+  {
+    id: 'brunch-1',
+    name: 'The Sunny Side',
+    category: 'brunch',
+    cuisine: 'American',
+    description: 'Classic American brunch with endless mimosas',
+    priceLevel: 2,
+    rating: 4.6,
+    image: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400',
+    tags: ['Mimosas', 'Eggs Benedict', 'Weekend Vibes'],
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'brunch-2',
+    name: 'Maple & Vine',
+    category: 'brunch',
+    cuisine: 'Farm-to-Table',
+    description: 'Organic farm-fresh ingredients with a seasonal menu',
+    priceLevel: 3,
+    rating: 4.8,
+    image: 'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=400',
+    tags: ['Organic', 'Healthy', 'Instagram-worthy'],
+    isOutdoor: true,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'brunch-3',
+    name: 'Waffle House Deluxe',
+    category: 'brunch',
+    cuisine: 'Belgian',
+    description: 'Gourmet Belgian waffles with creative toppings',
+    priceLevel: 2,
+    rating: 4.5,
+    image: 'https://images.unsplash.com/photo-1562376552-0d160a2f238d?w=400',
+    tags: ['Waffles', 'Sweet', 'Family-friendly'],
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'brunch-4',
+    name: 'Chilaquiles Cantina',
+    category: 'brunch',
+    cuisine: 'Mexican',
+    description: 'Authentic Mexican brunch with spicy chilaquiles',
+    priceLevel: 2,
+    rating: 4.7,
+    image: 'https://images.unsplash.com/photo-1582234372722-50d7ccc30ebd?w=400',
+    tags: ['Mexican', 'Spicy', 'Margaritas'],
+    isOutdoor: true,
+    smokingFriendly: true,
+    vibeLevel: 'moderate',
+  },
+  {
+    id: 'brunch-5',
+    name: 'The Avocado Toast Co.',
+    category: 'brunch',
+    cuisine: 'Californian',
+    description: 'Trendy spot specializing in avocado-everything',
+    priceLevel: 3,
+    rating: 4.4,
+    image: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400',
+    tags: ['Avocado', 'Trendy', 'Healthy'],
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'brunch-6',
+    name: 'Biscuits & Gravy House',
+    category: 'brunch',
+    cuisine: 'Southern',
+    description: 'Hearty Southern comfort brunch classics',
+    priceLevel: 1,
+    rating: 4.6,
+    image: 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=400',
+    tags: ['Southern', 'Comfort Food', 'Budget-friendly'],
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'brunch-7',
+    name: 'Crepe Studio',
+    category: 'brunch',
+    cuisine: 'French',
+    description: 'Sweet and savory French crepes made to order',
+    priceLevel: 2,
+    rating: 4.5,
+    image: 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=400',
+    tags: ['Crepes', 'French', 'Sweet & Savory'],
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'brunch-8',
+    name: 'Bottomless Brunch Club',
+    category: 'brunch',
+    cuisine: 'Fusion',
+    description: 'Unlimited drinks with creative fusion dishes',
+    priceLevel: 3,
+    rating: 4.3,
+    image: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=400',
+    tags: ['Bottomless', 'Party Brunch', 'Groups'],
+    isOutdoor: true,
+    smokingFriendly: true,
+    vibeLevel: 'active',
+  },
+];
+
+// Combine all spots
+SAMPLE_SPOTS.push(...BRUNCH_SPOTS);
