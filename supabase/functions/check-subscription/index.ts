@@ -53,20 +53,33 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
+     // First, check current entitlements in database
+     const { data: currentEntitlements } = await supabaseAdmin
+       .from("user_entitlements")
+       .select("plus_active")
+       .eq("user_id", user.id)
+       .single();
+     
+     const isManuallyActivated = currentEntitlements?.plus_active === true;
+     
     // Find customer in Stripe by email
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
       logStep("No Stripe customer found - user has no subscriptions");
       
-      // Update database to reflect no active subscription
-      await supabaseAdmin
-        .from("user_entitlements")
-        .update({ plus_active: false, updated_at: new Date().toISOString() })
-        .eq("user_id", user.id);
+       // Only deactivate if NOT manually activated (preserve admin-granted access)
+       if (!isManuallyActivated) {
+         await supabaseAdmin
+           .from("user_entitlements")
+           .update({ plus_active: false, updated_at: new Date().toISOString() })
+           .eq("user_id", user.id);
+       } else {
+         logStep("Preserving manually activated Plus status");
+       }
       
       return new Response(JSON.stringify({ 
-        subscribed: false,
+         subscribed: isManuallyActivated,
         subscription_end: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -117,26 +130,40 @@ serve(async (req) => {
       if (hasActivePlus) break;
     }
 
-    // Update database with subscription status
-    const { error: updateError } = await supabaseAdmin
-      .from("user_entitlements")
-      .upsert({
-        user_id: user.id,
-        plus_active: hasActivePlus,
-        updated_at: new Date().toISOString(),
-      }, { 
-        onConflict: "user_id",
-        ignoreDuplicates: false 
-      });
+     // Determine final Plus status: Stripe subscription OR manual activation
+     const finalPlusStatus = hasActivePlus || isManuallyActivated;
+     
+     // Only update if we have a Stripe subscription (don't overwrite manual activations)
+     if (hasActivePlus) {
+       const { error: updateError } = await supabaseAdmin
+         .from("user_entitlements")
+         .upsert({
+           user_id: user.id,
+           plus_active: true,
+           updated_at: new Date().toISOString(),
+         }, { 
+           onConflict: "user_id",
+           ignoreDuplicates: false 
+         });
 
-    if (updateError) {
-      logStep("ERROR: Failed to update entitlements", { error: updateError.message });
+       if (updateError) {
+         logStep("ERROR: Failed to update entitlements", { error: updateError.message });
+       } else {
+         logStep("Entitlements synced with Stripe", { plusActive: true });
+       }
+     } else if (isManuallyActivated) {
+       logStep("Preserving manually activated Plus status (no Stripe sub found)");
     } else {
-      logStep("Entitlements synced with Stripe", { plusActive: hasActivePlus });
+       // No Stripe sub and not manually activated - ensure plus_active is false
+       await supabaseAdmin
+         .from("user_entitlements")
+         .update({ plus_active: false, updated_at: new Date().toISOString() })
+         .eq("user_id", user.id);
+       logStep("No active subscription, plus_active set to false");
     }
 
     return new Response(JSON.stringify({
-      subscribed: hasActivePlus,
+       subscribed: finalPlusStatus,
       subscription_end: subscriptionEnd
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
