@@ -19,6 +19,9 @@ interface Event {
   venue?: string;
   description?: string;
   type?: 'music' | 'sports' | 'festival' | 'comedy' | 'food' | 'art' | 'other';
+   latitude?: number;
+   longitude?: number;
+   address?: string;
 }
 
 serve(async (req) => {
@@ -109,9 +112,14 @@ Format your response as a JSON array with this structure:
     "time": "Time (if known)",
     "venue": "Venue Name",
     "description": "Brief description",
-    "type": "music|sports|festival|comedy|food|art|other"
+     "type": "music|sports|festival|comedy|food|art|other",
+     "latitude": approximate_latitude_number,
+     "longitude": approximate_longitude_number,
+     "address": "Full address if known"
   }
 ]
+
+IMPORTANT: Include approximate GPS coordinates (latitude and longitude) for each venue if possible. Use real venue locations.
 
 Return only the JSON array, no other text.`;
 
