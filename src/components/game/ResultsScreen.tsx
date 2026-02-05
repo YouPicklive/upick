@@ -88,8 +88,8 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
   }, [timeframe]);
 
   const handleGetDirections = () => {
-    // Create a search query for the spot
-    const searchQuery = encodeURIComponent(`${winner.name} ${winner.cuisine || winner.category} near me`);
+    // Create a specific search query for the spot - just the name for a single result
+    const searchQuery = encodeURIComponent(winner.name);
     
     // Check if on mobile to use appropriate maps URL
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -99,15 +99,15 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
     
     if (isMobile) {
       if (isIOS) {
-        // Apple Maps URL scheme - opens Apple Maps on iOS
-        mapsUrl = `maps://maps.apple.com/?q=${searchQuery}`;
+        // Apple Maps URL scheme - use daddr for directions to a single destination
+        mapsUrl = `maps://maps.apple.com/?daddr=${searchQuery}&dirflg=d`;
       } else {
-        // Google Maps intent for Android
-        mapsUrl = `geo:0,0?q=${searchQuery}`;
+        // Google Maps intent for Android - use navigation mode
+        mapsUrl = `google.navigation:q=${searchQuery}`;
       }
       
-      // Try to open native app, fallback to Google Maps web
-      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+      // Fallback to Google Maps web with directions
+      const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${searchQuery}`;
       
       // Create a hidden link and try to open native maps
       const link = document.createElement('a');
@@ -119,8 +119,8 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
         window.open(fallbackUrl, '_blank');
       }, 1000);
     } else {
-      // Desktop - open Google Maps in new tab
-      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+      // Desktop - open Google Maps directions in new tab
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${searchQuery}`;
       window.open(mapsUrl, '_blank');
     }
   };
