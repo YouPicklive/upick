@@ -4,6 +4,7 @@ import { useGameState } from '@/hooks/useGameState';
 import { useFreemium } from '@/hooks/useFreemium';
 import { useAuth } from '@/hooks/useAuth';
 import { useTrialSpin } from '@/hooks/useTrialSpin';
+ import { useGeolocation } from '@/hooks/useGeolocation';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { SetupScreen } from '@/components/game/SetupScreen';
 import { PreferencesScreen } from '@/components/game/PreferencesScreen';
@@ -43,6 +44,9 @@ const Index = () => {
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
+ 
+   // Initialize geolocation
+   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
 
   // Handle checkout success/cancelled query params
   useEffect(() => {
@@ -192,6 +196,7 @@ const Index = () => {
         fortunePack={state.preferences.fortunePack}
         onPlayAgain={handlePlayAgain}
         isTrialMode={!isAuthenticated}
+         userCoordinates={coordinates}
       />
     );
   }

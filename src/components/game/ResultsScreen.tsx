@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { Navigation, Share2, Calendar, Music, Trophy, Loader2, Flag } from 'lucide-react';
+import { Navigation, Share2, Calendar, Music, Trophy, Loader2, Flag, MapPin } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import html2canvas from 'html2canvas';
+import { formatDistanceWithEmoji, type Coordinates } from '@/hooks/useGeolocation';
 
 interface ResultsScreenProps {
   winner: Spot;
@@ -13,6 +14,7 @@ interface ResultsScreenProps {
   fortunePack?: string;
   onPlayAgain: () => void;
   isTrialMode?: boolean;
+   userCoordinates?: Coordinates | null;
 }
 
 const categoryEmojis: Record<string, string> = {
@@ -24,7 +26,7 @@ const categoryEmojis: Record<string, string> = {
   wellness: '🧘',
 };
 
-export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', onPlayAgain, isTrialMode }: ResultsScreenProps) {
+export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', onPlayAgain, isTrialMode, userCoordinates }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -71,7 +73,7 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
       
       // Search for events if this is an event-worthy category
       if (isEventCategory) {
-        searchEvents(winner.name, winner.category);
+        searchEvents(winner.name, winner.category, undefined, userCoordinates);
       }
     }, 1500);
 
@@ -81,7 +83,7 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
   // Re-search when timeframe changes
   useEffect(() => {
     if (showResult && isEventCategory) {
-      searchEvents(winner.name, winner.category);
+      searchEvents(winner.name, winner.category, undefined, userCoordinates);
     }
   }, [timeframe]);
 
@@ -359,6 +361,7 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
               isLoading={eventsLoading} 
               timeframe={timeframe}
               onTimeframeChange={setTimeframe}
+               userCoordinates={userCoordinates}
             />
           )}
         </div>
@@ -459,9 +462,10 @@ interface EventsSectionProps {
   isLoading: boolean;
   timeframe: Timeframe;
   onTimeframeChange: (tf: Timeframe) => void;
+   userCoordinates?: Coordinates | null;
 }
 
-function EventsSection({ events, isLoading, timeframe, onTimeframeChange }: EventsSectionProps) {
+function EventsSection({ events, isLoading, timeframe, onTimeframeChange, userCoordinates }: EventsSectionProps) {
   const timeframeOptions: { value: Timeframe; label: string; emoji: string }[] = [
     { value: 'today', label: 'Today', emoji: '📅' },
     { value: 'week', label: 'This Week', emoji: '🗓️' },
@@ -480,6 +484,14 @@ function EventsSection({ events, isLoading, timeframe, onTimeframeChange }: Even
     }
   };
 
+  // Format distance display
+  const formatEventDistance = (event: LocalEvent): string | null => {
+    if (event.distance !== undefined) {
+      return formatDistanceWithEmoji(event.distance);
+    }
+    return null;
+  };
+ 
   return (
     <div className="gradient-card rounded-2xl p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
@@ -487,6 +499,11 @@ function EventsSection({ events, isLoading, timeframe, onTimeframeChange }: Even
           <Calendar className="w-5 h-5 text-primary" />
           <h3 className="font-bold text-lg">Live Events</h3>
         </div>
+        {userCoordinates && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <MapPin className="w-3 h-3" /> Sorted by distance
+          </span>
+        )}
       </div>
 
       {/* Timeframe Selector */}
@@ -526,8 +543,10 @@ function EventsSection({ events, isLoading, timeframe, onTimeframeChange }: Even
                 <p className="text-xs text-muted-foreground">
                   {event.date} {event.time && `• ${event.time}`}
                 </p>
-                {event.venue && (
-                  <p className="text-xs text-primary truncate">📍 {event.venue}</p>
+                {(event.venue || event.distance !== undefined) && (
+                  <p className="text-xs text-primary truncate">
+                    {event.distance !== undefined ? formatEventDistance(event) : '📍'} {event.venue}
+                  </p>
                 )}
                 {event.description && (
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
