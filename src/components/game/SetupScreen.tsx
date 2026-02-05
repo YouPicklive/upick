@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { GameState } from '@/types/game';
-import { User, Users, Utensils, Gamepad2, Wine, Coffee, ArrowRight, ArrowLeft, Moon, Sparkles, Heart, Croissant } from 'lucide-react';
+import { User, Users, Utensils, Gamepad2, Wine, Coffee, ArrowRight, ArrowLeft, Moon, Sparkles, Heart, Croissant, Sandwich, UtensilsCrossed, IceCream } from 'lucide-react';
 
 interface SetupScreenProps {
   playerCount: number;
@@ -28,6 +28,9 @@ export function SetupScreen({
     { id: 'nightlife' as const, label: 'Nightlife', icon: Moon, emoji: '🌙', description: 'After dark fun' },
     { id: 'wellness' as const, label: 'Wellness', icon: Heart, emoji: '🧘', description: 'Relax & recharge' },
     { id: 'brunch' as const, label: 'Brunch', icon: Croissant, emoji: '🥞', description: 'Eggs & mimosas' },
+    { id: 'lunch' as const, label: 'Lunch', icon: Sandwich, emoji: '🥪', description: 'Midday bites' },
+    { id: 'dinner' as const, label: 'Dinner', icon: UtensilsCrossed, emoji: '🍝', description: 'Evening eats' },
+    { id: 'desserts' as const, label: 'Desserts', icon: IceCream, emoji: '🍨', description: 'Sweet treats' },
   ];
 
   const playerEmojis = ['🙋', '👫', '👨‍👩‍👧', '👨‍👩‍👧‍👦'];
