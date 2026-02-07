@@ -2,58 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    /* Warm, appetizing palette */
-    --background: 30 50% 98%;
-    --foreground: 15 40% 15%;
+    /* Premium calm palette — cream, charcoal, burnt orange, muted gold */
+    --background: 38 40% 97%;
+    --foreground: 20 20% 14%;
 
-    --card: 30 40% 99%;
-    --card-foreground: 15 40% 15%;
+    --card: 36 30% 99%;
+    --card-foreground: 20 20% 14%;
 
-    --popover: 30 40% 99%;
-    --popover-foreground: 15 40% 15%;
+    --popover: 36 30% 99%;
+    --popover-foreground: 20 20% 14%;
 
-    /* Coral/Orange primary - appetizing and fun */
-    --primary: 15 85% 60%;
+    /* Soft burnt orange — warmth, motion, decision */
+    --primary: 18 76% 58%;
     --primary-foreground: 0 0% 100%;
 
-    /* Cream secondary */
-    --secondary: 35 40% 92%;
-    --secondary-foreground: 15 40% 20%;
+    /* Cream / sand secondary */
+    --secondary: 36 30% 93%;
+    --secondary-foreground: 20 18% 25%;
 
-    --muted: 30 20% 94%;
-    --muted-foreground: 15 20% 45%;
+    --muted: 36 18% 92%;
+    --muted-foreground: 20 12% 50%;
 
-    /* Warm accent */
-    --accent: 25 90% 55%;
+    /* Muted gold accent — subtle fortune energy */
+    --accent: 40 55% 52%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 25% 88%;
-    --input: 30 25% 88%;
-    --ring: 15 85% 60%;
+    --border: 36 20% 90%;
+    --input: 36 20% 90%;
+    --ring: 18 76% 58%;
 
-    --radius: 1rem;
+    --radius: 0.875rem;
 
-    /* Custom game colors */
-    --gradient-warm: linear-gradient(135deg, hsl(15 85% 60%) 0%, hsl(35 90% 55%) 100%);
-    --gradient-sunset: linear-gradient(180deg, hsl(30 50% 98%) 0%, hsl(35 60% 92%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(30 40% 99%) 0%, hsl(35 35% 96%) 100%);
-    
-    --shadow-card: 0 8px 32px -8px hsl(15 40% 20% / 0.15);
-    --shadow-card-hover: 0 16px 48px -12px hsl(15 40% 20% / 0.25);
-    --shadow-glow: 0 0 40px hsl(15 85% 60% / 0.3);
+    /* Refined shadows & gradients */
+    --gradient-warm: linear-gradient(135deg, hsl(18 76% 58%) 0%, hsl(32 70% 54%) 100%);
+    --gradient-sunset: linear-gradient(180deg, hsl(38 40% 97%) 0%, hsl(36 30% 94%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(36 30% 99%) 0%, hsl(38 28% 96%) 100%);
+
+    --shadow-card: 0 1px 3px hsl(20 20% 14% / 0.04), 0 4px 16px hsl(20 20% 14% / 0.06);
+    --shadow-card-hover: 0 2px 8px hsl(20 20% 14% / 0.06), 0 8px 32px hsl(20 20% 14% / 0.1);
+    --shadow-glow: 0 0 24px hsl(18 76% 58% / 0.2);
 
     /* Game-specific */
-    --success: 145 65% 42%;
+    --success: 152 55% 42%;
     --success-foreground: 0 0% 100%;
-    --warning: 40 95% 55%;
-    --warning-foreground: 15 40% 15%;
+    --warning: 42 90% 52%;
+    --warning-foreground: 20 20% 14%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -66,40 +66,40 @@
   }
 
   .dark {
-    --background: 15 25% 10%;
-    --foreground: 30 30% 95%;
+    --background: 20 18% 9%;
+    --foreground: 36 20% 93%;
 
-    --card: 15 20% 14%;
-    --card-foreground: 30 30% 95%;
+    --card: 20 16% 12%;
+    --card-foreground: 36 20% 93%;
 
-    --popover: 15 20% 14%;
-    --popover-foreground: 30 30% 95%;
+    --popover: 20 16% 12%;
+    --popover-foreground: 36 20% 93%;
 
-    --primary: 15 85% 55%;
+    --primary: 18 76% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 15 15% 20%;
-    --secondary-foreground: 30 30% 90%;
+    --secondary: 20 12% 17%;
+    --secondary-foreground: 36 20% 88%;
 
-    --muted: 15 15% 20%;
-    --muted-foreground: 30 20% 60%;
+    --muted: 20 12% 17%;
+    --muted-foreground: 36 14% 55%;
 
-    --accent: 25 80% 50%;
+    --accent: 40 50% 48%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 65% 45%;
+    --destructive: 0 60% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 15 15% 22%;
-    --input: 15 15% 22%;
-    --ring: 15 85% 55%;
+    --border: 20 12% 20%;
+    --input: 20 12% 20%;
+    --ring: 18 76% 55%;
 
-    --gradient-warm: linear-gradient(135deg, hsl(15 85% 55%) 0%, hsl(35 80% 50%) 100%);
-    --gradient-sunset: linear-gradient(180deg, hsl(15 25% 10%) 0%, hsl(15 20% 14%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(15 20% 14%) 0%, hsl(15 18% 12%) 100%);
-    
-    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.4);
-    --shadow-card-hover: 0 16px 48px -12px hsl(0 0% 0% / 0.5);
+    --gradient-warm: linear-gradient(135deg, hsl(18 76% 55%) 0%, hsl(32 65% 50%) 100%);
+    --gradient-sunset: linear-gradient(180deg, hsl(20 18% 9%) 0%, hsl(20 16% 12%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(20 16% 12%) 0%, hsl(20 14% 10%) 100%);
+
+    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.2), 0 4px 16px hsl(0 0% 0% / 0.3);
+    --shadow-card-hover: 0 2px 8px hsl(0 0% 0% / 0.3), 0 8px 32px hsl(0 0% 0% / 0.4);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -118,8 +118,12 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Nunito', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter Tight', system-ui, sans-serif;
   }
 }
 
@@ -127,23 +131,23 @@
   .gradient-warm {
     background: var(--gradient-warm);
   }
-  
+
   .gradient-sunset {
     background: var(--gradient-sunset);
   }
-  
+
   .gradient-card {
     background: var(--gradient-card);
   }
-  
+
   .shadow-card {
     box-shadow: var(--shadow-card);
   }
-  
+
   .shadow-card-hover {
     box-shadow: var(--shadow-card-hover);
   }
-  
+
   .shadow-glow {
     box-shadow: var(--shadow-glow);
   }
@@ -154,21 +158,30 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  .font-display {
+    font-family: 'Inter Tight', system-ui, sans-serif;
+  }
 }
 
 /* Animations */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-6px); }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px hsl(15 85% 60% / 0.3); }
-  50% { box-shadow: 0 0 40px hsl(15 85% 60% / 0.5); }
+  0%, 100% { box-shadow: 0 0 16px hsl(18 76% 58% / 0.15); }
+  50% { box-shadow: 0 0 28px hsl(18 76% 58% / 0.3); }
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -183,14 +196,27 @@
   100% { transform: translateX(100%) rotate(0deg); opacity: 0; }
 }
 
+@keyframes gentle-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .animate-float {
-  animation: float 3s ease-in-out infinite;
+  animation: float 4s ease-in-out infinite;
 }
 
 .animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: pulse-glow 3s ease-in-out infinite;
 }
 
 .animate-slide-up {
-  animation: slide-up 0.5s ease-out forwards;
+  animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-gentle-spin {
+  animation: gentle-spin 20s linear infinite;
 }
