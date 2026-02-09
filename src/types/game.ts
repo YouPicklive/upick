@@ -14,6 +14,43 @@ export interface Spot {
   vibeLevel: 'chill' | 'moderate' | 'active' | 'dancing' | 'lazy'; // energy level of the spot
 }
 
+// --- Quick Vibe types ---
+export type VibeIntent = 'food' | 'drinks' | 'activity' | 'shopping' | 'events' | 'services' | 'surprise';
+export type VibeEnergy = 'chill' | 'social' | 'romantic' | 'adventure' | 'productive' | 'self-care' | 'weird';
+export type VibeFilter = 'cheap' | 'mid' | 'treat' | 'indoor' | 'outdoor' | 'near-me' | 'any-distance';
+
+export interface VibeInput {
+  intent: VibeIntent | null;
+  energy: VibeEnergy | null;
+  filters: VibeFilter[];
+}
+
+export type RandomnessLevel = 'wild' | 'balanced' | 'specific';
+
+export function computeRandomness(vibe: VibeInput): RandomnessLevel {
+  if (vibe.intent === 'surprise' || (!vibe.intent && !vibe.energy && vibe.filters.length === 0)) {
+    return 'wild';
+  }
+  const specificity = (vibe.intent ? 1 : 0) + (vibe.energy ? 1 : 0) + Math.min(vibe.filters.length, 3);
+  if (specificity >= 3) return 'specific';
+  return 'balanced';
+}
+
+// Map intent → old category for filtering
+export function intentToCategories(intent: VibeIntent | null): string[] {
+  switch (intent) {
+    case 'food': return ['restaurant', 'cafe', 'brunch', 'lunch', 'dinner', 'desserts'];
+    case 'drinks': return ['bar', 'nightlife', 'cafe'];
+    case 'activity': return ['activity'];
+    case 'events': return ['nightlife', 'activity'];
+    case 'services': return ['wellness'];
+    case 'shopping': return ['activity']; // fallback
+    case 'surprise': return [];
+    case null: return [];
+    default: return [];
+  }
+}
+
 export interface Preferences {
   location: 'indoor' | 'outdoor' | 'both';
   smoking: 'yes' | 'no' | 'doesnt-matter';
@@ -27,7 +64,9 @@ export interface Preferences {
 }
 
 export interface GameState {
-  mode: 'landing' | 'setup' | 'preferences' | 'playing' | 'results';
+  mode: 'landing' | 'vibe' | 'setup' | 'preferences' | 'playing' | 'results';
+  vibeStep: 0 | 1 | 2; // 0=intent, 1=energy, 2=filters
+  vibeInput: VibeInput;
   playerCount: number;
   currentPlayer: number;
   spots: Spot[];

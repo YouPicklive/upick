@@ -4,10 +4,9 @@ import { useGameState } from '@/hooks/useGameState';
 import { useFreemium } from '@/hooks/useFreemium';
 import { useAuth } from '@/hooks/useAuth';
 import { useTrialSpin } from '@/hooks/useTrialSpin';
- import { useGeolocation } from '@/hooks/useGeolocation';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { LandingScreen } from '@/components/game/LandingScreen';
-import { SetupScreen } from '@/components/game/SetupScreen';
-import { PreferencesScreen } from '@/components/game/PreferencesScreen';
+import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
@@ -24,6 +23,8 @@ const Index = () => {
     currentSpot,
     progress,
     setMode,
+    setVibeStep,
+    setVibeInput,
     setPlayerCount,
     setCategory,
     setPreferences,
@@ -45,19 +46,17 @@ const Index = () => {
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
  
-   // Initialize geolocation
-   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
+  // Initialize geolocation
+  const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
 
   // Handle checkout success/cancelled query params
   useEffect(() => {
     const packPurchase = searchParams.get('pack_purchase');
-    
     if (packPurchase === 'success') {
       toast.success('🎉 Pack purchased successfully!', {
         description: 'Your new fortune pack is now unlocked.',
         duration: 5000,
       });
-      // Clean up URL
       searchParams.delete('pack_purchase');
       setSearchParams(searchParams, { replace: true });
     } else if (packPurchase === 'cancelled') {
@@ -65,13 +64,11 @@ const Index = () => {
         description: 'No worries, you can try again anytime!',
         duration: 4000,
       });
-      // Clean up URL
       searchParams.delete('pack_purchase');
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
-  // Show loading state while checking auth
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -80,17 +77,14 @@ const Index = () => {
     );
   }
   
-  // Allow unauthenticated users if they can use trial OR are in the middle of a trial game
   const allowTrialAccess = canUseTrial || isTrialMode;
   
-  // Redirect to auth if not logged in AND can't use trial
   if (!isAuthenticated && !allowTrialAccess) {
     return <Navigate to="/auth" replace />;
   }
 
   const handleStartGame = () => {
     if (!isAuthenticated) {
-      // Trial mode - use the free trial spin
       markTrialUsed();
       setIsTrialMode(true);
       startGame();
@@ -113,7 +107,6 @@ const Index = () => {
   };
 
   const handlePlayAgain = () => {
-    // If trial mode ended, redirect to auth
     if (!isAuthenticated) {
       navigate('/auth');
       return;
@@ -121,11 +114,12 @@ const Index = () => {
     resetGame();
   };
 
+  // Landing
   if (state.mode === 'landing') {
     return (
       <>
         <LandingScreen 
-          onStart={() => setMode('setup')} 
+          onStart={() => setMode('vibe')} 
           spinsRemaining={isAuthenticated ? spinsRemaining : (canUseTrial ? 1 : 0)}
           isPremium={isPremium}
           isTrialMode={!isAuthenticated && canUseTrial}
@@ -142,27 +136,19 @@ const Index = () => {
     );
   }
 
-  if (state.mode === 'setup') {
-    return (
-      <SetupScreen
-        playerCount={state.playerCount}
-        category={state.category}
-        onPlayerCountChange={setPlayerCount}
-        onCategoryChange={setCategory}
-        onContinue={() => setMode('preferences')}
-        onBack={() => setMode('landing')}
-      />
-    );
-  }
-
-  if (state.mode === 'preferences') {
+  // Quick Vibe flow (replaces setup + preferences)
+  if (state.mode === 'vibe') {
     return (
       <>
-        <PreferencesScreen
-          preferences={state.preferences}
-          onPreferencesChange={setPreferences}
+        <VibeScreen
+          step={state.vibeStep}
+          vibeInput={state.vibeInput}
+          playerCount={state.playerCount}
+          onStepChange={setVibeStep}
+          onVibeChange={setVibeInput}
+          onPlayerCountChange={setPlayerCount}
           onStart={handleStartGame}
-          onBack={() => setMode('setup')}
+          onBack={() => setMode('landing')}
         />
         {showSpinLimit && (
           <SpinLimitModal
@@ -176,6 +162,7 @@ const Index = () => {
     );
   }
 
+  // Playing
   if (state.mode === 'playing' && currentSpot) {
     return (
       <PlayingScreen
@@ -188,6 +175,7 @@ const Index = () => {
     );
   }
 
+  // Results
   if (state.mode === 'results' && state.winner) {
     return (
       <ResultsScreen 
@@ -196,7 +184,7 @@ const Index = () => {
         fortunePack={state.preferences.fortunePack}
         onPlayAgain={handlePlayAgain}
         isTrialMode={!isAuthenticated}
-         userCoordinates={coordinates}
+        userCoordinates={coordinates}
       />
     );
   }

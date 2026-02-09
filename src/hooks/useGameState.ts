@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { GameState, Spot, SAMPLE_SPOTS, Preferences } from '@/types/game';
+import { GameState, Spot, SAMPLE_SPOTS, Preferences, VibeInput, VibeIntent, VibeEnergy, VibeFilter, intentToCategories, computeRandomness } from '@/types/game';
 
 const initialPreferences: Preferences = {
   location: 'both',
@@ -13,8 +13,16 @@ const initialPreferences: Preferences = {
   freeOnly: false,
 };
 
+const initialVibeInput: VibeInput = {
+  intent: null,
+  energy: null,
+  filters: [],
+};
+
 const initialState: GameState = {
   mode: 'landing',
+  vibeStep: 0,
+  vibeInput: initialVibeInput,
   playerCount: 1,
   currentPlayer: 1,
   spots: [],
@@ -31,6 +39,17 @@ export function useGameState() {
 
   const setMode = useCallback((mode: GameState['mode']) => {
     setState((prev) => ({ ...prev, mode }));
+  }, []);
+
+  const setVibeStep = useCallback((step: 0 | 1 | 2) => {
+    setState((prev) => ({ ...prev, vibeStep: step }));
+  }, []);
+
+  const setVibeInput = useCallback((input: Partial<VibeInput>) => {
+    setState((prev) => ({
+      ...prev,
+      vibeInput: { ...prev.vibeInput, ...input },
+    }));
   }, []);
 
   const setPlayerCount = useCallback((count: number) => {
@@ -50,28 +69,18 @@ export function useGameState() {
 
   const filterSpotsByPreferences = useCallback((spots: Spot[], prefs: Preferences): Spot[] => {
     return spots.filter((spot) => {
-      // Free only filter - must have "Free" tag (truly no-cost activities)
       if (prefs.freeOnly) {
         const isTrulyFree = spot.tags?.includes('Free');
         if (!isTrulyFree) return false;
       }
-
-      // Location filter
       if (prefs.location === 'indoor' && spot.isOutdoor) return false;
       if (prefs.location === 'outdoor' && !spot.isOutdoor) return false;
-
-      // Smoking filter
       if (prefs.smoking === 'yes' && !spot.smokingFriendly) return false;
       if (prefs.smoking === 'no' && spot.smokingFriendly) return false;
-
-      // Fancy/Divey filter (fancy = 3-4 price, divey = 1-2 price)
       if (prefs.fancy === 'fancy' && spot.priceLevel < 3) return false;
       if (prefs.fancy === 'divey' && spot.priceLevel > 2) return false;
-
-      // Vibe filter
       if (prefs.vibe === 'chill' && (spot.vibeLevel === 'active' || spot.vibeLevel === 'dancing')) return false;
       if (prefs.vibe === 'active' && spot.vibeLevel === 'chill') return false;
-      // Dancing filter: only show spots with dance floors, DJs, or dancing vibe
       if (prefs.vibe === 'dancing') {
         const hasDancingTags = spot.tags?.some(tag => 
           ['Dancing', 'DJ', 'Dance Floor', 'Events'].includes(tag)
@@ -80,41 +89,103 @@ export function useGameState() {
         if (!hasDancingTags && !isDancingVibe) return false;
       }
       if (prefs.vibe === 'lazy' && (spot.vibeLevel === 'active' || spot.vibeLevel === 'dancing')) return false;
-
       return true;
     });
   }, []);
 
-  const startGame = useCallback(() => {
-    // First filter by category
-    let filteredSpots = state.category === 'all' 
-      ? SAMPLE_SPOTS 
-      : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
-    
-    // Then filter by preferences
-    filteredSpots = filterSpotsByPreferences(filteredSpots, state.preferences);
-    
-    // If too few spots after filtering, relax some filters
-    if (filteredSpots.length < 4) {
-      // Try without vibe filter
-      filteredSpots = state.category === 'all' 
-        ? SAMPLE_SPOTS 
-        : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
-      filteredSpots = filteredSpots.filter((spot) => {
-        if (state.preferences.location === 'indoor' && spot.isOutdoor) return false;
-        if (state.preferences.location === 'outdoor' && !spot.isOutdoor) return false;
-        return true;
+  // Filter spots using the Quick Vibe input
+  const filterSpotsByVibe = useCallback((vibe: VibeInput): Spot[] => {
+    let spots = [...SAMPLE_SPOTS];
+    const randomness = computeRandomness(vibe);
+
+    // Filter by intent (maps to categories)
+    if (vibe.intent && vibe.intent !== 'surprise') {
+      const categories = intentToCategories(vibe.intent);
+      if (categories.length > 0) {
+        spots = spots.filter(s => categories.includes(s.category));
+      }
+    }
+
+    // Filter by energy
+    if (vibe.energy) {
+      spots = spots.filter(spot => {
+        switch (vibe.energy) {
+          case 'chill': return spot.vibeLevel === 'chill' || spot.vibeLevel === 'lazy';
+          case 'social': return spot.vibeLevel === 'moderate' || spot.vibeLevel === 'active';
+          case 'romantic': return spot.vibeLevel === 'chill' || spot.vibeLevel === 'moderate';
+          case 'adventure': return spot.vibeLevel === 'active' || spot.vibeLevel === 'dancing';
+          case 'productive': return spot.vibeLevel === 'chill';
+          case 'self-care': return spot.vibeLevel === 'chill' || spot.vibeLevel === 'lazy';
+          case 'weird': return true; // everything goes
+          default: return true;
+        }
       });
     }
 
-    // If still too few, just use category filter
-    if (filteredSpots.length < 4) {
+    // Apply optional filters
+    for (const filter of vibe.filters) {
+      switch (filter) {
+        case 'cheap': spots = spots.filter(s => s.priceLevel <= 2); break;
+        case 'mid': spots = spots.filter(s => s.priceLevel >= 2 && s.priceLevel <= 3); break;
+        case 'treat': spots = spots.filter(s => s.priceLevel >= 3); break;
+        case 'indoor': spots = spots.filter(s => !s.isOutdoor); break;
+        case 'outdoor': spots = spots.filter(s => s.isOutdoor); break;
+        // near-me and any-distance are handled later with geolocation
+      }
+    }
+
+    // If too few results, relax and use broader set
+    if (spots.length < 4) {
+      if (vibe.intent && vibe.intent !== 'surprise') {
+        const categories = intentToCategories(vibe.intent);
+        spots = categories.length > 0 
+          ? SAMPLE_SPOTS.filter(s => categories.includes(s.category))
+          : [...SAMPLE_SPOTS];
+      } else {
+        spots = [...SAMPLE_SPOTS];
+      }
+    }
+
+    // Add extra randomization for "wild" mode
+    if (randomness === 'wild') {
+      spots = [...SAMPLE_SPOTS];
+    }
+
+    return spots;
+  }, []);
+
+  const startGame = useCallback(() => {
+    // Use vibe-based filtering if we have vibe input
+    const hasVibeInput = state.vibeInput.intent || state.vibeInput.energy || state.vibeInput.filters.length > 0;
+    
+    let filteredSpots: Spot[];
+    
+    if (hasVibeInput) {
+      filteredSpots = filterSpotsByVibe(state.vibeInput);
+    } else {
+      // Legacy path: category + preferences
       filteredSpots = state.category === 'all' 
         ? SAMPLE_SPOTS 
         : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+      filteredSpots = filterSpotsByPreferences(filteredSpots, state.preferences);
+      
+      if (filteredSpots.length < 4) {
+        filteredSpots = state.category === 'all' 
+          ? SAMPLE_SPOTS 
+          : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+        filteredSpots = filteredSpots.filter((spot) => {
+          if (state.preferences.location === 'indoor' && spot.isOutdoor) return false;
+          if (state.preferences.location === 'outdoor' && !spot.isOutdoor) return false;
+          return true;
+        });
+      }
+      if (filteredSpots.length < 4) {
+        filteredSpots = state.category === 'all' 
+          ? SAMPLE_SPOTS 
+          : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+      }
     }
-    
-    // Shuffle spots
+
     const shuffled = [...filteredSpots].sort(() => Math.random() - 0.5);
     
     setState((prev) => ({
@@ -127,7 +198,7 @@ export function useGameState() {
       currentPlayer: 1,
       winner: null,
     }));
-  }, [state.category, state.preferences, filterSpotsByPreferences]);
+  }, [state.category, state.preferences, state.vibeInput, filterSpotsByPreferences, filterSpotsByVibe]);
 
   const vote = useCallback((spotId: string, liked: boolean) => {
     setState((prev) => {
@@ -136,7 +207,6 @@ export function useGameState() {
       
       if (liked) {
         newVotes[spotId] = (newVotes[spotId] || 0) + 1;
-        // Add to liked spots if not already there
         const likedSpot = prev.spots.find(s => s.id === spotId);
         if (likedSpot && !newLikedSpots.find(s => s.id === spotId)) {
           newLikedSpots.push(likedSpot);
@@ -144,17 +214,13 @@ export function useGameState() {
       }
 
       const newRemainingSpots = prev.remainingSpots.slice(1);
-      
-      // Check if current player is done with their round
       const isRoundComplete = newRemainingSpots.length === 0;
       
       if (isRoundComplete) {
-        // Find spots with most votes
         const maxVotes = Math.max(...Object.values(newVotes));
         const topSpots = prev.spots.filter((spot) => newVotes[spot.id] === maxVotes);
         
         if (topSpots.length === 1 || prev.currentPlayer >= prev.playerCount) {
-          // We have a winner
           return {
             ...prev,
             votes: newVotes,
@@ -164,7 +230,6 @@ export function useGameState() {
             winner: topSpots[Math.floor(Math.random() * topSpots.length)],
           };
         } else {
-          // Next player's turn, but only show top spots
           return {
             ...prev,
             votes: Object.fromEntries(topSpots.map((s) => [s.id, 0])),
@@ -199,6 +264,8 @@ export function useGameState() {
     currentSpot,
     progress,
     setMode,
+    setVibeStep,
+    setVibeInput,
     setPlayerCount,
     setCategory,
     setPreferences,
