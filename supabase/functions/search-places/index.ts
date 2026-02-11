@@ -143,7 +143,7 @@ serve(async (req) => {
     }
 
     // Map to our Spot format
-    const spots = allResults.slice(0, 15).map((place, idx) => {
+    const spots = allResults.slice(0, 10).map((place, idx) => {
       // Build photo URL if available
       let image = "";
       if (place.photos && place.photos.length > 0) {
