@@ -190,7 +190,7 @@ export function useGameState() {
       }
     }
 
-    const shuffled = [...filteredSpots].sort(() => Math.random() - 0.5);
+    const shuffled = [...filteredSpots].sort(() => Math.random() - 0.5).slice(0, 10);
     
     setState((prev) => ({
       ...prev,
