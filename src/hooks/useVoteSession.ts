@@ -171,35 +171,27 @@ export function useVoteSession() {
   }, [fingerprint]);
 
   const finalize = useCallback(async (sessionId: string): Promise<Spot | null> => {
-    // Get latest votes
-    const { data: votes } = await supabase
-      .from('session_votes')
-      .select('selected_option_id')
-      .eq('session_id', sessionId);
+    // Use server-side RPC to finalize — only host can do this
+    const { data: winnerId, error } = await supabase
+      .rpc('finalize_vote_session', {
+        p_session_id: sessionId,
+        p_caller_fingerprint: fingerprint,
+      });
 
-    if (!votes || votes.length === 0) return null;
-
-    // Tally
-    const tally: Record<string, number> = {};
-    for (const v of votes) {
-      tally[v.selected_option_id] = (tally[v.selected_option_id] || 0) + 1;
+    if (error) {
+      console.error('Failed to finalize session:', error.message);
+      return null;
     }
-
-    const maxCount = Math.max(...Object.values(tally));
-    const topIds = Object.keys(tally).filter(k => tally[k] === maxCount);
-    const winnerId = topIds[Math.floor(Math.random() * topIds.length)];
-
-    // Update session
-    await supabase
-      .from('vote_sessions')
-      .update({ status: 'closed', winner_option_id: winnerId })
-      .eq('id', sessionId);
 
     // Find winner spot from options
     if (!session) return null;
     const winner = session.options_json.find(s => s.id === winnerId) || null;
+    
+    // Update local state
+    setSession(prev => prev ? { ...prev, status: 'closed', winner_option_id: winnerId } : prev);
+    
     return winner;
-  }, [session]);
+  }, [session, fingerprint]);
 
   const isHost = session?.host_fingerprint === fingerprint;
 
