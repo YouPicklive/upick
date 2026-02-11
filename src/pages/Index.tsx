@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTrialSpin } from '@/hooks/useTrialSpin';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useVoteSession } from '@/hooks/useVoteSession';
+import { usePlacesSearch } from '@/hooks/usePlacesSearch';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
@@ -46,12 +47,14 @@ const Index = () => {
   } = useFreemium();
 
   const voteSession = useVoteSession();
+  const { searchPlaces, isLoading: placesLoading } = usePlacesSearch();
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
   const [groupSessionId, setGroupSessionId] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [groupWinner, setGroupWinner] = useState<typeof state.winner>(null);
+  const [findingSpots, setFindingSpots] = useState(false);
  
   // Initialize geolocation
   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
@@ -130,7 +133,7 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  const handleSoloStart = async () => {
+  const fetchAndStart = async (playerCount: number) => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
@@ -145,28 +148,29 @@ const Index = () => {
       useSpin();
     }
 
-    setPlayerCount(1);
+    setPlayerCount(playerCount);
+
+    // Try to fetch real places if we have coordinates
+    if (coordinates) {
+      setFindingSpots(true);
+      try {
+        const realSpots = await searchPlaces(coordinates, state.vibeInput);
+        setFindingSpots(false);
+        if (realSpots.length >= 4) {
+          startGame(realSpots);
+          return;
+        }
+      } catch {
+        setFindingSpots(false);
+      }
+    }
+
+    // Fallback to sample spots
     startGame();
   };
 
-  const handleSeshStart = async () => {
-    if (!isAuthenticated) {
-      markTrialUsed();
-      setIsTrialMode(true);
-    }
-
-    if (isAuthenticated && !canSpin) {
-      setShowSpinLimit(true);
-      return;
-    }
-
-    if (isAuthenticated) {
-      useSpin();
-    }
-
-    setPlayerCount(4); // Default group size for sesh
-    startGame();
-  };
+  const handleSoloStart = () => fetchAndStart(1);
+  const handleSeshStart = () => fetchAndStart(4);
 
   const handleFinalize = async () => {
     if (!groupSessionId) return;
@@ -203,6 +207,17 @@ const Index = () => {
     setGroupWinner(null);
     resetGame();
   };
+
+  // Finding spots loading state
+  if (findingSpots) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+        <p className="text-lg font-medium text-foreground">Finding spots near you...</p>
+        <p className="text-sm text-muted-foreground">Searching for the best options</p>
+      </div>
+    );
+  }
 
   // Landing
   if (state.mode === 'landing') {
