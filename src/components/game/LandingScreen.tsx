@@ -1,17 +1,18 @@
 import { Button } from '@/components/ui/button';
-import { ArrowRight, User, LogOut, Shield, Star, Sparkles } from 'lucide-react';
+import { ArrowRight, User, LogOut, Star, Sparkles, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import appIcon from '@/assets/app-icon.png';
 
 interface LandingScreenProps {
-  onStart: () => void;
+  onSoloStart: () => void;
+  onSeshStart: () => void;
   spinsRemaining?: number;
   isPremium?: boolean;
   isTrialMode?: boolean;
 }
 
-export function LandingScreen({ onStart, spinsRemaining, isPremium, isTrialMode }: LandingScreenProps) {
+export function LandingScreen({ onSoloStart, onSeshStart, spinsRemaining, isPremium, isTrialMode }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
 
@@ -138,11 +139,25 @@ export function LandingScreen({ onStart, spinsRemaining, isPremium, isTrialMode 
             </div>
           )}
 
-          {/* CTA */}
-          <Button variant="hero" size="xl" onClick={onStart} className="group">
-            Spin the Wheel
-            <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
-          </Button>
+          {/* CTAs */}
+          <div className="flex flex-col gap-3 w-full">
+            <div className="text-center">
+              <Button variant="hero" size="xl" onClick={onSoloStart} className="group w-full">
+                Spin the Wheel
+                <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+              </Button>
+              <p className="text-muted-foreground text-xs mt-2">One quick decision, guided by fate.</p>
+            </div>
+
+            <div className="text-center">
+              <Button variant="outline" size="xl" onClick={onSeshStart} className="group w-full">
+                <Users className="w-5 h-5 mr-2" />
+                Start a Spin Sesh
+                <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+              </Button>
+              <p className="text-muted-foreground text-xs mt-2">Invite friends and decide together.</p>
+            </div>
+          </div>
         </div>
       </main>
 

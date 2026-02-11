@@ -97,6 +97,19 @@ const Index = () => {
         if (sessionId) {
           setGroupSessionId(sessionId);
           setMode('group-lobby');
+          // Auto-open native share sheet
+          const voteUrl = `${window.location.origin}/vote/${sessionId}`;
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: 'Join my Spin Sesh!',
+                text: 'Help us decide — tap to vote!',
+                url: voteUrl,
+              });
+            } catch {
+              // User cancelled share — that's fine
+            }
+          }
         }
       };
       createSession();
@@ -117,7 +130,7 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  const handleStartGame = async () => {
+  const handleSoloStart = async () => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
@@ -132,6 +145,26 @@ const Index = () => {
       useSpin();
     }
 
+    setPlayerCount(1);
+    startGame();
+  };
+
+  const handleSeshStart = async () => {
+    if (!isAuthenticated) {
+      markTrialUsed();
+      setIsTrialMode(true);
+    }
+
+    if (isAuthenticated && !canSpin) {
+      setShowSpinLimit(true);
+      return;
+    }
+
+    if (isAuthenticated) {
+      useSpin();
+    }
+
+    setPlayerCount(4); // Default group size for sesh
     startGame();
   };
 
@@ -176,7 +209,8 @@ const Index = () => {
     return (
       <>
         <LandingScreen 
-          onStart={() => setMode('vibe')} 
+          onSoloStart={handleSoloStart}
+          onSeshStart={handleSeshStart}
           spinsRemaining={isAuthenticated ? spinsRemaining : (canUseTrial ? 1 : 0)}
           isPremium={isPremium}
           isTrialMode={!isAuthenticated && canUseTrial}
@@ -193,7 +227,7 @@ const Index = () => {
     );
   }
 
-  // Quick Vibe flow
+  // Quick Vibe flow (kept for future use but not in main flow)
   if (state.mode === 'vibe') {
     return (
       <>
@@ -207,7 +241,7 @@ const Index = () => {
           onVibeChange={setVibeInput}
           onPlayerCountChange={setPlayerCount}
           onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
-          onStart={handleStartGame}
+          onStart={handleSoloStart}
           onBack={() => setMode('landing')}
         />
         {showSpinLimit && (
