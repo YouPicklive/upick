@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
 import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
+import { SpotImage } from './SpotImage';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import html2canvas from 'html2canvas';
@@ -156,7 +157,7 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
 
             {/* Business Image */}
             <div className="relative h-48 overflow-hidden">
-              <img src={winner.image} alt={winner.name} className="w-full h-full object-cover" />
+              <SpotImage src={winner.image} alt={winner.name} category={winner.category} className="w-full h-full" />
               <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/30 to-transparent" />
               <div className="absolute bottom-3 left-4 right-4">
                 <span className="text-xs font-medium text-muted-foreground capitalize">
@@ -330,21 +331,31 @@ function EventsSection({ events, isLoading, timeframe, onTimeframeChange, userCo
         </div>
       ) : events.length > 0 ? (
         <div className="space-y-2">
-          {events.slice(0, 3).map((event, index) => (
-            <div key={index} className="bg-secondary/40 rounded-xl p-3 flex items-start gap-3">
-              <span className="text-xl">{getEventIcon(event.type)}</span>
+          {events.slice(0, 5).map((event, index) => (
+            <a
+              key={index}
+              href={event.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent(event.name + ' ' + (event.venue || ''))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-secondary/40 rounded-xl p-3 flex items-start gap-3 hover:bg-secondary/60 transition-colors cursor-pointer block"
+            >
+              <span className="text-xl shrink-0">{getEventIcon(event.type)}</span>
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-xs truncate">{event.name}</h4>
                 <p className="text-[11px] text-muted-foreground">
                   {event.date} {event.time && `· ${event.time}`}
                 </p>
-                {(event.venue || event.distance !== undefined) && (
+                {event.venue && (
                   <p className="text-[11px] text-primary truncate">
                     {event.distance !== undefined ? formatEventDistance(event) : '📍'} {event.venue}
                   </p>
                 )}
+                {event.address && !event.venue && (
+                  <p className="text-[11px] text-muted-foreground truncate">📍 {event.address}</p>
+                )}
               </div>
-            </div>
+              <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+            </a>
           ))}
         </div>
       ) : (
