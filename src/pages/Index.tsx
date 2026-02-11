@@ -145,6 +145,7 @@ const Index = () => {
           vibeInput={state.vibeInput}
           playerCount={state.playerCount}
           fortunePack={state.preferences.fortunePack}
+          isPremium={isPremium}
           onStepChange={setVibeStep}
           onVibeChange={setVibeInput}
           onPlayerCountChange={setPlayerCount}

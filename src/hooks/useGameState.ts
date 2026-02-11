@@ -95,7 +95,7 @@ export function useGameState() {
 
   // Filter spots using the Quick Vibe input
   const filterSpotsByVibe = useCallback((vibe: VibeInput): Spot[] => {
-    let spots = [...SAMPLE_SPOTS];
+    let spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly || vibe.intent === 'event-planning' || vibe.intent === 'corporate');
     const randomness = computeRandomness(vibe);
 
     // Filter by intent (maps to categories)
@@ -148,7 +148,7 @@ export function useGameState() {
 
     // Add extra randomization for "wild" mode
     if (randomness === 'wild') {
-      spots = [...SAMPLE_SPOTS];
+      spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly);
     }
 
     return spots;

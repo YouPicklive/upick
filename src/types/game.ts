@@ -1,13 +1,15 @@
 export interface Spot {
   id: string;
   name: string;
-  category: 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts';
+  category: 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts' | 'event-planning';
   cuisine?: string;
   description: string;
   priceLevel: 1 | 2 | 3 | 4;
   rating: number;
   image: string;
   tags: string[];
+  neighborhood?: string;
+  plusOnly?: boolean;
   // Preference filters
   isOutdoor: boolean;
   smokingFriendly: boolean;
@@ -15,7 +17,7 @@ export interface Spot {
 }
 
 // --- Quick Vibe types ---
-export type VibeIntent = 'food' | 'drinks' | 'activity' | 'shopping' | 'events' | 'services' | 'surprise';
+export type VibeIntent = 'food' | 'drinks' | 'activity' | 'shopping' | 'events' | 'services' | 'event-planning' | 'corporate' | 'surprise';
 export type VibeEnergy = 'chill' | 'social' | 'romantic' | 'adventure' | 'productive' | 'self-care' | 'weird';
 export type VibeFilter = 'cheap' | 'mid' | 'treat' | 'indoor' | 'outdoor' | 'near-me' | 'any-distance';
 
@@ -45,6 +47,8 @@ export function intentToCategories(intent: VibeIntent | null): string[] {
     case 'events': return ['nightlife', 'activity'];
     case 'services': return ['wellness'];
     case 'shopping': return ['activity']; // fallback
+    case 'event-planning': return ['event-planning'];
+    case 'corporate': return ['event-planning', 'restaurant', 'activity'];
     case 'surprise': return [];
     case null: return [];
     default: return [];
@@ -74,7 +78,7 @@ export interface GameState {
   votes: Record<string, number>;
   likedSpots: Spot[];
   winner: Spot | null;
-  category: 'all' | 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts';
+  category: 'all' | 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts' | 'event-planning';
   preferences: Preferences;
 }
 
@@ -1287,3 +1291,156 @@ export const DESSERT_SPOTS: Spot[] = [
 
 // Add new meal categories to spots
 SAMPLE_SPOTS.push(...LUNCH_SPOTS, ...DINNER_SPOTS, ...DESSERT_SPOTS);
+
+// Add neighborhoods to existing spots for richer display
+const neighborhoods = [
+  'Downtown', 'Midtown', 'Arts District', 'Old Town', 'Uptown',
+  'Westside', 'East Village', 'North End', 'Southside', 'Harbor District',
+  'Historic Quarter', 'Riverside', 'The Heights', 'Market Square', 'Lakeview',
+];
+SAMPLE_SPOTS.forEach((spot, i) => {
+  if (!spot.neighborhood) {
+    spot.neighborhood = neighborhoods[i % neighborhoods.length];
+  }
+});
+
+// EVENT PLANNING RESOURCES (Plus-only)
+export const EVENT_PLANNING_SPOTS: Spot[] = [
+  {
+    id: 'ep-1',
+    name: 'Grand Ballroom at The Monarch',
+    category: 'event-planning',
+    description: 'Elegant ballroom venue for weddings and galas up to 500 guests',
+    priceLevel: 4,
+    rating: 4.9,
+    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400',
+    tags: ['Venue', 'Weddings', 'Corporate'],
+    neighborhood: 'Downtown',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'ep-2',
+    name: 'DJ Spinmaster Productions',
+    category: 'event-planning',
+    description: 'Professional DJ and MC services for all event types',
+    priceLevel: 3,
+    rating: 4.7,
+    image: 'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?w=400',
+    tags: ['DJ', 'Music', 'Entertainment'],
+    neighborhood: 'Arts District',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'active',
+  },
+  {
+    id: 'ep-3',
+    name: 'Savory Affairs Catering',
+    category: 'event-planning',
+    description: 'Full-service catering with custom menus and staff',
+    priceLevel: 3,
+    rating: 4.8,
+    image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
+    tags: ['Catering', 'Custom Menu', 'Full Service'],
+    neighborhood: 'Midtown',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'moderate',
+  },
+  {
+    id: 'ep-4',
+    name: 'Lens & Light Photography',
+    category: 'event-planning',
+    description: 'Award-winning event photography and videography',
+    priceLevel: 3,
+    rating: 4.9,
+    image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400',
+    tags: ['Photography', 'Videography', 'Memories'],
+    neighborhood: 'East Village',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'ep-5',
+    name: 'SoundStage AV Rentals',
+    category: 'event-planning',
+    description: 'Pro audio-visual equipment and production crews',
+    priceLevel: 3,
+    rating: 4.6,
+    image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400',
+    tags: ['AV', 'Production', 'Sound & Lights'],
+    neighborhood: 'Westside',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'active',
+  },
+  {
+    id: 'ep-6',
+    name: 'Bloom & Co. Florals',
+    category: 'event-planning',
+    description: 'Stunning floral arrangements and event décor',
+    priceLevel: 3,
+    rating: 4.8,
+    image: 'https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=400',
+    tags: ['Florist', 'Décor', 'Design'],
+    neighborhood: 'Old Town',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'chill',
+  },
+  {
+    id: 'ep-7',
+    name: 'Elite Event Rentals',
+    category: 'event-planning',
+    description: 'Tables, chairs, tents, linens — everything you need',
+    priceLevel: 2,
+    rating: 4.5,
+    image: 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=400',
+    tags: ['Rentals', 'Tents', 'Furniture'],
+    neighborhood: 'Southside',
+    plusOnly: true,
+    isOutdoor: true,
+    smokingFriendly: false,
+    vibeLevel: 'moderate',
+  },
+  {
+    id: 'ep-8',
+    name: 'Metro VIP Transport',
+    category: 'event-planning',
+    description: 'Luxury shuttles and party buses for group transport',
+    priceLevel: 3,
+    rating: 4.6,
+    image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400',
+    tags: ['Transportation', 'Shuttle', 'Luxury'],
+    neighborhood: 'Harbor District',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'moderate',
+  },
+  {
+    id: 'ep-9',
+    name: 'ProStaff Event Services',
+    category: 'event-planning',
+    description: 'Bartenders, servers, and event coordinators on demand',
+    priceLevel: 2,
+    rating: 4.7,
+    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400',
+    tags: ['Staffing', 'Bartenders', 'Coordinators'],
+    neighborhood: 'Uptown',
+    plusOnly: true,
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: 'active',
+  },
+];
+
+SAMPLE_SPOTS.push(...EVENT_PLANNING_SPOTS);
