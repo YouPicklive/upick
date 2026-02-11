@@ -144,9 +144,11 @@ const Index = () => {
           step={state.vibeStep}
           vibeInput={state.vibeInput}
           playerCount={state.playerCount}
+          fortunePack={state.preferences.fortunePack}
           onStepChange={setVibeStep}
           onVibeChange={setVibeInput}
           onPlayerCountChange={setPlayerCount}
+          onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
           onStart={handleStartGame}
           onBack={() => setMode('landing')}
         />

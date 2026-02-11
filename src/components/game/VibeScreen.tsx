@@ -1,15 +1,18 @@
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ArrowLeft, Sparkles, Target, Zap } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Sparkles, Target, Zap, Lock } from 'lucide-react';
 import { VibeIntent, VibeEnergy, VibeFilter, VibeInput, computeRandomness, RandomnessLevel } from '@/types/game';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
+import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
 
 interface VibeScreenProps {
   step: 0 | 1 | 2;
   vibeInput: VibeInput;
   playerCount: number;
+  fortunePack: string;
   onStepChange: (step: 0 | 1 | 2) => void;
   onVibeChange: (input: Partial<VibeInput>) => void;
   onPlayerCountChange: (count: number) => void;
+  onFortunePackChange: (packId: string) => void;
   onStart: () => void;
   onBack: () => void;
 }
@@ -74,9 +77,11 @@ export function VibeScreen({
   step,
   vibeInput,
   playerCount,
+  fortunePack,
   onStepChange,
   onVibeChange,
   onPlayerCountChange,
+  onFortunePackChange,
   onStart,
   onBack,
 }: VibeScreenProps) {
@@ -303,6 +308,40 @@ export function VibeScreen({
             </div>
 
             <RandomnessMeter level={randomness} />
+
+            {/* Fortune Pack Selector */}
+            <div className="bg-card rounded-2xl p-5 shadow-card mt-4">
+              <h2 className="font-display text-base font-bold mb-1">Fortune Pack</h2>
+              <p className="text-muted-foreground text-xs mb-3">Pick a fortune theme for your spin</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {FORTUNE_PACKS.map((pack) => {
+                  const isSelected = fortunePack === pack.id;
+                  const isPremium = pack.tier !== 'free';
+                  return (
+                    <button
+                      key={pack.id}
+                      onClick={() => onFortunePackChange(pack.id)}
+                      className={`p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 relative ${
+                        isSelected
+                          ? 'gradient-warm text-primary-foreground shadow-glow'
+                          : 'bg-secondary hover:bg-secondary/80'
+                      }`}
+                    >
+                      <span className="text-2xl">{pack.emoji}</span>
+                      <span className="font-semibold text-xs">{pack.name}</span>
+                      <span className={`text-[10px] ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        {pack.description}
+                      </span>
+                      {isPremium && (
+                        <span className={`absolute top-1.5 right-1.5 ${isSelected ? 'text-primary-foreground/60' : 'text-muted-foreground/40'}`}>
+                          <Lock className="w-3 h-3" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
