@@ -154,35 +154,39 @@ export function useGameState() {
     return spots;
   }, []);
 
-  const startGame = useCallback(() => {
-    // Use vibe-based filtering if we have vibe input
-    const hasVibeInput = state.vibeInput.intent || state.vibeInput.energy || state.vibeInput.filters.length > 0;
-    
+  const startGame = useCallback((externalSpots?: Spot[]) => {
     let filteredSpots: Spot[];
-    
-    if (hasVibeInput) {
-      filteredSpots = filterSpotsByVibe(state.vibeInput);
+
+    if (externalSpots && externalSpots.length >= 4) {
+      // Use real places from Google Places API
+      filteredSpots = externalSpots;
     } else {
-      // Legacy path: category + preferences
-      filteredSpots = state.category === 'all' 
-        ? SAMPLE_SPOTS 
-        : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
-      filteredSpots = filterSpotsByPreferences(filteredSpots, state.preferences);
-      
-      if (filteredSpots.length < 4) {
+      // Fallback: use sample spots with vibe/preference filtering
+      const hasVibeInput = state.vibeInput.intent || state.vibeInput.energy || state.vibeInput.filters.length > 0;
+
+      if (hasVibeInput) {
+        filteredSpots = filterSpotsByVibe(state.vibeInput);
+      } else {
         filteredSpots = state.category === 'all' 
           ? SAMPLE_SPOTS 
           : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
-        filteredSpots = filteredSpots.filter((spot) => {
-          if (state.preferences.location === 'indoor' && spot.isOutdoor) return false;
-          if (state.preferences.location === 'outdoor' && !spot.isOutdoor) return false;
-          return true;
-        });
-      }
-      if (filteredSpots.length < 4) {
-        filteredSpots = state.category === 'all' 
-          ? SAMPLE_SPOTS 
-          : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+        filteredSpots = filterSpotsByPreferences(filteredSpots, state.preferences);
+        
+        if (filteredSpots.length < 4) {
+          filteredSpots = state.category === 'all' 
+            ? SAMPLE_SPOTS 
+            : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+          filteredSpots = filteredSpots.filter((spot) => {
+            if (state.preferences.location === 'indoor' && spot.isOutdoor) return false;
+            if (state.preferences.location === 'outdoor' && !spot.isOutdoor) return false;
+            return true;
+          });
+        }
+        if (filteredSpots.length < 4) {
+          filteredSpots = state.category === 'all' 
+            ? SAMPLE_SPOTS 
+            : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+        }
       }
     }
 
