@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ArrowLeft, Sparkles, Target, Zap, Lock } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Sparkles, Target, Zap, Lock, Crown } from 'lucide-react';
 import { VibeIntent, VibeEnergy, VibeFilter, VibeInput, computeRandomness, RandomnessLevel } from '@/types/game';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
@@ -9,6 +9,7 @@ interface VibeScreenProps {
   vibeInput: VibeInput;
   playerCount: number;
   fortunePack: string;
+  isPremium?: boolean;
   onStepChange: (step: 0 | 1 | 2) => void;
   onVibeChange: (input: Partial<VibeInput>) => void;
   onPlayerCountChange: (count: number) => void;
@@ -17,13 +18,15 @@ interface VibeScreenProps {
   onBack: () => void;
 }
 
-const INTENTS: { id: VibeIntent; emoji: string; label: string }[] = [
+const INTENTS: { id: VibeIntent; emoji: string; label: string; plusOnly?: boolean }[] = [
   { id: 'food', emoji: '🍽️', label: 'Food' },
   { id: 'drinks', emoji: '🍸', label: 'Drinks' },
   { id: 'activity', emoji: '🎯', label: 'Activity' },
   { id: 'shopping', emoji: '🛍️', label: 'Shopping' },
   { id: 'events', emoji: '🎫', label: 'Events' },
-  { id: 'services', emoji: '💆', label: 'Services' },
+  { id: 'services', emoji: '💆', label: 'Wellness' },
+  { id: 'event-planning', emoji: '🎪', label: 'Event Planning', plusOnly: true },
+  { id: 'corporate', emoji: '🏢', label: 'Corporate', plusOnly: true },
   { id: 'surprise', emoji: '✨', label: 'Surprise Me' },
 ];
 
@@ -78,6 +81,7 @@ export function VibeScreen({
   vibeInput,
   playerCount,
   fortunePack,
+  isPremium = false,
   onStepChange,
   onVibeChange,
   onPlayerCountChange,
@@ -167,18 +171,26 @@ export function VibeScreen({
                 {INTENTS.map((item) => {
                   const isSelected = vibeInput.intent === item.id;
                   const isWide = item.id === 'surprise';
+                  const isLocked = item.plusOnly && !isPremium;
                   return (
                     <button
                       key={item.id}
-                      onClick={() => handleIntentSelect(item.id)}
-                      className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all duration-200 ${
-                        isSelected
+                      onClick={() => !isLocked && handleIntentSelect(item.id)}
+                      className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all duration-200 relative ${
+                        isLocked
+                          ? 'bg-secondary/50 text-muted-foreground cursor-not-allowed'
+                          : isSelected
                           ? 'gradient-warm text-primary-foreground shadow-glow'
                           : 'bg-secondary hover:bg-secondary/80'
                       } ${isWide ? 'col-span-2' : ''}`}
                     >
                       <span className="text-2xl">{item.emoji}</span>
                       <span className="font-semibold text-sm">{item.label}</span>
+                      {item.plusOnly && (
+                        <span className={`absolute top-1.5 right-1.5 ${isSelected ? 'text-primary-foreground/60' : 'text-muted-foreground/40'}`}>
+                          {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Crown className="w-3.5 h-3.5 text-accent" />}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

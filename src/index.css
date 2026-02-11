@@ -201,6 +201,14 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes swipe-left {
+  to { transform: translateX(-150%) rotate(-15deg); opacity: 0; }
+}
+
+@keyframes swipe-right {
+  to { transform: translateX(150%) rotate(15deg); opacity: 0; }
+}
+
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
@@ -219,4 +227,12 @@
 
 .animate-gentle-spin {
   animation: gentle-spin 20s linear infinite;
+}
+
+.animate-swipe-left {
+  animation: swipe-left 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-swipe-right {
+  animation: swipe-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
