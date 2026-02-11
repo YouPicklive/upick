@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { Navigation, Share2, Calendar, Music, Loader2, Flag, MapPin } from 'lucide-react';
+import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
@@ -31,7 +31,6 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [fortune, setFortune] = useState('');
-  const [showConfetti, setShowConfetti] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +45,6 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
   }, []);
 
   const handleSpinComplete = async () => {
-    setShowConfetti(true);
     const result = await getFortuneByPackId(fortunePack);
 
     if (result.accessDenied) {
@@ -63,8 +61,6 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
         searchEvents(winner.name, winner.category, undefined, userCoordinates);
       }
     }, 1500);
-
-    setTimeout(() => setShowConfetti(false), 4000);
   };
 
   useEffect(() => {
@@ -73,27 +69,14 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
     }
   }, [timeframe]);
 
-  const handleGetDirections = () => {
+  const handleViewDetails = () => {
     const searchQuery = encodeURIComponent(winner.name);
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    let mapsUrl: string;
+    window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+  };
 
-    if (isMobile) {
-      if (isIOS) {
-        mapsUrl = `maps://maps.apple.com/?daddr=${searchQuery}&dirflg=d`;
-      } else {
-        mapsUrl = `google.navigation:q=${searchQuery}`;
-      }
-      const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${searchQuery}`;
-      const link = document.createElement('a');
-      link.href = mapsUrl;
-      link.click();
-      setTimeout(() => { window.open(fallbackUrl, '_blank'); }, 1000);
-    } else {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${searchQuery}`;
-      window.open(mapsUrl, '_blank');
-    }
+  const handleOpenWebsite = () => {
+    const searchQuery = encodeURIComponent(winner.name + ' website');
+    window.open(`https://www.google.com/search?q=${searchQuery}&btnI=1`, '_blank');
   };
 
   const handleShareMyFate = async () => {
@@ -141,8 +124,6 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
-      {showConfetti && <Confetti />}
-
       {/* Wheel Phase */}
       {showWheel && (
         <div className="w-full max-w-md animate-slide-up text-center">
@@ -154,115 +135,84 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
         </div>
       )}
 
-      {/* Result Phase */}
+      {/* Result Phase — frosted glass card */}
       {showResult && (
-        <div className="w-full max-w-md animate-slide-up">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <h1 className="font-display text-3xl font-bold mb-1">The wheel has spoken</h1>
-            <p className="text-muted-foreground">Here's your pick</p>
-          </div>
-
-          {/* Fortune */}
-          <div className="gradient-warm rounded-2xl p-4 mb-5 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1.5">
-              <span className="text-lg">{packInfo.emoji}</span>
-              <span className="text-primary-foreground/80 text-xs font-medium">{packInfo.name} Fortune</span>
-            </div>
-            <p className="text-primary-foreground/90 italic text-sm leading-relaxed">"{fortune}"</p>
-          </div>
-
-          {/* Winner Card */}
-          <div className="bg-card rounded-2xl shadow-card-hover overflow-hidden mb-5">
-            <div className="relative h-44">
-              <img src={winner.image} alt={winner.name} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
-              <div className="absolute top-3 right-3">
-                <span className="gradient-warm text-primary-foreground px-3 py-1.5 rounded-full text-xs font-semibold shadow-glow">
-                  🥇 The Pick
-                </span>
-              </div>
-              <div className="absolute top-3 left-3">
-                <span className="bg-background/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-lg">
-                  {categoryEmojis[winner.category] || '📍'}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-5">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h2 className="font-display text-xl font-bold">{winner.name}</h2>
-                  <span className="text-primary text-sm font-medium capitalize">{winner.cuisine || winner.category}</span>
-                </div>
-                <div className="flex items-center gap-1 text-accent bg-accent/10 px-2.5 py-1 rounded-full text-sm">
-                  ⭐ <span className="font-semibold">{winner.rating}</span>
-                </div>
-              </div>
-
-              <p className="text-muted-foreground text-sm mb-3 leading-relaxed">{winner.description}</p>
-
-              <div className="flex items-center gap-3 mb-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <span key={i} className={i < winner.priceLevel ? 'opacity-100' : 'opacity-25'}>💵</span>
-                  ))}
-                </div>
-                <span>📍 Nearby</span>
-                {winner.isOutdoor && <span>🌳</span>}
-                {winner.smokingFriendly && <span>🚬</span>}
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                {winner.tags.slice(0, 3).map((tag) => (
-                  <span key={tag} className="bg-secondary px-2.5 py-1 rounded-full text-xs font-medium">{tag}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col gap-2.5 mb-5">
-            <Button variant="hero" size="xl" className="w-full group" onClick={handleGetDirections}>
-              Open in Maps
-              <Navigation className="w-5 h-5 ml-2" />
-            </Button>
-
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full"
-              onClick={handleShareMyFate}
-              disabled={isSharing}
-            >
-              {isSharing ? 'Creating...' : 'Share My Fate'}
-              <Share2 className="w-4 h-4 ml-2" />
-            </Button>
-
-            <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
-              {isTrialMode ? 'Create Account to Continue' : 'Spin Again'}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-muted-foreground"
-              onClick={() => window.open('mailto:support@youpick.app?subject=Problem Report - YouPick&body=Hi, I encountered an issue with the app:%0A%0ASpot: ' + encodeURIComponent(winner.name) + '%0ACategory: ' + encodeURIComponent(winner.category) + '%0A%0ADescribe the problem:%0A', '_blank')}
-            >
-              <Flag className="w-3.5 h-3.5 mr-1.5" />
-              Report a Problem
-            </Button>
-          </div>
-
-          {/* Events */}
-          {isEventCategory && (
-            <EventsSection
-              events={events}
-              isLoading={eventsLoading}
-              timeframe={timeframe}
-              onTimeframeChange={setTimeframe}
-              userCoordinates={userCoordinates}
+        <div className="w-full max-w-md animate-scale-in">
+          <div
+            className="relative rounded-3xl border border-border/30 overflow-hidden shadow-glow"
+            style={{
+              background: 'linear-gradient(135deg, hsl(var(--card) / 0.85), hsl(var(--card) / 0.65))',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            }}
+          >
+            {/* Subtle gradient glow overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-40"
+              style={{
+                background: 'radial-gradient(ellipse at 50% 0%, hsl(var(--primary) / 0.15) 0%, transparent 60%)',
+              }}
             />
+
+            {/* Business Image */}
+            <div className="relative h-48 overflow-hidden">
+              <img src={winner.image} alt={winner.name} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/30 to-transparent" />
+              <div className="absolute bottom-3 left-4 right-4">
+                <span className="text-xs font-medium text-muted-foreground capitalize">
+                  {winner.cuisine || winner.category}
+                </span>
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="relative p-6 pt-4 text-center">
+              <p className="text-xs font-medium text-primary tracking-widest uppercase mb-2">Your Pick</p>
+              <h2 className="font-display text-2xl font-bold mb-1 leading-tight">{winner.name}</h2>
+              <p className="text-sm text-muted-foreground mb-1">{winner.description}</p>
+
+              <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground mb-5 mt-3">
+                <span className="flex items-center gap-1">
+                  ⭐ <span className="font-semibold text-foreground">{winner.rating}</span>
+                </span>
+                <span className="w-px h-3 bg-border" />
+                <span>{Array.from({ length: winner.priceLevel }).map(() => '$').join('')}</span>
+              </div>
+
+              {fortune && (
+                <div className="bg-secondary/60 rounded-xl p-3 mb-5">
+                  <p className="text-sm italic text-muted-foreground leading-relaxed">"{fortune}"</p>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2.5">
+                <Button variant="hero" size="lg" className="w-full" onClick={handleViewDetails}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View Details
+                </Button>
+                <Button variant="default" size="lg" className="w-full" onClick={handleOpenWebsite}>
+                  <Globe className="w-4 h-4 mr-2" />
+                  Open Website
+                </Button>
+                <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  {isTrialMode ? 'Create Account to Continue' : 'Spin Again'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Events — below the card */}
+          {isEventCategory && (
+            <div className="mt-5">
+              <EventsSection
+                events={events}
+                isLoading={eventsLoading}
+                timeframe={timeframe}
+                onTimeframeChange={setTimeframe}
+                userCoordinates={userCoordinates}
+              />
+            </div>
           )}
         </div>
       )}
@@ -305,36 +255,6 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Confetti() {
-  const emojis = ['🎉', '🎊', '✨', '⭐', '💫', '🌟'];
-  const confettiPieces = Array.from({ length: 20 });
-
-  return (
-    <div className="fixed inset-0 pointer-events-none z-50">
-      {confettiPieces.map((_, i) => {
-        const left = Math.random() * 100;
-        const top = 100 + Math.random() * 20;
-        const duration = 2.5 + Math.random() * 2;
-        const delay = Math.random() * 0.5;
-        return (
-          <div
-            key={i}
-            className="absolute text-xl"
-            style={{
-              left: `${left}%`,
-              top: `${top}%`,
-              animation: `confetti ${duration}s ease-out forwards`,
-              animationDelay: `${delay}s`,
-            }}
-          >
-            {emojis[i % emojis.length]}
-          </div>
-        );
-      })}
     </div>
   );
 }
