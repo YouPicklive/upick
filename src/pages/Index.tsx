@@ -5,10 +5,12 @@ import { useFreemium } from '@/hooks/useFreemium';
 import { useAuth } from '@/hooks/useAuth';
 import { useTrialSpin } from '@/hooks/useTrialSpin';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useVoteSession } from '@/hooks/useVoteSession';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
+import { HostLobbyScreen } from '@/components/game/HostLobbyScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
 import { toast } from 'sonner';
 
@@ -43,8 +45,13 @@ const Index = () => {
     upgradeToPremium 
   } = useFreemium();
 
+  const voteSession = useVoteSession();
+
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
+  const [groupSessionId, setGroupSessionId] = useState<string | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [groupWinner, setGroupWinner] = useState<typeof state.winner>(null);
  
   // Initialize geolocation
   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
@@ -69,6 +76,33 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
+  // Start polling when in group lobby
+  useEffect(() => {
+    if (state.mode === 'group-lobby' && groupSessionId) {
+      voteSession.startPolling(groupSessionId);
+      return () => voteSession.stopPolling();
+    }
+  }, [state.mode, groupSessionId]);
+
+  // After startGame sets mode to 'playing', intercept for group mode
+  useEffect(() => {
+    if (state.mode === 'playing' && state.playerCount >= 2 && !groupSessionId) {
+      const createSession = async () => {
+        const sessionId = await voteSession.createSession(
+          state.spots,
+          state.playerCount,
+          state.vibeInput,
+          undefined
+        );
+        if (sessionId) {
+          setGroupSessionId(sessionId);
+          setMode('group-lobby');
+        }
+      };
+      createSession();
+    }
+  }, [state.mode, state.playerCount, groupSessionId, state.spots]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -83,23 +117,44 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
-      startGame();
+    }
+
+    if (isAuthenticated && !canSpin) {
+      setShowSpinLimit(true);
       return;
     }
 
-    if (canSpin) {
-      const spinUsed = useSpin();
-      if (spinUsed) {
-        startGame();
-      }
+    if (isAuthenticated) {
+      useSpin();
+    }
+
+    startGame();
+  };
+
+  const handleFinalize = async () => {
+    if (!groupSessionId) return;
+    setFinalizing(true);
+    const winner = await voteSession.finalize(groupSessionId);
+    setFinalizing(false);
+    if (winner) {
+      // Manually set the winner and go to results
+      // We need to update game state with the winner
+      // Use a workaround: reset to results mode with the winner
+      resetGame();
+      // Re-start with the winner directly
+      setMode('results');
+      // We'll pass the winner through a ref-like state
+      setGroupWinner(winner);
+      setGroupSessionId(null);
     } else {
-      setShowSpinLimit(true);
+      toast.error('No votes to finalize');
     }
   };
+
 
   const handleUpgrade = () => {
     window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
@@ -111,6 +166,8 @@ const Index = () => {
       navigate('/auth');
       return;
     }
+    setGroupSessionId(null);
+    setGroupWinner(null);
     resetGame();
   };
 
@@ -136,7 +193,7 @@ const Index = () => {
     );
   }
 
-  // Quick Vibe flow (replaces setup + preferences)
+  // Quick Vibe flow
   if (state.mode === 'vibe') {
     return (
       <>
@@ -165,8 +222,21 @@ const Index = () => {
     );
   }
 
-  // Playing
-  if (state.mode === 'playing' && currentSpot) {
+  // Group Lobby
+  if (state.mode === 'group-lobby' && groupSessionId) {
+    return (
+      <HostLobbyScreen
+        sessionId={groupSessionId}
+        expectedVoters={state.playerCount}
+        currentVoters={voteSession.totalVoters}
+        onFinalize={handleFinalize}
+        finalizing={finalizing}
+      />
+    );
+  }
+
+  // Playing (solo only now)
+  if (state.mode === 'playing' && currentSpot && state.playerCount === 1) {
     return (
       <PlayingScreen
         spot={currentSpot}
@@ -179,10 +249,12 @@ const Index = () => {
   }
 
   // Results
-  if (state.mode === 'results' && state.winner) {
+  if (state.mode === 'results') {
+    const winner = groupWinner || state.winner;
+    if (!winner) return null;
     return (
       <ResultsScreen 
-        winner={state.winner}
+        winner={winner}
         likedSpots={state.likedSpots}
         fortunePack={state.preferences.fortunePack}
         onPlayAgain={handlePlayAgain}
