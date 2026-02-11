@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin } from 'lucide-react';
+import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
@@ -78,6 +78,18 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
   const handleOpenWebsite = () => {
     const searchQuery = encodeURIComponent(winner.name + ' website');
     window.open(`https://www.google.com/search?q=${searchQuery}&btnI=1`, '_blank');
+  };
+
+  const handleOpenMaps = () => {
+    const query = encodeURIComponent(winner.name);
+    const ua = navigator.userAgent || '';
+    if (/iPad|iPhone|iPod/.test(ua)) {
+      window.open(`maps://maps.apple.com/?q=${query}`, '_blank');
+    } else if (/android/i.test(ua)) {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    } else {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    }
   };
 
   const handleShareMyFate = async () => {
@@ -191,9 +203,9 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View Details
                 </Button>
-                <Button variant="default" size="lg" className="w-full" onClick={handleOpenWebsite}>
-                  <Globe className="w-4 h-4 mr-2" />
-                  Open Website
+                <Button variant="default" size="lg" className="w-full" onClick={handleOpenMaps}>
+                  <Navigation className="w-4 h-4 mr-2" />
+                  Open in Maps
                 </Button>
                 <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
                   <RotateCcw className="w-4 h-4 mr-2" />
