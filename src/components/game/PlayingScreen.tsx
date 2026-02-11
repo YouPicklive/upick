@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
+import { SpotImage } from './SpotImage';
 
 interface PlayingScreenProps {
   spot: Spot;
@@ -189,11 +190,11 @@ export function PlayingScreen({
 
         {/* Image */}
         <div className="relative h-56">
-          <img
+          <SpotImage
             src={spot.image}
             alt={spot.name}
-            className="w-full h-full object-cover pointer-events-none"
-            draggable={false}
+            category={spot.category}
+            className="w-full h-full pointer-events-none"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-transparent to-transparent" />
 

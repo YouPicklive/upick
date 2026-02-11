@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 interface EventSearchRequest {
@@ -19,13 +19,13 @@ interface Event {
   venue?: string;
   description?: string;
   type?: 'music' | 'sports' | 'festival' | 'comedy' | 'food' | 'art' | 'other';
-   latitude?: number;
-   longitude?: number;
-   address?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  sourceUrl?: string;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -35,18 +35,15 @@ serve(async (req) => {
 
     console.log(`Searching for events: ${spotName} (${spotCategory}) - ${timeframe} in ${city}`);
 
-    // Get current date for context
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.toLocaleString('en-US', { month: 'long' });
     const currentDay = now.getDate();
     const currentDateStr = `${currentMonth} ${currentDay}, ${currentYear}`;
 
-    // Determine if this is an event-worthy category
     const eventCategories = ['nightlife', 'bar', 'activity', 'wellness', 'cafe'];
     const isEventCategory = eventCategories.includes(spotCategory);
 
-    // Build the search prompt based on category and timeframe
     let timeDescription = '';
     switch (timeframe) {
       case 'today':
@@ -62,7 +59,6 @@ serve(async (req) => {
 
     let searchQuery = '';
     
-    // Check venue type for targeted searches
     const isMusicVenue = spotName.toLowerCase().includes('club') || 
                          spotName.toLowerCase().includes('lounge') || 
                          spotName.toLowerCase().includes('venue') ||
@@ -87,11 +83,9 @@ serve(async (req) => {
     } else if (isEventCategory) {
       searchQuery = `Find fun events or activities ${timeDescription} related to ${spotCategory} in ${city}. List up to 3 events with name, date, time, and location.`;
     } else {
-      // Still search for general events even if not a specific event category
       searchQuery = `Find popular local events ${timeDescription} in ${city}. Include concerts, sports, art shows, festivals, and community events.`;
     }
 
-    // Add comprehensive local events search
     const generalSearchQuery = `${searchQuery}
 
 Also include any notable local events ${timeDescription}:
@@ -110,16 +104,21 @@ Format your response as a JSON array with this structure:
     "name": "Event Name",
     "date": "Date",
     "time": "Time (if known)",
-    "venue": "Venue Name",
+    "venue": "Real Venue Name",
     "description": "Brief description",
-     "type": "music|sports|festival|comedy|food|art|other",
-     "latitude": approximate_latitude_number,
-     "longitude": approximate_longitude_number,
-     "address": "Full address if known"
+    "type": "music|sports|festival|comedy|food|art|other",
+    "latitude": approximate_latitude_number,
+    "longitude": approximate_longitude_number,
+    "address": "Full address if known",
+    "sourceUrl": "URL to the event page, venue website, or ticketing page (e.g. eventbrite, ticketmaster, venue site)"
   }
 ]
 
-IMPORTANT: Include approximate GPS coordinates (latitude and longitude) for each venue if possible. Use real venue locations.
+IMPORTANT:
+- Include approximate GPS coordinates (latitude and longitude) for each venue if possible. Use real venue locations.
+- Use REAL business names, real venue names, real event titles — no placeholders.
+- Include a sourceUrl for each event: the event listing page, venue website, or ticket purchase link. If unknown, use a Google search URL for the event.
+- All dates must be ${currentYear} or later.
 
 Return only the JSON array, no other text.`;
 
@@ -133,7 +132,6 @@ Return only the JSON array, no other text.`;
       );
     }
 
-    // Call Lovable AI Gateway
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -151,7 +149,9 @@ CRITICAL REQUIREMENTS:
 - Only return FUTURE events from ${currentYear} onwards
 - All dates must be in ${currentYear} or later
 - Never return past events or events from previous years
+- Use REAL event names, REAL venue names, REAL business names — never use placeholder or generic text
 - If you cannot find specific future events, create realistic upcoming events for the requested timeframe
+- Always include a sourceUrl — use the event listing page, venue website, or a Google search URL
 
 Always respond with valid JSON arrays only.`,
           },
@@ -179,13 +179,16 @@ Always respond with valid JSON arrays only.`,
     
     console.log('AI Response:', content);
 
-    // Parse the JSON response
     let events: Event[] = [];
     try {
-      // Try to extract JSON from the response
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         events = JSON.parse(jsonMatch[0]);
+        // Ensure sourceUrl fallback
+        events = events.map(e => ({
+          ...e,
+          sourceUrl: e.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent((e.name || '') + ' ' + (e.venue || '') + ' event')}`,
+        }));
       }
     } catch (parseError) {
       console.error('Failed to parse events:', parseError);
