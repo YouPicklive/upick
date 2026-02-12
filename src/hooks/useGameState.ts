@@ -95,7 +95,7 @@ export function useGameState() {
 
   // Filter spots using the Quick Vibe input
   const filterSpotsByVibe = useCallback((vibe: VibeInput): Spot[] => {
-    let spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly || vibe.intent === 'event-planning' || vibe.intent === 'corporate');
+    let spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly);
     const randomness = computeRandomness(vibe);
 
     // Filter by intent (maps to categories)
