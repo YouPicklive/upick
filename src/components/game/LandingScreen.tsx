@@ -109,7 +109,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           <section className="mb-8">
             <div className="text-center mb-5">
               <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Whats the move?</h2>
-              <p className="text-muted-foreground text-sm mt-1">Pick a vibe. Let fate handle the rest.</p>
+              <p className="text-muted-foreground text-sm mt-1">Pick a card.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
