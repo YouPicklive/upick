@@ -11,21 +11,17 @@ const corsHeaders = {
 function intentToDBCategories(intent: string | null): string[] {
   switch (intent) {
     case "food":
-      return ["restaurant", "cafe", "brunch", "lunch", "dinner", "desserts"];
+      return ["restaurant", "cafe", "bakery", "food-truck", "brunch", "lunch", "dinner", "desserts"];
     case "drinks":
-      return ["bar", "nightlife", "cafe"];
+      return ["bar", "nightlife", "cocktail-lounge", "wine-bar", "dive-bar", "rooftop-bar"];
     case "activity":
-      return ["activity"];
+      return ["activity", "park", "museum", "bowling", "arcade", "escape-room", "golf", "mini-golf", "hiking", "workshop"];
     case "shopping":
-      return ["activity"];
+      return ["shopping", "retail", "boutique", "thrift", "market", "vintage", "mall"];
     case "events":
-      return ["nightlife", "activity"];
+      return ["event", "concert", "festival", "live-music", "art-show", "pop-up"];
     case "services":
-      return ["wellness"];
-    case "event-planning":
-      return ["event-planning"];
-    case "corporate":
-      return ["event-planning", "restaurant", "activity"];
+      return ["wellness", "spa", "yoga", "fitness", "gym", "meditation", "massage"];
     case "surprise":
     default:
       return [];
@@ -36,21 +32,17 @@ function intentToDBCategories(intent: string | null): string[] {
 function intentToPlaceTypes(intent: string | null): string[] {
   switch (intent) {
     case "food":
-      return ["restaurant", "meal_delivery", "meal_takeaway"];
+      return ["restaurant", "bakery", "cafe", "meal_takeaway"];
     case "drinks":
-      return ["bar", "night_club", "cafe"];
+      return ["bar", "night_club"];
     case "activity":
-      return ["amusement_park", "bowling_alley", "gym", "movie_theater", "museum", "park", "tourist_attraction"];
+      return ["amusement_park", "bowling_alley", "museum", "park", "tourist_attraction"];
     case "shopping":
       return ["shopping_mall", "store", "clothing_store"];
     case "events":
-      return ["night_club", "stadium", "movie_theater"];
+      return ["stadium", "movie_theater", "night_club"];
     case "services":
-      return ["spa", "beauty_salon", "hair_care"];
-    case "event-planning":
-      return ["event_venue", "restaurant", "banquet_hall"];
-    case "corporate":
-      return ["restaurant", "conference_center"];
+      return ["spa", "gym", "physiotherapist"];
     case "surprise":
     default:
       return ["restaurant", "bar", "cafe", "tourist_attraction"];
@@ -77,9 +69,10 @@ function mapPriceLevelFromString(pl?: string): 1 | 2 | 3 | 4 {
 
 function mapCategory(types: string[]): string {
   if (types.some((t) => ["bar", "night_club"].includes(t))) return "bar";
+  if (types.some((t) => ["shopping_mall", "store", "clothing_store", "shoe_store", "jewelry_store", "book_store", "home_goods_store", "furniture_store", "electronics_store"].includes(t))) return "shopping";
+  if (types.some((t) => ["spa", "physiotherapist", "gym"].includes(t))) return "wellness";
   if (types.some((t) => ["cafe", "bakery"].includes(t))) return "cafe";
-  if (types.some((t) => ["spa", "beauty_salon", "hair_care"].includes(t))) return "wellness";
-  if (types.some((t) => ["amusement_park", "bowling_alley", "gym", "movie_theater", "museum", "park", "tourist_attraction", "stadium", "shopping_mall", "store"].includes(t)))
+  if (types.some((t) => ["amusement_park", "bowling_alley", "movie_theater", "museum", "park", "tourist_attraction", "stadium", "zoo", "aquarium", "campground"].includes(t)))
     return "activity";
   return "restaurant";
 }
@@ -156,11 +149,11 @@ serve(async (req) => {
       query = query.in("category", dbCategories);
     }
 
-    // Price filters
+    // Price filters — only include businesses with a matching price_level
     if (filters?.includes("cheap")) {
       query = query.in("price_level", ["$"]);
     } else if (filters?.includes("mid")) {
-      query = query.in("price_level", ["$", "$$", "$$$"]);
+      query = query.in("price_level", ["$$"]);
     } else if (filters?.includes("treat")) {
       query = query.in("price_level", ["$$$", "$$$$"]);
     }
@@ -201,8 +194,23 @@ serve(async (req) => {
       if (withDistance.length === 0) {
         // No curated businesses in range — fall through to Google
       } else {
+        // If price filter is active, exclude businesses with null price_level
+        const hasPriceFilter = filters?.includes("cheap") || filters?.includes("mid") || filters?.includes("treat");
+        const priceFiltered = hasPriceFilter
+          ? withDistance.filter((b: any) => b.price_level !== null)
+          : withDistance;
+        if (priceFiltered.length === 0) {
+          return new Response(JSON.stringify({
+            spots: [],
+            source: "curated",
+            message: "Nothing aligned here yet — try expanding your radius or adjusting price."
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         // Take up to 10, shuffled within proximity bands
-        const selected = withDistance.slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 10);
+        const selected = priceFiltered.slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 10);
 
         const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
 

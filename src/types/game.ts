@@ -1,7 +1,7 @@
 export interface Spot {
   id: string;
   name: string;
-  category: 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts' | 'event-planning';
+  category: 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts' | 'shopping' | 'event';
   cuisine?: string;
   description: string;
   priceLevel: 1 | 2 | 3 | 4;
@@ -21,7 +21,7 @@ export interface Spot {
 }
 
 // --- Quick Vibe types ---
-export type VibeIntent = 'food' | 'drinks' | 'activity' | 'shopping' | 'events' | 'services' | 'event-planning' | 'corporate' | 'surprise';
+export type VibeIntent = 'food' | 'drinks' | 'activity' | 'shopping' | 'events' | 'services' | 'surprise';
 export type VibeEnergy = 'chill' | 'social' | 'romantic' | 'adventure' | 'productive' | 'self-care' | 'weird';
 export type VibeFilter = 'cheap' | 'mid' | 'treat' | 'indoor' | 'outdoor' | 'near-me' | 'any-distance';
 
@@ -42,17 +42,15 @@ export function computeRandomness(vibe: VibeInput): RandomnessLevel {
   return 'balanced';
 }
 
-// Map intent → old category for filtering
+// Map intent → category for filtering
 export function intentToCategories(intent: VibeIntent | null): string[] {
   switch (intent) {
-    case 'food': return ['restaurant', 'cafe', 'brunch', 'lunch', 'dinner', 'desserts'];
-    case 'drinks': return ['bar', 'nightlife', 'cafe'];
-    case 'activity': return ['activity'];
-    case 'events': return ['nightlife', 'activity'];
-    case 'services': return ['wellness'];
-    case 'shopping': return ['activity']; // fallback
-    case 'event-planning': return ['event-planning'];
-    case 'corporate': return ['event-planning', 'restaurant', 'activity'];
+    case 'food': return ['restaurant', 'cafe', 'bakery', 'food-truck', 'brunch', 'lunch', 'dinner', 'desserts'];
+    case 'drinks': return ['bar', 'nightlife', 'cocktail-lounge', 'wine-bar', 'dive-bar', 'rooftop-bar'];
+    case 'activity': return ['activity', 'park', 'museum', 'bowling', 'arcade', 'escape-room', 'golf', 'mini-golf', 'hiking', 'workshop'];
+    case 'shopping': return ['shopping', 'retail', 'boutique', 'thrift', 'market', 'vintage', 'mall'];
+    case 'events': return ['event', 'concert', 'festival', 'live-music', 'art-show', 'pop-up'];
+    case 'services': return ['wellness', 'spa', 'yoga', 'fitness', 'gym', 'meditation', 'massage'];
     case 'surprise': return [];
     case null: return [];
     default: return [];
@@ -82,7 +80,7 @@ export interface GameState {
   votes: Record<string, number>;
   likedSpots: Spot[];
   winner: Spot | null;
-  category: 'all' | 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts' | 'event-planning';
+  category: 'all' | 'restaurant' | 'activity' | 'bar' | 'cafe' | 'nightlife' | 'wellness' | 'brunch' | 'lunch' | 'dinner' | 'desserts' | 'shopping' | 'event';
   preferences: Preferences;
 }
 
@@ -1313,7 +1311,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-1',
     name: 'Grand Ballroom at The Monarch',
-    category: 'event-planning',
+    category: 'activity',
     description: 'Elegant ballroom venue for weddings and galas up to 500 guests',
     priceLevel: 4,
     rating: 4.9,
@@ -1328,7 +1326,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-2',
     name: 'DJ Spinmaster Productions',
-    category: 'event-planning',
+    category: 'activity',
     description: 'Professional DJ and MC services for all event types',
     priceLevel: 3,
     rating: 4.7,
@@ -1343,7 +1341,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-3',
     name: 'Savory Affairs Catering',
-    category: 'event-planning',
+    category: 'restaurant',
     description: 'Full-service catering with custom menus and staff',
     priceLevel: 3,
     rating: 4.8,
@@ -1358,7 +1356,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-4',
     name: 'Lens & Light Photography',
-    category: 'event-planning',
+    category: 'wellness',
     description: 'Award-winning event photography and videography',
     priceLevel: 3,
     rating: 4.9,
@@ -1373,7 +1371,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-5',
     name: 'SoundStage AV Rentals',
-    category: 'event-planning',
+    category: 'activity',
     description: 'Pro audio-visual equipment and production crews',
     priceLevel: 3,
     rating: 4.6,
@@ -1388,7 +1386,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-6',
     name: 'Bloom & Co. Florals',
-    category: 'event-planning',
+    category: 'shopping',
     description: 'Stunning floral arrangements and event décor',
     priceLevel: 3,
     rating: 4.8,
@@ -1403,7 +1401,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-7',
     name: 'Elite Event Rentals',
-    category: 'event-planning',
+    category: 'shopping',
     description: 'Tables, chairs, tents, linens — everything you need',
     priceLevel: 2,
     rating: 4.5,
@@ -1418,7 +1416,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-8',
     name: 'Metro VIP Transport',
-    category: 'event-planning',
+    category: 'activity',
     description: 'Luxury shuttles and party buses for group transport',
     priceLevel: 3,
     rating: 4.6,
@@ -1433,7 +1431,7 @@ export const EVENT_PLANNING_SPOTS: Spot[] = [
   {
     id: 'ep-9',
     name: 'ProStaff Event Services',
-    category: 'event-planning',
+    category: 'wellness',
     description: 'Bartenders, servers, and event coordinators on demand',
     priceLevel: 2,
     rating: 4.7,
