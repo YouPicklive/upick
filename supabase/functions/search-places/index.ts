@@ -1,10 +1,36 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Map vibe intents to business categories stored in DB
+function intentToDBCategories(intent: string | null): string[] {
+  switch (intent) {
+    case "food":
+      return ["restaurant", "cafe", "brunch", "lunch", "dinner", "desserts"];
+    case "drinks":
+      return ["bar", "nightlife", "cafe"];
+    case "activity":
+      return ["activity"];
+    case "shopping":
+      return ["activity"];
+    case "events":
+      return ["nightlife", "activity"];
+    case "services":
+      return ["wellness"];
+    case "event-planning":
+      return ["event-planning"];
+    case "corporate":
+      return ["event-planning", "restaurant", "activity"];
+    case "surprise":
+    default:
+      return [];
+  }
+}
 
 // Map vibe intents to Google Places types
 function intentToPlaceTypes(intent: string | null): string[] {
@@ -31,7 +57,6 @@ function intentToPlaceTypes(intent: string | null): string[] {
   }
 }
 
-// Map Google price_level to our 1-4 scale
 function mapPriceLevel(priceLevel?: number): 1 | 2 | 3 | 4 {
   if (priceLevel === undefined || priceLevel === null) return 2;
   if (priceLevel <= 1) return 1;
@@ -40,21 +65,25 @@ function mapPriceLevel(priceLevel?: number): 1 | 2 | 3 | 4 {
   return 4;
 }
 
-// Map Google types to our category
+function mapPriceLevelFromString(pl?: string): 1 | 2 | 3 | 4 {
+  switch (pl) {
+    case "$": return 1;
+    case "$$": return 2;
+    case "$$$": return 3;
+    case "$$$$": return 4;
+    default: return 2;
+  }
+}
+
 function mapCategory(types: string[]): string {
   if (types.some((t) => ["bar", "night_club"].includes(t))) return "bar";
   if (types.some((t) => ["cafe", "bakery"].includes(t))) return "cafe";
   if (types.some((t) => ["spa", "beauty_salon", "hair_care"].includes(t))) return "wellness";
-  if (
-    types.some((t) =>
-      ["amusement_park", "bowling_alley", "gym", "movie_theater", "museum", "park", "tourist_attraction", "stadium", "shopping_mall", "store"].includes(t)
-    )
-  )
+  if (types.some((t) => ["amusement_park", "bowling_alley", "gym", "movie_theater", "museum", "park", "tourist_attraction", "stadium", "shopping_mall", "store"].includes(t)))
     return "activity";
   return "restaurant";
 }
 
-// Infer vibe level from rating + types
 function inferVibeLevel(types: string[], _rating?: number): string {
   if (types.some((t) => ["night_club"].includes(t))) return "dancing";
   if (types.some((t) => ["bar", "bowling_alley", "amusement_park", "gym", "stadium"].includes(t))) return "active";
@@ -62,12 +91,19 @@ function inferVibeLevel(types: string[], _rating?: number): string {
   return "moderate";
 }
 
-// Extract neighborhood from address components or formatted address
 function extractNeighborhood(formattedAddress?: string): string {
   if (!formattedAddress) return "Nearby";
-  // Take the second part of the comma-separated address (usually city/neighborhood)
   const parts = formattedAddress.split(",").map((p) => p.trim());
   return parts[1] || parts[0] || "Nearby";
+}
+
+function mapEnergyToVibeLevel(energy?: string): string {
+  switch (energy) {
+    case "chill": return "chill";
+    case "moderate": return "moderate";
+    case "hype": return "active";
+    default: return "moderate";
+  }
 }
 
 serve(async (req) => {
@@ -85,21 +121,89 @@ serve(async (req) => {
       });
     }
 
+    // --- Step 1: Try curated businesses table first ---
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const dbCategories = intentToDBCategories(intent);
+    let query = supabase.from("businesses").select("*").eq("active", true);
+
+    if (dbCategories.length > 0) {
+      query = query.in("category", dbCategories);
+    }
+
+    // Price filters
+    if (filters?.includes("cheap")) {
+      query = query.in("price_level", ["$"]);
+    } else if (filters?.includes("mid")) {
+      query = query.in("price_level", ["$", "$$", "$$$"]);
+    } else if (filters?.includes("treat")) {
+      query = query.in("price_level", ["$$$", "$$$$"]);
+    }
+
+    // Energy filter
+    if (energy) {
+      const energyMap: Record<string, string[]> = {
+        chill: ["chill"],
+        social: ["moderate", "hype"],
+        romantic: ["chill", "moderate"],
+        adventure: ["hype"],
+        productive: ["chill"],
+        "self-care": ["chill"],
+        weird: ["hype", "moderate"],
+      };
+      const energyValues = energyMap[energy];
+      if (energyValues) {
+        query = query.in("energy", energyValues);
+      }
+    }
+
+    query = query.limit(20);
+
+    const { data: dbSpots, error: dbError } = await query;
+
+    if (!dbError && dbSpots && dbSpots.length > 0) {
+      // Shuffle and take up to 10
+      const shuffled = dbSpots.sort(() => Math.random() - 0.5).slice(0, 10);
+
+      const spots = shuffled.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        category: b.category,
+        description: b.description || "A great spot nearby",
+        priceLevel: mapPriceLevelFromString(b.price_level),
+        rating: b.rating ? Number(b.rating) : 4.0,
+        image: b.photo_url || "",
+        tags: b.tags || [],
+        neighborhood: b.neighborhood || b.city || "Nearby",
+        isOutdoor: b.is_outdoor ?? false,
+        smokingFriendly: b.smoking_friendly ?? false,
+        vibeLevel: mapEnergyToVibeLevel(b.energy),
+        plusOnly: false,
+        latitude: b.latitude,
+        longitude: b.longitude,
+      }));
+
+      return new Response(JSON.stringify({ spots, source: "curated" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Step 2: Fall back to Google Places API ---
     const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "Google Places API key not configured" }), {
+      return new Response(JSON.stringify({ error: "No businesses found and Google Places API key not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const placeTypes = intentToPlaceTypes(intent);
-    // Determine radius based on filters
-    let radius = 5000; // default 5km
+    let radius = 5000;
     if (filters?.includes("near-me")) radius = 1500;
     if (filters?.includes("any-distance")) radius = 15000;
 
-    // Determine min/max price from filters
     let minPrice: number | undefined;
     let maxPrice: number | undefined;
     if (filters?.includes("cheap")) {
@@ -111,11 +215,8 @@ serve(async (req) => {
       minPrice = 3;
     }
 
-    // Use the first type for the primary search, then deduplicate
     const allResults: any[] = [];
     const seenPlaceIds = new Set<string>();
-
-    // Query up to 2 types to get variety without excessive API calls
     const typesToQuery = placeTypes.slice(0, 2);
 
     for (const type of typesToQuery) {
@@ -142,9 +243,7 @@ serve(async (req) => {
       }
     }
 
-    // Map to our Spot format
     const spots = allResults.slice(0, 10).map((place, idx) => {
-      // Build photo URL if available
       let image = "";
       if (place.photos && place.photos.length > 0) {
         const photoRef = place.photos[0].photo_reference;
@@ -176,7 +275,7 @@ serve(async (req) => {
       };
     });
 
-    return new Response(JSON.stringify({ spots }), {
+    return new Response(JSON.stringify({ spots, source: "google" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
