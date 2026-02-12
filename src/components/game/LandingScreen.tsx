@@ -270,7 +270,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 function TestimonialCard({ quote, author }: {quote: string;author: string;}) {
   return (
     <div className="bg-secondary/60 rounded-2xl px-5 py-4 text-center">
-      
+      <p className="text-sm text-foreground/80 italic mb-2">"{quote}"</p>
       <p className="text-xs text-muted-foreground font-medium">— {author}</p>
     </div>);
 
