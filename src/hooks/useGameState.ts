@@ -125,8 +125,8 @@ export function useGameState() {
     // Apply optional filters
     for (const filter of vibe.filters) {
       switch (filter) {
-        case 'cheap': spots = spots.filter(s => s.priceLevel <= 2); break;
-        case 'mid': spots = spots.filter(s => s.priceLevel >= 2 && s.priceLevel <= 3); break;
+        case 'cheap': spots = spots.filter(s => s.priceLevel === 1); break;
+        case 'mid': spots = spots.filter(s => s.priceLevel === 2); break;
         case 'treat': spots = spots.filter(s => s.priceLevel >= 3); break;
         case 'indoor': spots = spots.filter(s => !s.isOutdoor); break;
         case 'outdoor': spots = spots.filter(s => s.isOutdoor); break;
