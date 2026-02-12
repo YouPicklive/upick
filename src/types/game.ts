@@ -68,7 +68,7 @@ export interface Preferences {
 }
 
 export interface GameState {
-  mode: 'landing' | 'vibe' | 'setup' | 'preferences' | 'playing' | 'group-lobby' | 'results';
+  mode: 'landing' | 'vibe' | 'setup' | 'preferences' | 'playing' | 'results';
   vibeStep: 0 | 1 | 2; // 0=intent, 1=energy, 2=filters
   vibeInput: VibeInput;
   playerCount: number;
