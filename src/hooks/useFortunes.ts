@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 export type FortuneTier = 'free' | 'plus' | 'pack';
 export type FortunePackKey = 'love' | 'career' | 'unhinged' | 'main_character';
@@ -68,7 +69,7 @@ export function useFortunes() {
       const { data, error: fetchError } = await query;
 
       if (fetchError) {
-        console.error('Error fetching fortune:', fetchError);
+        logger.error('Error fetching fortune:', fetchError);
         setError(fetchError.message);
         return { fortune: getFallbackFortune(), accessDenied: false };
       }
@@ -77,12 +78,12 @@ export function useFortunes() {
       if (!data || data.length === 0) {
         // For free tier, this is unexpected - use fallback
         if (tier === 'free') {
-          console.warn('No free fortunes found');
+          logger.warn('No free fortunes found');
           return { fortune: getFallbackFortune(), accessDenied: false };
         }
         
         // For premium tiers, empty results = access denied by RLS
-        console.info('Access denied by RLS for tier:', tier, 'pack:', packKey);
+        logger.info('Access denied by RLS for tier:', tier, 'pack:', packKey);
         return { 
           fortune: '', 
           accessDenied: true 
@@ -93,7 +94,7 @@ export function useFortunes() {
       const randomIndex = Math.floor(Math.random() * data.length);
       return { fortune: data[randomIndex].text, accessDenied: false };
     } catch (err) {
-      console.error('Error in getRandomFortune:', err);
+      logger.error('Error in getRandomFortune:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       return { fortune: getFallbackFortune(), accessDenied: false };
     } finally {

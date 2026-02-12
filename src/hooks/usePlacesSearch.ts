@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Spot, VibeInput } from '@/types/game';
+import { logger } from '@/lib/logger';
 
 interface UsePlacesSearchReturn {
   searchPlaces: (coords: { latitude: number; longitude: number }, vibe: VibeInput) => Promise<Spot[]>;
@@ -69,7 +70,7 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
         setIsLoading(false);
         return spots;
       } catch (err: any) {
-        console.error('Places search failed:', err);
+        logger.error('Places search failed:', err);
         setError(err.message || 'Failed to search places');
         setIsLoading(false);
         return [];

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 export interface LocalEvent {
   name: string;
@@ -92,7 +93,7 @@ export function useEventSearch(): UseEventSearchReturn {
       });
 
       if (fnError) {
-        console.error('Event search error:', fnError);
+        logger.error('Event search error:', fnError);
         setError('Failed to search for events');
         setEvents([]);
         return;
@@ -106,7 +107,7 @@ export function useEventSearch(): UseEventSearchReturn {
         setEvents([]);
       }
     } catch (err) {
-      console.error('Event search error:', err);
+      logger.error('Event search error:', err);
       setError('Failed to search for events');
       setEvents([]);
     } finally {

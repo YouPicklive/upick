@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { logger } from '@/lib/logger';
 
 interface UserEntitlements {
   id: string;
@@ -46,7 +47,7 @@ export function useUserEntitlements() {
           .maybeSingle();
 
         if (fetchError) {
-          console.error('Error fetching entitlements:', fetchError);
+          logger.error('Error fetching entitlements:', fetchError);
           setError(fetchError.message);
           return;
         }
@@ -57,11 +58,11 @@ export function useUserEntitlements() {
             owned_packs: data.owned_packs || [],
           });
         } else {
-          console.info('No entitlements found for user - will be created on first purchase');
+          logger.info('No entitlements found for user - will be created on first purchase');
           setEntitlements(null);
         }
       } catch (err) {
-        console.error('Error in fetchEntitlements:', err);
+        logger.error('Error in fetchEntitlements:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
@@ -77,18 +78,18 @@ export function useUserEntitlements() {
 
     const checkSubscription = async () => {
       try {
-        console.log('[useUserEntitlements] Checking subscription status with Stripe...');
+        logger.log('[useUserEntitlements] Checking subscription status with Stripe...');
         hasCheckedSubscription.current = true;
         
         const { data, error: fnError } = await supabase.functions.invoke<SubscriptionStatus>('check-subscription');
         
         if (fnError) {
-          console.error('[useUserEntitlements] Error checking subscription:', fnError);
+          logger.error('[useUserEntitlements] Error checking subscription:', fnError);
           return;
         }
 
         if (data) {
-          console.log('[useUserEntitlements] Subscription check result:', data);
+          logger.log('[useUserEntitlements] Subscription check result:', data);
           setSubscriptionEnd(data.subscription_end);
           
           // Refetch entitlements after sync
@@ -106,7 +107,7 @@ export function useUserEntitlements() {
           }
         }
       } catch (err) {
-        console.error('[useUserEntitlements] Failed to check subscription:', err);
+        logger.error('[useUserEntitlements] Failed to check subscription:', err);
       }
     };
 
@@ -124,7 +125,7 @@ export function useUserEntitlements() {
           setSubscriptionEnd(data.subscription_end);
         }
       } catch (err) {
-        console.error('[useUserEntitlements] Periodic check failed:', err);
+        logger.error('[useUserEntitlements] Periodic check failed:', err);
       }
     }, 60000);
 
@@ -139,7 +140,7 @@ export function useUserEntitlements() {
 
   // Note: Pack purchases are handled by Stripe webhook
   const purchasePack = useCallback(async (packId: string) => {
-    console.info('Pack purchase requested:', packId);
+    logger.info('Pack purchase requested:', packId);
     return { success: false, error: 'Pack purchases coming soon via Stripe' };
   }, []);
 
