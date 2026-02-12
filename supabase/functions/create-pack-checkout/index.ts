@@ -64,22 +64,24 @@ serve(async (req) => {
 
     // Get authenticated user
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader?.startsWith("Bearer ")) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
     
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (claimsError || !claimsData?.claims) throw new Error(`Authentication error: ${claimsError?.message || "missing claims"}`);
     
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    const userId = claimsData.claims.sub as string;
+    const userEmail = claimsData.claims.email as string;
+    if (!userId || !userEmail) throw new Error("User not authenticated or email not available");
+    
+    logStep("User authenticated", { userId, email: userEmail });
 
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Check if customer exists in Stripe
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
@@ -90,7 +92,7 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "https://upick.lovable.app";
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+      customer_email: customerId ? undefined : userEmail,
       line_items: [
         {
           price: priceId,
@@ -102,7 +104,7 @@ serve(async (req) => {
       cancel_url: `${origin}/?pack_purchase=cancelled`,
       metadata: {
         pack_id: packId,
-        user_id: user.id,
+        user_id: userId,
       },
     });
 
