@@ -106,6 +106,27 @@ function mapEnergyToVibeLevel(energy?: string): string {
   }
 }
 
+// Haversine distance in miles
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Determine max radius in miles from filters
+function getMaxRadiusMiles(filters?: string[]): number {
+  if (!filters) return 15;
+  if (filters.includes("near-me")) return 1;
+  if (filters.includes("short-drive")) return 5;
+  if (filters.includes("any-distance")) return 45;
+  return 15; // default ~15 miles
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -120,6 +141,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const maxMiles = getMaxRadiusMiles(filters);
 
     // --- Step 1: Try curated businesses table first ---
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -159,69 +182,95 @@ serve(async (req) => {
       }
     }
 
-    query = query.limit(20);
+    // Fetch more to allow distance filtering
+    query = query.limit(100);
 
     const { data: dbSpots, error: dbError } = await query;
 
     if (!dbError && dbSpots && dbSpots.length > 0) {
-      // Shuffle and take up to 10
-      const shuffled = dbSpots.sort(() => Math.random() - 0.5).slice(0, 10);
+      // Filter by distance from user and compute distance
+      const withDistance = dbSpots
+        .filter((b: any) => b.latitude && b.longitude)
+        .map((b: any) => ({
+          ...b,
+          _distance: haversineDistance(latitude, longitude, b.latitude, b.longitude),
+        }))
+        .filter((b: any) => b._distance <= maxMiles)
+        .sort((a: any, b: any) => a._distance - b._distance);
 
-      const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+      if (withDistance.length === 0) {
+        // No curated businesses in range — fall through to Google
+      } else {
+        // Take up to 10, shuffled within proximity bands
+        const selected = withDistance.slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 10);
 
-      // Auto-fetch photos for businesses missing them (non-blocking best effort)
-      const spots = await Promise.all(
-        shuffled.map(async (b: any) => {
-          let image = b.photo_url || "";
+        const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
 
-          // If no photo and we have Google API key, try to fetch one
-          if (!image && apiKey) {
-            try {
-              const query = `${b.name} ${b.city || ""}`.trim();
-              const locationBias = b.latitude && b.longitude ? `&locationbias=point:${b.latitude},${b.longitude}` : "";
-              const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=photos${locationBias}&key=${apiKey}`;
-              const findRes = await fetch(findUrl);
-              const findData = await findRes.json();
+        // Auto-fetch photos + description from Google for businesses missing them
+        const spots = await Promise.all(
+          selected.map(async (b: any) => {
+            let image = b.photo_url || "";
+            let description = b.description || "";
 
-              if (findData.candidates?.[0]?.photos?.[0]?.photo_reference) {
-                const ref = findData.candidates[0].photos[0].photo_reference;
-                image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${apiKey}`;
+            if (apiKey && (!image || !description)) {
+              try {
+                const q = `${b.name} ${b.city || ""}`.trim();
+                const locationBias = b.latitude && b.longitude ? `&locationbias=point:${b.latitude},${b.longitude}` : "";
+                const fields = ["photos", !description ? "formatted_address" : ""].filter(Boolean).join(",");
+                const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(q)}&inputtype=textquery&fields=place_id,${fields}${locationBias}&key=${apiKey}`;
+                const findRes = await fetch(findUrl);
+                const findData = await findRes.json();
 
-                // Persist photo URL back to DB (fire-and-forget with service role)
-                const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-                if (serviceKey) {
-                  const adminClient = createClient(supabaseUrl, serviceKey);
-                  adminClient.from("businesses").update({ photo_url: image }).eq("id", b.id).then(() => {});
+                const candidate = findData.candidates?.[0];
+                if (candidate) {
+                  // Photo
+                  if (!image && candidate.photos?.[0]?.photo_reference) {
+                    const ref = candidate.photos[0].photo_reference;
+                    image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${apiKey}`;
+
+                    // Persist photo back to DB
+                    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+                    if (serviceKey) {
+                      const adminClient = createClient(supabaseUrl, serviceKey);
+                      adminClient.from("businesses").update({ photo_url: image }).eq("id", b.id).then(() => {});
+                    }
+                  }
+
+                  // Description fallback
+                  if (!description && candidate.formatted_address) {
+                    description = candidate.formatted_address;
+                  }
                 }
+              } catch (e) {
+                console.error(`Google enrichment failed for ${b.name}:`, e);
               }
-            } catch (e) {
-              console.error(`Auto-photo fetch failed for ${b.name}:`, e);
             }
-          }
 
-          return {
-            id: b.id,
-            name: b.name,
-            category: b.category,
-            description: b.description || "A great spot nearby",
-            priceLevel: mapPriceLevelFromString(b.price_level),
-            rating: b.rating ? Number(b.rating) : 4.0,
-            image,
-            tags: b.tags || [],
-            neighborhood: b.neighborhood || b.city || "Nearby",
-            isOutdoor: b.is_outdoor ?? false,
-            smokingFriendly: b.smoking_friendly ?? false,
-            vibeLevel: mapEnergyToVibeLevel(b.energy),
-            plusOnly: false,
-            latitude: b.latitude,
-            longitude: b.longitude,
-          };
-        })
-      );
+            return {
+              id: b.id,
+              name: b.name,
+              category: b.category,
+              description: description || "A great spot nearby",
+              priceLevel: mapPriceLevelFromString(b.price_level),
+              rating: b.rating ? Number(b.rating) : 4.0,
+              image,
+              tags: b.tags || [],
+              neighborhood: b.neighborhood || b.city || "Nearby",
+              isOutdoor: b.is_outdoor ?? false,
+              smokingFriendly: b.smoking_friendly ?? false,
+              vibeLevel: mapEnergyToVibeLevel(b.energy),
+              plusOnly: false,
+              latitude: b.latitude,
+              longitude: b.longitude,
+              distance: Math.round(b._distance * 10) / 10, // miles, 1 decimal
+            };
+          })
+        );
 
-      return new Response(JSON.stringify({ spots, source: "curated" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        return new Response(JSON.stringify({ spots, source: "curated" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // --- Step 2: Fall back to Google Places API ---
