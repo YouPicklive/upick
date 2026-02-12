@@ -106,10 +106,6 @@ export function VibeScreen({
     setShowShoppingModal(false);
   };
 
-  const handleVibeSelect = (vibe: YouPickVibe) => {
-    onVibeChange({ selectedVibe: vibeInput.selectedVibe === vibe ? null : vibe });
-  };
-
   const handleFilterToggle = (filter: VibeFilter) => {
     const current = vibeInput.filters;
     if (current.includes(filter)) {
@@ -124,20 +120,20 @@ export function VibeScreen({
   };
 
   const handleNext = () => {
-    if (step < 2) {
-      // If going from vibe step (1) and no vibe selected, default to Explore
-      if (step === 1 && !vibeInput.selectedVibe) {
+    if (step < 1) {
+      onStepChange(1 as 0 | 1 | 2);
+    } else {
+      // Default vibe to 'explore' if none selected from landing
+      if (!vibeInput.selectedVibe) {
         onVibeChange({ selectedVibe: 'explore' });
       }
-      onStepChange((step + 1) as 0 | 1 | 2);
-    } else {
       onStart();
     }
   };
 
   const handleBack = () => {
     if (step > 0) {
-      onStepChange((step - 1) as 0 | 1 | 2);
+      onStepChange(0 as 0 | 1 | 2);
     } else {
       onBack();
     }
@@ -155,9 +151,9 @@ export function VibeScreen({
           {step > 0 ? 'Back' : 'Home'}
         </button>
 
-        {/* Step indicator */}
+        {/* Step indicator — 2 steps now */}
         <div className="flex items-center gap-2 mb-6">
-          {[0, 1, 2].map((s) => (
+          {[0, 1].map((s) => (
             <div
               key={s}
               className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
@@ -210,48 +206,8 @@ export function VibeScreen({
           </div>
         )}
 
-        {/* Step 1: Choose Your Vibe (NEW — replaces Intent/Energy) */}
+        {/* Step 1: Filters + Fortune Pack (was step 2) */}
         {step === 1 && (
-          <div className="animate-fade-in">
-            <div className="mb-6">
-              <h1 className="font-display text-2xl font-bold mb-1">Choose Your Vibe</h1>
-              <p className="text-muted-foreground text-sm">Set the mood for your pick</p>
-            </div>
-
-            <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
-              <div className="grid grid-cols-2 gap-2.5">
-                {YOUPICK_VIBES.map((vibe) => {
-                  const isSelected = vibeInput.selectedVibe === vibe.id;
-                  const isWide = vibe.id === 'free-beautiful';
-                  return (
-                    <button
-                      key={vibe.id}
-                      onClick={() => handleVibeSelect(vibe.id)}
-                      className={`p-4 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 ${
-                        isSelected
-                          ? 'gradient-warm text-primary-foreground shadow-glow'
-                          : 'bg-secondary hover:bg-secondary/80'
-                      } ${isWide ? 'col-span-2' : ''}`}
-                    >
-                      <span className="text-2xl">{vibe.emoji}</span>
-                      <span className="font-semibold text-sm">{vibe.label}</span>
-                      <span className={`text-[10px] leading-tight text-center ${
-                        isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                      }`}>
-                        {vibe.subtitle}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <RandomnessMeter level={randomness} />
-          </div>
-        )}
-
-        {/* Step 2: Budget & Filters */}
-        {step === 2 && (
           <div className="animate-fade-in">
             <div className="mb-6">
               <h1 className="font-display text-2xl font-bold mb-1">Any preferences?</h1>
@@ -367,7 +323,7 @@ export function VibeScreen({
           className="w-full group mt-6"
           onClick={handleNext}
         >
-          {step === 2 ? "Let's Go" : 'Continue'}
+          {step === 1 ? "Let's Go" : 'Continue'}
           <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
         </Button>
       </div>

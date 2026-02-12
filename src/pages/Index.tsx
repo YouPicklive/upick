@@ -105,7 +105,7 @@ const Index = () => {
       }
     }
 
-    // Default vibe to 'explore' if none selected
+    // Default vibe to 'explore' if none selected (should already be set by VibeScreen)
     if (!state.vibeInput.selectedVibe) {
       setVibeInput({ selectedVibe: 'explore' });
     }
