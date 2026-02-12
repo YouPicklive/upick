@@ -5,6 +5,7 @@ import { VibeIntent, VibeEnergy, VibeFilter, VibeInput, computeRandomness, Rando
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
 import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSubcategoryModal';
+import { PackPurchaseModal } from './PackPurchaseModal';
 
 interface VibeScreenProps {
   step: 0 | 1 | 2;
@@ -12,6 +13,7 @@ interface VibeScreenProps {
   playerCount: number;
   fortunePack: string;
   isPremium?: boolean;
+  ownedPacks?: string[];
   onStepChange: (step: 0 | 1 | 2) => void;
   onVibeChange: (input: Partial<VibeInput>) => void;
   onPlayerCountChange: (count: number) => void;
@@ -72,6 +74,7 @@ export function VibeScreen({
   playerCount,
   fortunePack,
   isPremium = false,
+  ownedPacks = [],
   onStepChange,
   onVibeChange,
   onPlayerCountChange,
@@ -82,6 +85,7 @@ export function VibeScreen({
   useScrollToTop([step]);
 
   const [showShoppingModal, setShowShoppingModal] = useState(false);
+  const [showPackPurchase, setShowPackPurchase] = useState(false);
 
   const randomness = computeRandomness(vibeInput);
 
@@ -319,23 +323,32 @@ export function VibeScreen({
                 {FORTUNE_PACKS.map((pack) => {
                   const isSelected = fortunePack === pack.id;
                   const isPremiumPack = pack.tier !== 'free';
+                  const isLocked = isPremiumPack && !isPremium && (pack.tier === 'plus' || !ownedPacks.includes(pack.id));
                   return (
                     <button
                       key={pack.id}
-                      onClick={() => onFortunePackChange(pack.id)}
+                      onClick={() => {
+                        if (isLocked) {
+                          setShowPackPurchase(true);
+                          return;
+                        }
+                        onFortunePackChange(pack.id);
+                      }}
                       className={`p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 relative ${
-                        isSelected
+                        isSelected && !isLocked
                           ? 'gradient-warm text-primary-foreground shadow-glow'
+                          : isLocked
+                          ? 'bg-secondary/50 opacity-70'
                           : 'bg-secondary hover:bg-secondary/80'
                       }`}
                     >
                       <span className="text-2xl">{pack.emoji}</span>
                       <span className="font-semibold text-xs">{pack.name}</span>
-                      <span className={`text-[10px] ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {pack.description}
+                      <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        {isLocked && pack.tier === 'pack' ? '$2.99' : isLocked && pack.tier === 'plus' ? 'Plus' : pack.description}
                       </span>
-                      {isPremiumPack && (
-                        <span className={`absolute top-1.5 right-1.5 ${isSelected ? 'text-primary-foreground/60' : 'text-muted-foreground/40'}`}>
+                      {isLocked && (
+                        <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">
                           <Lock className="w-3 h-3" />
                         </span>
                       )}
@@ -364,6 +377,23 @@ export function VibeScreen({
         <ShoppingSubcategoryModal
           onSelect={handleShoppingSubcategorySelect}
           onClose={() => setShowShoppingModal(false)}
+        />
+      )}
+
+      {/* Pack Purchase Modal */}
+      {showPackPurchase && (
+        <PackPurchaseModal
+          ownedPacks={ownedPacks}
+          isPremium={isPremium}
+          onPurchase={(packId) => {
+            onFortunePackChange(packId);
+            setShowPackPurchase(false);
+          }}
+          onUpgradePlus={() => {
+            window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
+            setShowPackPurchase(false);
+          }}
+          onClose={() => setShowPackPurchase(false)}
         />
       )}
     </div>
