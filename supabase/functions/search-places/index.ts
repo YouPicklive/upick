@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const SearchPlacesSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  intent: z.enum(["food", "drinks", "activity", "shopping", "events", "services", "surprise"]).nullable().optional(),
+  energy: z.string().max(50).nullable().optional(),
+  filters: z.array(z.string().max(50)).max(20).nullable().optional(),
+});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,14 +135,17 @@ serve(async (req) => {
   }
 
   try {
-    const { latitude, longitude, intent, energy, filters } = await req.json();
+    const rawBody = await req.json();
+    const parsed = SearchPlacesSchema.safeParse(rawBody);
 
-    if (!latitude || !longitude) {
-      return new Response(JSON.stringify({ error: "Coordinates required" }), {
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid input", details: parsed.error.flatten().fieldErrors }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { latitude, longitude, intent, energy, filters } = parsed.data;
 
     const maxMiles = getMaxRadiusMiles(filters);
 

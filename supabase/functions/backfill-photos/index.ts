@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const BackfillSchema = z.object({
+  business_ids: z.array(z.string().uuid()).max(100).optional(),
+  limit: z.number().int().min(1).max(200).optional().default(50),
+});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,8 +81,17 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Optional: pass specific business IDs, otherwise backfill all missing
-    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const { business_ids, limit = 50 } = body;
+    const rawBody = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const parsed = BackfillSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid input", details: parsed.error.flatten().fieldErrors }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { business_ids, limit } = parsed.data;
 
     let query = supabase
       .from("businesses")
