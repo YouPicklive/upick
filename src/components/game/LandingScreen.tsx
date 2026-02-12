@@ -234,7 +234,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
             </p>
             <div className="grid grid-cols-1 gap-3 mb-8">
               <TestimonialCard quote="Finally stopped arguing about where to eat." author="Sarah K." />
-              <TestimonialCard quote="The wheel decided and honestly? Best night out ever." author="Marcus T." />
+              <TestimonialCard quote="No because why did that spin work perfectly…" author="Marcus T." />
             </div>
             <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
               <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
