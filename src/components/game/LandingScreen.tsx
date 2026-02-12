@@ -76,6 +76,23 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
               <div className="absolute inset-0 rounded-full bg-primary/5 animate-pulse-glow" />
               {/* Wheel SVG */}
               <svg viewBox="0 0 200 200" className="w-full h-full animate-gentle-spin" style={{ animationDuration: '30s' }}>
+                <defs>
+                  <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(40, 75%, 65%)" />
+                    <stop offset="50%" stopColor="hsl(32, 80%, 55%)" />
+                    <stop offset="100%" stopColor="hsl(25, 78%, 48%)" />
+                  </linearGradient>
+                  <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(45, 80%, 72%)" />
+                    <stop offset="100%" stopColor="hsl(35, 75%, 58%)" />
+                  </linearGradient>
+                  <linearGradient id="chopstickGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(35, 70%, 65%)" />
+                    <stop offset="40%" stopColor="hsl(30, 60%, 50%)" />
+                    <stop offset="100%" stopColor="hsl(25, 55%, 38%)" />
+                  </linearGradient>
+                </defs>
+                {/* Wheel segments — warm gold palette */}
                 {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
                   const angle = (i * 45) - 90;
                   const nextAngle = ((i + 1) * 45) - 90;
@@ -86,27 +103,54 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                   const x2 = 100 + 95 * Math.cos(rad2);
                   const y2 = 100 + 95 * Math.sin(rad2);
                   const colors = [
-                    'hsl(18, 76%, 58%)',
-                    'hsl(32, 70%, 54%)',
-                    'hsl(40, 55%, 52%)',
-                    'hsl(152, 55%, 42%)',
-                    'hsl(200, 60%, 50%)',
-                    'hsl(260, 50%, 58%)',
-                    'hsl(340, 55%, 55%)',
-                    'hsl(25, 72%, 52%)',
+                    'hsl(38, 72%, 62%)',
+                    'hsl(28, 68%, 52%)',
+                    'hsl(42, 65%, 68%)',
+                    'hsl(22, 70%, 48%)',
+                    'hsl(35, 75%, 60%)',
+                    'hsl(30, 65%, 50%)',
+                    'hsl(45, 70%, 66%)',
+                    'hsl(20, 72%, 46%)',
                   ];
                   return (
                     <path
                       key={i}
                       d={`M 100 100 L ${x1} ${y1} A 95 95 0 0 1 ${x2} ${y2} Z`}
                       fill={colors[i]}
-                      opacity={0.85}
+                      opacity={0.9}
                     />
                   );
                 })}
-                <circle cx="100" cy="100" r="20" fill="hsl(var(--background))" />
-                <circle cx="100" cy="100" r="18" fill="hsl(var(--card))" stroke="hsl(var(--border))" strokeWidth="1" />
-                <text x="100" y="105" textAnchor="middle" fontSize="16" fill="hsl(var(--foreground))">🥢</text>
+                {/* Gold rim */}
+                <circle cx="100" cy="100" r="95" fill="none" stroke="url(#goldLight)" strokeWidth="2.5" opacity="0.7" />
+                {/* Segment lines */}
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+                  const angle = (i * 45 - 90) * (Math.PI / 180);
+                  return (
+                    <line
+                      key={i}
+                      x1="100"
+                      y1="100"
+                      x2={100 + 95 * Math.cos(angle)}
+                      y2={100 + 95 * Math.sin(angle)}
+                      stroke="hsl(40, 60%, 75%)"
+                      strokeWidth="0.8"
+                      opacity="0.5"
+                    />
+                  );
+                })}
+                {/* Center circle — gold */}
+                <circle cx="100" cy="100" r="26" fill="url(#goldGrad)" />
+                <circle cx="100" cy="100" r="24" fill="hsl(var(--card))" stroke="url(#goldLight)" strokeWidth="1.5" />
+                {/* Crossed chopsticks */}
+                <g transform="translate(100,100)">
+                  {/* Left chopstick */}
+                  <line x1="-7" y1="-16" x2="4" y2="16" stroke="url(#chopstickGrad)" strokeWidth="3" strokeLinecap="round" />
+                  {/* Right chopstick */}
+                  <line x1="7" y1="-16" x2="-4" y2="16" stroke="url(#chopstickGrad)" strokeWidth="3" strokeLinecap="round" />
+                  {/* Small gold dot at crossing */}
+                  <circle cx="0" cy="0" r="2" fill="hsl(40, 75%, 65%)" />
+                </g>
               </svg>
             </div>
           </div>
