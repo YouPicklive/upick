@@ -25,8 +25,6 @@ const INTENTS: { id: VibeIntent; emoji: string; label: string; plusOnly?: boolea
   { id: 'shopping', emoji: '🛍️', label: 'Shopping' },
   { id: 'events', emoji: '🎫', label: 'Events' },
   { id: 'services', emoji: '💆', label: 'Wellness' },
-  { id: 'event-planning', emoji: '🎪', label: 'Event Planning', plusOnly: true },
-  { id: 'corporate', emoji: '🏢', label: 'Corporate', plusOnly: true },
   { id: 'surprise', emoji: '✨', label: 'Surprise Me' },
 ];
 
