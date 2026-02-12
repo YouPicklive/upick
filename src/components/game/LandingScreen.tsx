@@ -140,17 +140,17 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                     />
                   );
                 })}
-                {/* Center circle — gold */}
+                {/* Center circle — gold filled */}
                 <circle cx="100" cy="100" r="26" fill="url(#goldGrad)" />
-                <circle cx="100" cy="100" r="24" fill="hsl(var(--card))" stroke="url(#goldLight)" strokeWidth="1.5" />
+                <circle cx="100" cy="100" r="24" fill="hsl(38, 70%, 58%)" stroke="url(#goldLight)" strokeWidth="1.5" />
                 {/* Crossed chopsticks */}
                 <g transform="translate(100,100)">
                   {/* Left chopstick */}
-                  <line x1="-7" y1="-16" x2="4" y2="16" stroke="url(#chopstickGrad)" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="-7" y1="-16" x2="4" y2="16" stroke="hsl(45, 80%, 78%)" strokeWidth="3" strokeLinecap="round" />
                   {/* Right chopstick */}
-                  <line x1="7" y1="-16" x2="-4" y2="16" stroke="url(#chopstickGrad)" strokeWidth="3" strokeLinecap="round" />
-                  {/* Small gold dot at crossing */}
-                  <circle cx="0" cy="0" r="2" fill="hsl(40, 75%, 65%)" />
+                  <line x1="7" y1="-16" x2="-4" y2="16" stroke="hsl(45, 80%, 78%)" strokeWidth="3" strokeLinecap="round" />
+                  {/* Small bright gold dot at crossing */}
+                  <circle cx="0" cy="0" r="2.5" fill="hsl(45, 85%, 80%)" />
                 </g>
               </svg>
             </div>
