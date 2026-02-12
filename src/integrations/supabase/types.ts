@@ -44,38 +44,6 @@ export type Database = {
         }
         Relationships: []
       }
-      session_votes: {
-        Row: {
-          created_at: string
-          id: string
-          selected_option_id: string
-          session_id: string
-          voter_fingerprint: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          selected_option_id: string
-          session_id: string
-          voter_fingerprint: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          selected_option_id?: string
-          session_id?: string
-          voter_fingerprint?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "session_votes_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "vote_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_entitlements: {
         Row: {
           created_at: string
@@ -124,54 +92,11 @@ export type Database = {
         }
         Relationships: []
       }
-      vote_sessions: {
-        Row: {
-          created_at: string
-          expected_voter_count: number
-          finalize_mode: string
-          host_fingerprint: string
-          id: string
-          location: string | null
-          options_json: Json
-          status: string
-          vibe_filters_json: Json | null
-          winner_option_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          expected_voter_count?: number
-          finalize_mode?: string
-          host_fingerprint: string
-          id?: string
-          location?: string | null
-          options_json: Json
-          status?: string
-          vibe_filters_json?: Json | null
-          winner_option_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          expected_voter_count?: number
-          finalize_mode?: string
-          host_fingerprint?: string
-          id?: string
-          location?: string | null
-          options_json?: Json
-          status?: string
-          vibe_filters_json?: Json | null
-          winner_option_id?: string | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      finalize_vote_session: {
-        Args: { p_caller_fingerprint: string; p_session_id: string }
-        Returns: string
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
