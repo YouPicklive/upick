@@ -108,7 +108,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           {/* Vibe Section */}
           <section className="mb-8">
             <div className="text-center mb-5">
-              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">How are you feeling?</h2>
+              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Whats the move?</h2>
               <p className="text-muted-foreground text-sm mt-1">Pick a vibe. Let fate handle the rest.</p>
             </div>
 
@@ -270,7 +270,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 function TestimonialCard({ quote, author }: {quote: string;author: string;}) {
   return (
     <div className="bg-secondary/60 rounded-2xl px-5 py-4 text-center">
-      <p className="text-sm text-foreground/80 italic mb-2">"{quote}"</p>
+      <p className="text-sm text-foreground/80 italic mb-1">"{quote}"</p>
       <p className="text-xs text-muted-foreground font-medium">— {author}</p>
     </div>);
 
