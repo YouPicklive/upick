@@ -197,26 +197,7 @@ export function VibeScreen({
               </div>
             </div>
 
-            {/* Player count */}
-            <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
-              <h2 className="font-display text-base font-bold mb-3">How many players?</h2>
-              <div className="flex gap-3">
-                {[1, 2, 3, 4].map((count) => (
-                  <button
-                    key={count}
-                    onClick={() => onPlayerCountChange(count)}
-                    className={`flex-1 aspect-square rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all duration-200 ${
-                      playerCount === count
-                        ? 'gradient-warm text-primary-foreground shadow-glow'
-                        : 'bg-secondary hover:bg-secondary/80'
-                    }`}
-                  >
-                    <span className="text-xl">{['🙋', '👫', '👨‍👩‍👧', '👨‍👩‍👧‍👦'][count - 1]}</span>
-                    <span className="font-bold text-xs">{count}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Player count removed — default to solo mode */}
 
             <RandomnessMeter level={randomness} />
           </div>
