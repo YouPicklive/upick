@@ -14,6 +14,10 @@ export interface Spot {
   isOutdoor: boolean;
   smokingFriendly: boolean;
   vibeLevel: 'chill' | 'moderate' | 'active' | 'dancing' | 'lazy'; // energy level of the spot
+  // Location
+  latitude?: number;
+  longitude?: number;
+  distance?: number; // miles from user
 }
 
 // --- Quick Vibe types ---
