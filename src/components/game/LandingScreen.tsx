@@ -62,8 +62,8 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
         <div className="max-w-md mx-auto text-center animate-slide-up">
           {/* Headline */}
           <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-4">
-            Can't decide?{' '}
-            <span className="text-gradient">The chopsticks decide.</span>
+            You set the vibe.{' '}
+            <span className="text-gradient">Let the chopsticks decide.</span>
           </h1>
           <p className="text-muted-foreground text-lg mb-10 max-w-sm mx-auto leading-relaxed">
             Swipe through spots, spin the wheel, and let the universe decide where to go.
