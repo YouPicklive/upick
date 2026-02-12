@@ -104,6 +104,8 @@ export function VibeScreen({
   const handleShoppingSubcategorySelect = (sub: ShoppingSubcategory) => {
     onVibeChange({ intent: 'shopping', shoppingSubcategory: sub });
     setShowShoppingModal(false);
+    // Auto-advance to filters step after subcategory selection
+    onStepChange(1 as 0 | 1 | 2);
   };
 
   const handleFilterToggle = (filter: VibeFilter) => {
