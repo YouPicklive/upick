@@ -167,23 +167,57 @@ serve(async (req) => {
       // Shuffle and take up to 10
       const shuffled = dbSpots.sort(() => Math.random() - 0.5).slice(0, 10);
 
-      const spots = shuffled.map((b: any) => ({
-        id: b.id,
-        name: b.name,
-        category: b.category,
-        description: b.description || "A great spot nearby",
-        priceLevel: mapPriceLevelFromString(b.price_level),
-        rating: b.rating ? Number(b.rating) : 4.0,
-        image: b.photo_url || "",
-        tags: b.tags || [],
-        neighborhood: b.neighborhood || b.city || "Nearby",
-        isOutdoor: b.is_outdoor ?? false,
-        smokingFriendly: b.smoking_friendly ?? false,
-        vibeLevel: mapEnergyToVibeLevel(b.energy),
-        plusOnly: false,
-        latitude: b.latitude,
-        longitude: b.longitude,
-      }));
+      const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+
+      // Auto-fetch photos for businesses missing them (non-blocking best effort)
+      const spots = await Promise.all(
+        shuffled.map(async (b: any) => {
+          let image = b.photo_url || "";
+
+          // If no photo and we have Google API key, try to fetch one
+          if (!image && apiKey) {
+            try {
+              const query = `${b.name} ${b.city || ""}`.trim();
+              const locationBias = b.latitude && b.longitude ? `&locationbias=point:${b.latitude},${b.longitude}` : "";
+              const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=photos${locationBias}&key=${apiKey}`;
+              const findRes = await fetch(findUrl);
+              const findData = await findRes.json();
+
+              if (findData.candidates?.[0]?.photos?.[0]?.photo_reference) {
+                const ref = findData.candidates[0].photos[0].photo_reference;
+                image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${apiKey}`;
+
+                // Persist photo URL back to DB (fire-and-forget with service role)
+                const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+                if (serviceKey) {
+                  const adminClient = createClient(supabaseUrl, serviceKey);
+                  adminClient.from("businesses").update({ photo_url: image }).eq("id", b.id).then(() => {});
+                }
+              }
+            } catch (e) {
+              console.error(`Auto-photo fetch failed for ${b.name}:`, e);
+            }
+          }
+
+          return {
+            id: b.id,
+            name: b.name,
+            category: b.category,
+            description: b.description || "A great spot nearby",
+            priceLevel: mapPriceLevelFromString(b.price_level),
+            rating: b.rating ? Number(b.rating) : 4.0,
+            image,
+            tags: b.tags || [],
+            neighborhood: b.neighborhood || b.city || "Nearby",
+            isOutdoor: b.is_outdoor ?? false,
+            smokingFriendly: b.smoking_friendly ?? false,
+            vibeLevel: mapEnergyToVibeLevel(b.energy),
+            plusOnly: false,
+            latitude: b.latitude,
+            longitude: b.longitude,
+          };
+        })
+      );
 
       return new Response(JSON.stringify({ spots, source: "curated" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
