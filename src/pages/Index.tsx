@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGameState } from '@/hooks/useGameState';
 import { useFreemium } from '@/hooks/useFreemium';
@@ -11,6 +11,7 @@ import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
+import { vibeToInternalMapping } from '@/types/game';
 import { toast } from 'sonner';
 
 const Index = () => {
@@ -31,6 +32,7 @@ const Index = () => {
     setPreferences,
     startGame,
     vote,
+    dislikeSpot,
     resetGame,
   } = useGameState();
 
@@ -41,6 +43,7 @@ const Index = () => {
     maxFreeSpins, 
     spinsRemaining,
     isPremium,
+    ownedPacks,
     upgradeToPremium 
   } = useFreemium();
 
@@ -50,7 +53,6 @@ const Index = () => {
   const [isTrialMode, setIsTrialMode] = useState(false);
   const [findingSpots, setFindingSpots] = useState(false);
  
-  // Initialize geolocation
   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
 
   // Handle checkout success/cancelled query params
@@ -106,21 +108,32 @@ const Index = () => {
       useSpin();
     }
 
-    // Determine coordinates: use real location or Richmond fallback for Shopping
-    const searchCoords = coordinates || (state.vibeInput.intent === 'shopping' ? { latitude: 37.5407, longitude: -77.4360 } : null);
-
-    if (searchCoords) {
-      setFindingSpots(true);
-      try {
-        const realSpots = await searchPlaces(searchCoords, state.vibeInput);
-        setFindingSpots(false);
-        if (realSpots.length >= 4) {
-          startGame(realSpots);
-          return;
-        }
-      } catch {
-        setFindingSpots(false);
+    // Map selected vibe to internal intent/energy for backend compatibility
+    if (state.vibeInput.selectedVibe) {
+      const mapped = vibeToInternalMapping(state.vibeInput.selectedVibe);
+      if (mapped.energy && !state.vibeInput.energy) {
+        setVibeInput({ energy: mapped.energy as any });
       }
+    }
+
+    // Default vibe to 'explore' if none selected
+    if (!state.vibeInput.selectedVibe) {
+      setVibeInput({ selectedVibe: 'explore' });
+    }
+
+    // Determine coordinates: use real location or Richmond fallback
+    const searchCoords = coordinates || { latitude: 37.5407, longitude: -77.4360 };
+
+    setFindingSpots(true);
+    try {
+      const realSpots = await searchPlaces(searchCoords, state.vibeInput);
+      setFindingSpots(false);
+      if (realSpots.length >= 4) {
+        startGame(realSpots);
+        return;
+      }
+    } catch {
+      setFindingSpots(false);
     }
 
     // Fallback to sample spots
@@ -140,12 +153,33 @@ const Index = () => {
     resetGame();
   };
 
+  // "Not For Me" — dislike and immediately re-spin
+  const handleNotForMe = useCallback(async (spotId: string) => {
+    dislikeSpot(spotId);
+    toast.info('Got it — finding something better...', { duration: 2000 });
+    
+    // Re-spin with the same settings
+    const searchCoords = coordinates || { latitude: 37.5407, longitude: -77.4360 };
+    setFindingSpots(true);
+    try {
+      const realSpots = await searchPlaces(searchCoords, state.vibeInput);
+      setFindingSpots(false);
+      if (realSpots.length >= 4) {
+        startGame(realSpots);
+        return;
+      }
+    } catch {
+      setFindingSpots(false);
+    }
+    startGame();
+  }, [coordinates, state.vibeInput, searchPlaces, startGame, dislikeSpot]);
+
   // Finding spots loading state
   if (findingSpots) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-        <p className="text-lg font-medium text-foreground">Finding spots near you...</p>
+        <p className="text-lg font-medium text-foreground">Building your fate…</p>
         <p className="text-sm text-muted-foreground">Searching for the best options</p>
       </div>
     );
@@ -173,7 +207,7 @@ const Index = () => {
     );
   }
 
-  // Quick Vibe flow
+  // Quick Vibe flow: Category → Vibe → Budget
   if (state.mode === 'vibe') {
     return (
       <>
@@ -225,8 +259,12 @@ const Index = () => {
         likedSpots={state.likedSpots}
         fortunePack={state.preferences.fortunePack}
         onPlayAgain={handlePlayAgain}
+        onNotForMe={handleNotForMe}
         isTrialMode={!isAuthenticated}
         userCoordinates={coordinates}
+        isPremium={isPremium}
+        ownedPacks={ownedPacks}
+        onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
       />
     );
   }

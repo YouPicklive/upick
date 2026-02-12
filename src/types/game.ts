@@ -27,11 +27,43 @@ export type VibeFilter = 'cheap' | 'mid' | 'treat' | 'indoor' | 'outdoor' | 'nea
 
 export type ShoppingSubcategory = 'random' | 'decor' | 'clothes' | 'games' | 'books' | 'gifts' | 'vintage' | 'artisan';
 
+// 7 user-facing vibes that map internally to intent/energy
+export type YouPickVibe = 'reset' | 'momentum' | 'golden-hour' | 'explore' | 'soft-social' | 'full-send' | 'free-beautiful';
+
+export interface YouPickVibeInfo {
+  id: YouPickVibe;
+  label: string;
+  subtitle: string;
+  emoji: string;
+  // Internal mapping (hidden from user)
+  mappedIntent: VibeEnergy;
+  mappedEnergy: 'low' | 'medium' | 'high' | 'low-medium';
+}
+
+export const YOUPICK_VIBES: YouPickVibeInfo[] = [
+  { id: 'reset', label: 'Reset', subtitle: 'Ground, breathe, recalibrate.', emoji: '🧘', mappedIntent: 'chill', mappedEnergy: 'low' },
+  { id: 'momentum', label: 'Momentum', subtitle: 'Get moving. Build a spark.', emoji: '⚡', mappedIntent: 'adventure', mappedEnergy: 'medium' },
+  { id: 'golden-hour', label: 'Golden Hour', subtitle: 'Cinematic. Scenic. Aesthetic.', emoji: '🌅', mappedIntent: 'romantic', mappedEnergy: 'low-medium' },
+  { id: 'explore', label: 'Explore', subtitle: 'Unexpected. Curious. Different.', emoji: '🧭', mappedIntent: 'adventure', mappedEnergy: 'medium' },
+  { id: 'soft-social', label: 'Soft Social', subtitle: 'Connection, low pressure.', emoji: '☕', mappedIntent: 'social', mappedEnergy: 'low-medium' },
+  { id: 'full-send', label: 'Full Send', subtitle: 'Bold. Loud. Out tonight.', emoji: '🔥', mappedIntent: 'adventure', mappedEnergy: 'high' },
+  { id: 'free-beautiful', label: 'Free & Beautiful', subtitle: 'Low-cost outdoor magic.', emoji: '🌿', mappedIntent: 'self-care', mappedEnergy: 'low' },
+];
+
+// Map user-facing vibe to internal intent/energy for backend
+export function vibeToInternalMapping(vibe: YouPickVibe | null): { intent: VibeEnergy | null; energy: string | null } {
+  if (!vibe) return { intent: null, energy: null };
+  const info = YOUPICK_VIBES.find(v => v.id === vibe);
+  if (!info) return { intent: null, energy: null };
+  return { intent: info.mappedIntent, energy: info.mappedEnergy === 'low' ? 'chill' : info.mappedEnergy === 'high' ? 'adventure' : 'social' };
+}
+
 export interface VibeInput {
   intent: VibeIntent | null;
   energy: VibeEnergy | null;
   filters: VibeFilter[];
   shoppingSubcategory?: ShoppingSubcategory | null;
+  selectedVibe?: YouPickVibe | null;
 }
 
 export type RandomnessLevel = 'wild' | 'balanced' | 'specific';

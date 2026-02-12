@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { GameState, Spot, SAMPLE_SPOTS, Preferences, VibeInput, VibeIntent, VibeEnergy, VibeFilter, intentToCategories, computeRandomness } from '@/types/game';
+import { GameState, Spot, SAMPLE_SPOTS, Preferences, VibeInput, VibeIntent, VibeEnergy, VibeFilter, intentToCategories, computeRandomness, YouPickVibe } from '@/types/game';
+import { getMicroAdventures } from '@/data/microAdventures';
 
 const initialPreferences: Preferences = {
   location: 'both',
@@ -18,6 +19,7 @@ const initialVibeInput: VibeInput = {
   energy: null,
   filters: [],
   shoppingSubcategory: null,
+  selectedVibe: null,
 };
 
 const initialState: GameState = {
@@ -34,6 +36,9 @@ const initialState: GameState = {
   category: 'all',
   preferences: initialPreferences,
 };
+
+// Session-level dislike tracking (clears on refresh)
+const sessionDislikes = new Set<string>();
 
 export function useGameState() {
   const [state, setState] = useState<GameState>(initialState);
@@ -70,6 +75,8 @@ export function useGameState() {
 
   const filterSpotsByPreferences = useCallback((spots: Spot[], prefs: Preferences): Spot[] => {
     return spots.filter((spot) => {
+      // Exclude session-disliked items
+      if (sessionDislikes.has(spot.id)) return false;
       if (prefs.freeOnly) {
         const isTrulyFree = spot.tags?.includes('Free');
         if (!isTrulyFree) return false;
@@ -96,7 +103,7 @@ export function useGameState() {
 
   // Filter spots using the Quick Vibe input
   const filterSpotsByVibe = useCallback((vibe: VibeInput): Spot[] => {
-    let spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly);
+    let spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly && !sessionDislikes.has(s.id));
     const randomness = computeRandomness(vibe);
 
     // Filter by intent (maps to categories)
@@ -117,7 +124,7 @@ export function useGameState() {
           case 'adventure': return spot.vibeLevel === 'active' || spot.vibeLevel === 'dancing';
           case 'productive': return spot.vibeLevel === 'chill';
           case 'self-care': return spot.vibeLevel === 'chill' || spot.vibeLevel === 'lazy';
-          case 'weird': return true; // everything goes
+          case 'weird': return true;
           default: return true;
         }
       });
@@ -131,7 +138,6 @@ export function useGameState() {
         case 'treat': spots = spots.filter(s => s.priceLevel >= 3); break;
         case 'indoor': spots = spots.filter(s => !s.isOutdoor); break;
         case 'outdoor': spots = spots.filter(s => s.isOutdoor); break;
-        // near-me and any-distance are handled later with geolocation
       }
     }
 
@@ -140,43 +146,87 @@ export function useGameState() {
       if (vibe.intent && vibe.intent !== 'surprise') {
         const categories = intentToCategories(vibe.intent);
         spots = categories.length > 0 
-          ? SAMPLE_SPOTS.filter(s => categories.includes(s.category))
-          : [...SAMPLE_SPOTS];
+          ? SAMPLE_SPOTS.filter(s => categories.includes(s.category) && !sessionDislikes.has(s.id))
+          : [...SAMPLE_SPOTS].filter(s => !sessionDislikes.has(s.id));
       } else {
-        spots = [...SAMPLE_SPOTS];
+        spots = [...SAMPLE_SPOTS].filter(s => !sessionDislikes.has(s.id));
       }
     }
 
     // Add extra randomization for "wild" mode
     if (randomness === 'wild') {
-      spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly);
+      spots = [...SAMPLE_SPOTS].filter(s => !s.plusOnly && !sessionDislikes.has(s.id));
     }
 
     return spots;
+  }, []);
+
+  /**
+   * Blend micro adventures into the pool based on budget
+   */
+  const blendMicroAdventures = useCallback((externalSpots: Spot[], budget: string, category: string, vibe?: YouPickVibe | null): Spot[] => {
+    const isFreeOrBudget = budget === 'budget' || budget === 'any';
+    const isActivities = category === 'all' || category === 'activity';
+    
+    if (!isFreeOrBudget) {
+      // Mid/Splurge: 90% Google, 10% micro (optional)
+      if (externalSpots.length >= 6) return externalSpots;
+      // Only inject if pool is too small
+      const micros = getMicroAdventures(vibe, 2);
+      return [...externalSpots, ...micros].slice(0, 10);
+    }
+    
+    const micros = getMicroAdventures(vibe, isActivities ? 7 : 3);
+    
+    if (isActivities) {
+      // Activities: 70% micro, 30% Google
+      const microCount = Math.max(4, Math.round(10 * 0.7));
+      const googleCount = 10 - microCount;
+      const pool = [
+        ...micros.slice(0, microCount),
+        ...externalSpots.slice(0, googleCount),
+      ];
+      return pool.sort(() => Math.random() - 0.5).slice(0, 10);
+    } else {
+      // Other: 20% micro, 80% Google
+      const microCount = Math.max(1, Math.round(10 * 0.2));
+      const googleCount = 10 - microCount;
+      const pool = [
+        ...micros.slice(0, microCount),
+        ...externalSpots.slice(0, googleCount),
+      ];
+      return pool.sort(() => Math.random() - 0.5).slice(0, 10);
+    }
   }, []);
 
   const startGame = useCallback((externalSpots?: Spot[]) => {
     let filteredSpots: Spot[];
 
     if (externalSpots && externalSpots.length >= 4) {
-      // Use real places from Google Places API
-      filteredSpots = externalSpots;
+      // Filter out session dislikes
+      const cleaned = externalSpots.filter(s => !sessionDislikes.has(s.id));
+      // Blend micro adventures based on budget
+      filteredSpots = blendMicroAdventures(
+        cleaned,
+        state.preferences.budget,
+        state.vibeInput.intent || 'all',
+        state.vibeInput.selectedVibe
+      );
     } else {
-      // Fallback: use sample spots with vibe/preference filtering
       const hasVibeInput = state.vibeInput.intent || state.vibeInput.energy || state.vibeInput.filters.length > 0;
 
       if (hasVibeInput) {
         filteredSpots = filterSpotsByVibe(state.vibeInput);
       } else {
         filteredSpots = state.category === 'all' 
-          ? SAMPLE_SPOTS 
-          : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+          ? SAMPLE_SPOTS.filter(s => !sessionDislikes.has(s.id))
+          : SAMPLE_SPOTS.filter((spot) => spot.category === state.category && !sessionDislikes.has(spot.id));
         filteredSpots = filterSpotsByPreferences(filteredSpots, state.preferences);
         
         if (filteredSpots.length < 4) {
           filteredSpots = state.category === 'all' 
-            ? SAMPLE_SPOTS 
-            : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+            ? SAMPLE_SPOTS.filter(s => !sessionDislikes.has(s.id))
+            : SAMPLE_SPOTS.filter((spot) => spot.category === state.category && !sessionDislikes.has(spot.id));
           filteredSpots = filteredSpots.filter((spot) => {
             if (state.preferences.location === 'indoor' && spot.isOutdoor) return false;
             if (state.preferences.location === 'outdoor' && !spot.isOutdoor) return false;
@@ -185,9 +235,15 @@ export function useGameState() {
         }
         if (filteredSpots.length < 4) {
           filteredSpots = state.category === 'all' 
-            ? SAMPLE_SPOTS 
-            : SAMPLE_SPOTS.filter((spot) => spot.category === state.category);
+            ? SAMPLE_SPOTS.filter(s => !sessionDislikes.has(s.id))
+            : SAMPLE_SPOTS.filter((spot) => spot.category === state.category && !sessionDislikes.has(spot.id));
         }
+      }
+
+      // Ensure minimum 6 items by injecting micro adventures
+      if (filteredSpots.length < 6) {
+        const micros = getMicroAdventures(state.vibeInput.selectedVibe, 6 - filteredSpots.length);
+        filteredSpots = [...filteredSpots, ...micros];
       }
     }
 
@@ -203,7 +259,7 @@ export function useGameState() {
       currentPlayer: 1,
       winner: null,
     }));
-  }, [state.category, state.preferences, state.vibeInput, filterSpotsByPreferences, filterSpotsByVibe]);
+  }, [state.category, state.preferences, state.vibeInput, filterSpotsByPreferences, filterSpotsByVibe, blendMicroAdventures]);
 
   const vote = useCallback((spotId: string, liked: boolean) => {
     setState((prev) => {
@@ -255,6 +311,11 @@ export function useGameState() {
     });
   }, []);
 
+  // Dislike a spot — add to session dislikes, never show again this session
+  const dislikeSpot = useCallback((spotId: string) => {
+    sessionDislikes.add(spotId);
+  }, []);
+
   const resetGame = useCallback(() => {
     setState(initialState);
   }, []);
@@ -276,6 +337,7 @@ export function useGameState() {
     setPreferences,
     startGame,
     vote,
+    dislikeSpot,
     resetGame,
   };
 }

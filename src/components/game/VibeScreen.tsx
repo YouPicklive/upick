@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ArrowLeft, Sparkles, Target, Zap, Lock, Crown } from 'lucide-react';
-import { VibeIntent, VibeEnergy, VibeFilter, VibeInput, computeRandomness, RandomnessLevel } from '@/types/game';
+import { VibeIntent, VibeEnergy, VibeFilter, VibeInput, computeRandomness, RandomnessLevel, YouPickVibe, YOUPICK_VIBES } from '@/types/game';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
 import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSubcategoryModal';
@@ -30,20 +30,10 @@ const INTENTS: { id: VibeIntent; emoji: string; label: string; plusOnly?: boolea
   { id: 'surprise', emoji: '✨', label: 'Surprise Me' },
 ];
 
-const ENERGIES: { id: VibeEnergy; emoji: string; label: string }[] = [
-  { id: 'chill', emoji: '😌', label: 'Chill' },
-  { id: 'social', emoji: '🗣️', label: 'Social' },
-  { id: 'romantic', emoji: '💕', label: 'Romantic' },
-  { id: 'adventure', emoji: '🧗', label: 'Adventure' },
-  { id: 'productive', emoji: '💼', label: 'Productive' },
-  { id: 'self-care', emoji: '🧘', label: 'Self-Care' },
-  { id: 'weird', emoji: '👽', label: 'Weird' },
-];
-
 const FILTERS: { id: VibeFilter; label: string; group: string }[] = [
-  { id: 'cheap', label: '💵 Cheap', group: 'budget' },
+  { id: 'cheap', label: '💵 Budget', group: 'budget' },
   { id: 'mid', label: '💸 Mid', group: 'budget' },
-  { id: 'treat', label: '💎 Treat', group: 'budget' },
+  { id: 'treat', label: '💎 Splurge', group: 'budget' },
   { id: 'indoor', label: '🏠 Indoor', group: 'location' },
   { id: 'outdoor', label: '🌳 Outdoor', group: 'location' },
   { id: 'near-me', label: '📍 Near Me', group: 'distance' },
@@ -89,7 +79,6 @@ export function VibeScreen({
   onStart,
   onBack,
 }: VibeScreenProps) {
-  // Scroll to top on step change
   useScrollToTop([step]);
 
   const [showShoppingModal, setShowShoppingModal] = useState(false);
@@ -98,7 +87,6 @@ export function VibeScreen({
 
   const handleIntentSelect = (intent: VibeIntent) => {
     if (intent === 'shopping') {
-      // If already selected, deselect
       if (vibeInput.intent === 'shopping') {
         onVibeChange({ intent: null, shoppingSubcategory: null });
       } else {
@@ -114,8 +102,8 @@ export function VibeScreen({
     setShowShoppingModal(false);
   };
 
-  const handleEnergySelect = (energy: VibeEnergy) => {
-    onVibeChange({ energy: vibeInput.energy === energy ? null : energy });
+  const handleVibeSelect = (vibe: YouPickVibe) => {
+    onVibeChange({ selectedVibe: vibeInput.selectedVibe === vibe ? null : vibe });
   };
 
   const handleFilterToggle = (filter: VibeFilter) => {
@@ -123,7 +111,6 @@ export function VibeScreen({
     if (current.includes(filter)) {
       onVibeChange({ filters: current.filter(f => f !== filter) });
     } else if (current.length < MAX_FILTERS) {
-      // Remove conflicting filters in same group
       const group = FILTERS.find(f => f.id === filter)?.group;
       const cleaned = group 
         ? current.filter(f => FILTERS.find(fl => fl.id === f)?.group !== group)
@@ -132,10 +119,12 @@ export function VibeScreen({
     }
   };
 
-  const canProceed = step === 0 ? true : step === 1 ? true : true;
-
   const handleNext = () => {
     if (step < 2) {
+      // If going from vibe step (1) and no vibe selected, default to Explore
+      if (step === 1 && !vibeInput.selectedVibe) {
+        onVibeChange({ selectedVibe: 'explore' });
+      }
       onStepChange((step + 1) as 0 | 1 | 2);
     } else {
       onStart();
@@ -174,7 +163,7 @@ export function VibeScreen({
           ))}
         </div>
 
-        {/* Step A: Intent */}
+        {/* Step 0: Category */}
         {step === 0 && (
           <div className="animate-fade-in">
             <div className="mb-6">
@@ -213,36 +202,40 @@ export function VibeScreen({
               </div>
             </div>
 
-            {/* Player count removed — default to solo mode */}
-
             <RandomnessMeter level={randomness} />
           </div>
         )}
 
-        {/* Step B: Energy */}
+        {/* Step 1: Choose Your Vibe (NEW — replaces Intent/Energy) */}
         {step === 1 && (
           <div className="animate-fade-in">
             <div className="mb-6">
-              <h1 className="font-display text-2xl font-bold mb-1">What's the energy?</h1>
-              <p className="text-muted-foreground text-sm">Set the vibe for your picks</p>
+              <h1 className="font-display text-2xl font-bold mb-1">Choose Your Vibe</h1>
+              <p className="text-muted-foreground text-sm">Set the mood for your pick</p>
             </div>
 
             <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
               <div className="grid grid-cols-2 gap-2.5">
-                {ENERGIES.map((item) => {
-                  const isSelected = vibeInput.energy === item.id;
+                {YOUPICK_VIBES.map((vibe) => {
+                  const isSelected = vibeInput.selectedVibe === vibe.id;
+                  const isWide = vibe.id === 'free-beautiful';
                   return (
                     <button
-                      key={item.id}
-                      onClick={() => handleEnergySelect(item.id)}
-                      className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all duration-200 ${
+                      key={vibe.id}
+                      onClick={() => handleVibeSelect(vibe.id)}
+                      className={`p-4 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 ${
                         isSelected
                           ? 'gradient-warm text-primary-foreground shadow-glow'
                           : 'bg-secondary hover:bg-secondary/80'
-                      } ${item.id === 'weird' ? 'col-span-2' : ''}`}
+                      } ${isWide ? 'col-span-2' : ''}`}
                     >
-                      <span className="text-2xl">{item.emoji}</span>
-                      <span className="font-semibold text-sm">{item.label}</span>
+                      <span className="text-2xl">{vibe.emoji}</span>
+                      <span className="font-semibold text-sm">{vibe.label}</span>
+                      <span className={`text-[10px] leading-tight text-center ${
+                        isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                      }`}>
+                        {vibe.subtitle}
+                      </span>
                     </button>
                   );
                 })}
@@ -253,7 +246,7 @@ export function VibeScreen({
           </div>
         )}
 
-        {/* Step C: Filters */}
+        {/* Step 2: Budget & Filters */}
         {step === 2 && (
           <div className="animate-fade-in">
             <div className="mb-6">
@@ -300,9 +293,9 @@ export function VibeScreen({
                     {INTENTS.find(i => i.id === vibeInput.intent)?.emoji} {INTENTS.find(i => i.id === vibeInput.intent)?.label}
                   </span>
                 )}
-                {vibeInput.energy && (
+                {vibeInput.selectedVibe && (
                   <span className="bg-accent/10 text-accent-foreground px-3 py-1.5 rounded-full text-xs font-medium">
-                    {ENERGIES.find(e => e.id === vibeInput.energy)?.emoji} {ENERGIES.find(e => e.id === vibeInput.energy)?.label}
+                    {YOUPICK_VIBES.find(v => v.id === vibeInput.selectedVibe)?.emoji} {YOUPICK_VIBES.find(v => v.id === vibeInput.selectedVibe)?.label}
                   </span>
                 )}
                 {vibeInput.filters.map(f => (
@@ -310,7 +303,7 @@ export function VibeScreen({
                     {FILTERS.find(fl => fl.id === f)?.label}
                   </span>
                 ))}
-                {!vibeInput.intent && !vibeInput.energy && vibeInput.filters.length === 0 && (
+                {!vibeInput.intent && !vibeInput.selectedVibe && vibeInput.filters.length === 0 && (
                   <span className="text-muted-foreground text-xs italic">No selections — full randomness!</span>
                 )}
               </div>
@@ -325,7 +318,7 @@ export function VibeScreen({
               <div className="grid grid-cols-2 gap-2.5">
                 {FORTUNE_PACKS.map((pack) => {
                   const isSelected = fortunePack === pack.id;
-                  const isPremium = pack.tier !== 'free';
+                  const isPremiumPack = pack.tier !== 'free';
                   return (
                     <button
                       key={pack.id}
@@ -341,7 +334,7 @@ export function VibeScreen({
                       <span className={`text-[10px] ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                         {pack.description}
                       </span>
-                      {isPremium && (
+                      {isPremiumPack && (
                         <span className={`absolute top-1.5 right-1.5 ${isSelected ? 'text-primary-foreground/60' : 'text-muted-foreground/40'}`}>
                           <Lock className="w-3 h-3" />
                         </span>

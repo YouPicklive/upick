@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation } from 'lucide-react';
+import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
@@ -14,8 +14,12 @@ interface ResultsScreenProps {
   likedSpots?: Spot[];
   fortunePack?: string;
   onPlayAgain: () => void;
+  onNotForMe?: (spotId: string) => void;
   isTrialMode?: boolean;
   userCoordinates?: Coordinates | null;
+  isPremium?: boolean;
+  ownedPacks?: string[];
+  onFortunePackChange?: (packId: string) => void;
 }
 
 const categoryEmojis: Record<string, string> = {
@@ -27,7 +31,10 @@ const categoryEmojis: Record<string, string> = {
   wellness: '🧘',
 };
 
-export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', onPlayAgain, isTrialMode, userCoordinates }: ResultsScreenProps) {
+export function ResultsScreen({ 
+  winner, likedSpots = [], fortunePack = 'free', onPlayAgain, onNotForMe,
+  isTrialMode, userCoordinates, isPremium = false, ownedPacks = [], onFortunePackChange
+}: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -70,25 +77,31 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
     }
   }, [timeframe]);
 
-  const handleViewDetails = () => {
-    const searchQuery = encodeURIComponent(winner.name);
-    window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
-  };
-
-  const handleOpenWebsite = () => {
-    const searchQuery = encodeURIComponent(winner.name + ' website');
-    window.open(`https://www.google.com/search?q=${searchQuery}&btnI=1`, '_blank');
-  };
-
   const handleOpenMaps = () => {
+    const hasCoords = winner.latitude && winner.longitude;
     const query = encodeURIComponent(winner.name);
     const ua = navigator.userAgent || '';
-    if (/iPad|iPhone|iPod/.test(ua)) {
-      window.open(`maps://maps.apple.com/?q=${query}`, '_blank');
-    } else if (/android/i.test(ua)) {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    
+    if (hasCoords) {
+      // Use coordinates for precise navigation
+      const lat = winner.latitude;
+      const lng = winner.longitude;
+      if (/iPad|iPhone|iPod/.test(ua)) {
+        window.open(`maps://maps.apple.com/?q=${query}&ll=${lat},${lng}`, '_blank');
+      } else if (/android/i.test(ua)) {
+        window.open(`geo:${lat},${lng}?q=${lat},${lng}(${query})`, '_blank');
+      } else {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+      }
     } else {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+      // Fallback to name-based query
+      if (/iPad|iPhone|iPod/.test(ua)) {
+        window.open(`maps://maps.apple.com/?q=${query}`, '_blank');
+      } else if (/android/i.test(ua)) {
+        window.open(`geo:0,0?q=${query}`, '_blank');
+      } else {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+      }
     }
   };
 
@@ -145,6 +158,70 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
             <p className="text-muted-foreground text-sm">Let fate decide</p>
           </div>
           <FortuneWheel items={wheelItems} onSpinComplete={handleSpinComplete} spinning={spinning} />
+
+          {/* Fortune Pack Shelf — under wheel */}
+          {onFortunePackChange && (
+            <div className="mt-6">
+              <div className="text-center mb-3">
+                <h3 className="font-display text-sm font-bold">Fortune Packs</h3>
+                <p className="text-muted-foreground text-[11px]">Pick a deck to guide the spin (optional).</p>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide">
+                {/* Standard Spin option */}
+                <button
+                  onClick={() => onFortunePackChange('free')}
+                  className={`shrink-0 p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 min-w-[72px] ${
+                    fortunePack === 'free'
+                      ? 'gradient-warm text-primary-foreground shadow-glow'
+                      : 'bg-secondary hover:bg-secondary/80'
+                  }`}
+                >
+                  <span className="text-lg">🎲</span>
+                  <span className="font-medium text-[9px] text-center leading-tight">Standard</span>
+                  {fortunePack === 'free' && (
+                    <span className="text-[8px] font-semibold opacity-80">Active</span>
+                  )}
+                </button>
+                {FORTUNE_PACKS.filter(p => p.id !== 'free').map((pack) => {
+                  const isSelected = fortunePack === pack.id;
+                  const isUnlocked = isPremium || ownedPacks.includes(pack.id);
+                  const isLocked = !isUnlocked;
+                  return (
+                    <button
+                      key={pack.id}
+                      onClick={() => {
+                        if (!isLocked) {
+                          onFortunePackChange(pack.id);
+                        }
+                        // If locked, do nothing (could open paywall — but not changing existing flow)
+                      }}
+                      className={`shrink-0 p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 min-w-[72px] relative ${
+                        isLocked
+                          ? 'bg-secondary/50 opacity-60'
+                          : isSelected
+                          ? 'gradient-warm text-primary-foreground shadow-glow'
+                          : 'bg-secondary hover:bg-secondary/80'
+                      }`}
+                    >
+                      {isLocked && (
+                        <div className="absolute -top-1 -right-1 bg-primary rounded-full p-0.5">
+                          <Lock className="w-2.5 h-2.5 text-primary-foreground" />
+                        </div>
+                      )}
+                      <span className="text-lg">{pack.emoji}</span>
+                      <span className="font-medium text-[9px] text-center leading-tight">{pack.name}</span>
+                      {isSelected && (
+                        <span className="text-[8px] font-semibold opacity-80">Active</span>
+                      )}
+                      {isLocked && (
+                        <span className="text-[8px] text-muted-foreground">{pack.tier === 'plus' ? 'Plus' : '$2.99'}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -204,29 +281,47 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
                 <span>{Array.from({ length: winner.priceLevel }).map(() => '$').join('')}</span>
               </div>
 
+              {/* Fortune with pack badge */}
               {fortune && (
                 <div className="bg-secondary/60 rounded-xl p-3 mb-5">
                   <p className="text-sm italic text-muted-foreground leading-relaxed">"{fortune}"</p>
+                  {fortunePack !== 'free' && (
+                    <p className="text-[10px] text-primary font-medium mt-1.5">
+                      Guided by: {packInfo.emoji} {packInfo.name}
+                    </p>
+                  )}
                 </div>
               )}
 
+              {/* 3 Action Buttons */}
               <div className="flex flex-col gap-2.5">
-                <Button variant="hero" size="lg" className="w-full" asChild>
+                <Button variant="hero" size="lg" className="w-full" onClick={handleOpenMaps}>
+                  <Navigation className="w-4 h-4 mr-2" />
+                  Pick This — Open in Maps
+                </Button>
+                <Button variant="default" size="lg" className="w-full" asChild>
                   <a href={`https://www.google.com/search?q=${encodeURIComponent(winner.name)}`} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="w-4 h-4 mr-2" />
                     View Details
                   </a>
                 </Button>
-                <Button variant="default" size="lg" className="w-full" asChild>
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}`} target="_blank" rel="noopener noreferrer">
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Open in Maps
-                  </a>
-                </Button>
-                <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  {isTrialMode ? 'Create Account to Continue' : 'Spin Again'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="lg" className="flex-1" onClick={onPlayAgain}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    {isTrialMode ? 'Create Account' : 'Spin Again'}
+                  </Button>
+                  {onNotForMe && (
+                    <Button 
+                      variant="outline" 
+                      size="lg" 
+                      className="flex-1 text-destructive hover:text-destructive" 
+                      onClick={() => onNotForMe(winner.id)}
+                    >
+                      <ThumbsDown className="w-4 h-4 mr-2" />
+                      Not For Me
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
