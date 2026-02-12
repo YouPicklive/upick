@@ -140,17 +140,27 @@ No overthinking. Just go.
 
 
                 })}
-                {/* Center circle — gold filled */}
+                {/* Center hub — layered modern */}
+                <circle cx="100" cy="100" r="30" fill="hsl(30, 15%, 12%)" opacity="0.5" />
                 <circle cx="100" cy="100" r="26" fill="url(#goldGrad)" />
-                <circle cx="100" cy="100" r="24" fill="hsl(38, 70%, 58%)" stroke="url(#goldLight)" strokeWidth="1.5" />
-                {/* Crossed chopsticks */}
+                <circle cx="100" cy="100" r="24" fill="hsl(25, 10%, 15%)" />
+                <circle cx="100" cy="100" r="22" fill="hsl(20, 8%, 10%)" stroke="url(#goldLight)" strokeWidth="0.5" />
+                {/* Inner subtle ring */}
+                <circle cx="100" cy="100" r="18" fill="none" stroke="hsl(40, 60%, 55%)" strokeWidth="0.3" opacity="0.6" />
+                {/* Crossed chopsticks — crisp layered */}
                 <g transform="translate(100,100)">
-                  {/* Left chopstick */}
-                  <line x1="-7" y1="-16" x2="4" y2="16" stroke="hsl(45, 80%, 78%)" strokeWidth="3" strokeLinecap="round" />
-                  {/* Right chopstick */}
-                  <line x1="7" y1="-16" x2="-4" y2="16" stroke="hsl(45, 80%, 78%)" strokeWidth="3" strokeLinecap="round" />
-                  {/* Small bright gold dot at crossing */}
-                  <circle cx="0" cy="0" r="2.5" fill="hsl(45, 85%, 80%)" />
+                  {/* Shadow layer */}
+                  <line x1="-5.5" y1="-14" x2="5.5" y2="14" stroke="hsl(30, 20%, 8%)" strokeWidth="3.5" strokeLinecap="round" />
+                  <line x1="5.5" y1="-14" x2="-5.5" y2="14" stroke="hsl(30, 20%, 8%)" strokeWidth="3.5" strokeLinecap="round" />
+                  {/* Main chopstick body */}
+                  <line x1="-5.5" y1="-14" x2="5.5" y2="14" stroke="url(#goldLight)" strokeWidth="2.2" strokeLinecap="round" />
+                  <line x1="5.5" y1="-14" x2="-5.5" y2="14" stroke="url(#goldLight)" strokeWidth="2.2" strokeLinecap="round" />
+                  {/* Highlight edge */}
+                  <line x1="-4.5" y1="-13" x2="6.5" y2="13" stroke="hsl(45, 85%, 82%)" strokeWidth="0.6" strokeLinecap="round" opacity="0.7" />
+                  <line x1="6.5" y1="-13" x2="-4.5" y2="13" stroke="hsl(45, 85%, 82%)" strokeWidth="0.6" strokeLinecap="round" opacity="0.7" />
+                  {/* Center crossing dot */}
+                  <circle cx="0" cy="0" r="2" fill="hsl(40, 70%, 65%)" />
+                  <circle cx="0" cy="0" r="1" fill="hsl(45, 85%, 82%)" />
                 </g>
               </svg>
             </div>
