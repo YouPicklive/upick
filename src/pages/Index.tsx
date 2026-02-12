@@ -106,11 +106,13 @@ const Index = () => {
       useSpin();
     }
 
-    // Try to fetch real places if we have coordinates
-    if (coordinates) {
+    // Determine coordinates: use real location or Richmond fallback for Shopping
+    const searchCoords = coordinates || (state.vibeInput.intent === 'shopping' ? { latitude: 37.5407, longitude: -77.4360 } : null);
+
+    if (searchCoords) {
       setFindingSpots(true);
       try {
-        const realSpots = await searchPlaces(coordinates, state.vibeInput);
+        const realSpots = await searchPlaces(searchCoords, state.vibeInput);
         setFindingSpots(false);
         if (realSpots.length >= 4) {
           startGame(realSpots);

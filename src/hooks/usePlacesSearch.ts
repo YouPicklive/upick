@@ -12,9 +12,9 @@ interface UsePlacesSearchReturn {
 // Session-level cache to avoid redundant API calls
 const cache = new Map<string, Spot[]>();
 
-function cacheKey(lat: number, lng: number, intent: string | null): string {
+function cacheKey(lat: number, lng: number, intent: string | null, shoppingSub?: string | null): string {
   // Round coords to ~100m precision for caching
-  return `${lat.toFixed(3)}_${lng.toFixed(3)}_${intent || 'surprise'}`;
+  return `${lat.toFixed(3)}_${lng.toFixed(3)}_${intent || 'surprise'}_${shoppingSub || ''}`;
 }
 
 export function usePlacesSearch(): UsePlacesSearchReturn {
@@ -23,7 +23,7 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
 
   const searchPlaces = useCallback(
     async (coords: { latitude: number; longitude: number }, vibe: VibeInput): Promise<Spot[]> => {
-      const key = cacheKey(coords.latitude, coords.longitude, vibe.intent);
+      const key = cacheKey(coords.latitude, coords.longitude, vibe.intent, vibe.shoppingSubcategory);
 
       // Return cached results if available
       if (cache.has(key)) {
@@ -41,6 +41,7 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
             intent: vibe.intent,
             energy: vibe.energy,
             filters: vibe.filters,
+            shoppingSubcategory: vibe.shoppingSubcategory || null,
           },
         });
 
