@@ -29,8 +29,8 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           </div>
           <span className="font-display font-bold text-lg tracking-tight">You Pick</span>
         </div>
-        {loading ? null : isAuthenticated ? (
-          <div className="flex items-center gap-2">
+        {loading ? null : isAuthenticated ?
+        <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full">
               <User className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground truncate max-w-[100px]">
@@ -38,23 +38,23 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
               </span>
             </div>
             <button
-              onClick={handleSignOut}
-              className="p-2 rounded-full hover:bg-secondary transition-colors"
-              title="Sign out"
-            >
+            onClick={handleSignOut}
+            className="p-2 rounded-full hover:bg-secondary transition-colors"
+            title="Sign out">
+
               <LogOut className="w-4 h-4 text-muted-foreground" />
             </button>
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/auth')}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          </div> :
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/auth')}
+          className="text-muted-foreground hover:text-foreground">
+
             Sign In
           </Button>
-        )}
+        }
       </header>
 
       {/* Hero Section */}
@@ -64,10 +64,10 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-4">
             YOU SET THE VIBE
             <br />
-            <span className="text-gradient font-calligraphy font-normal text-4xl md:text-5xl">Let the chopsticks decide</span>
+            <span className="text-gradient font-calligraphy font-normal text-4xl md:text-5xl"> The chopsticks decide </span>
           </h1>
-          <p className="text-muted-foreground text-lg mb-10 max-w-sm mx-auto leading-relaxed">
-            Swipe through spots, spin the wheel, and let the universe decide where to go.
+          <p className="text-muted-foreground text-lg mb-10 max-w-sm mx-auto leading-relaxed">Alignment Though Movement
+No overthinking. Just go.
           </p>
 
           {/* Wheel Visual */}
@@ -95,8 +95,8 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                 </defs>
                 {/* Wheel segments — warm gold palette */}
                 {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-                  const angle = (i * 45) - 90;
-                  const nextAngle = ((i + 1) * 45) - 90;
+                  const angle = i * 45 - 90;
+                  const nextAngle = (i + 1) * 45 - 90;
                   const rad1 = angle * (Math.PI / 180);
                   const rad2 = nextAngle * (Math.PI / 180);
                   const x1 = 100 + 95 * Math.cos(rad1);
@@ -104,23 +104,23 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                   const x2 = 100 + 95 * Math.cos(rad2);
                   const y2 = 100 + 95 * Math.sin(rad2);
                   const colors = [
-                    'hsl(38, 72%, 62%)',
-                    'hsl(28, 68%, 52%)',
-                    'hsl(42, 65%, 68%)',
-                    'hsl(22, 70%, 48%)',
-                    'hsl(35, 75%, 60%)',
-                    'hsl(30, 65%, 50%)',
-                    'hsl(45, 70%, 66%)',
-                    'hsl(20, 72%, 46%)',
-                  ];
+                  'hsl(38, 72%, 62%)',
+                  'hsl(28, 68%, 52%)',
+                  'hsl(42, 65%, 68%)',
+                  'hsl(22, 70%, 48%)',
+                  'hsl(35, 75%, 60%)',
+                  'hsl(30, 65%, 50%)',
+                  'hsl(45, 70%, 66%)',
+                  'hsl(20, 72%, 46%)'];
+
                   return (
                     <path
                       key={i}
                       d={`M 100 100 L ${x1} ${y1} A 95 95 0 0 1 ${x2} ${y2} Z`}
                       fill={colors[i]}
-                      opacity={0.9}
-                    />
-                  );
+                      opacity={0.9} />);
+
+
                 })}
                 {/* Gold rim */}
                 <circle cx="100" cy="100" r="95" fill="none" stroke="url(#goldLight)" strokeWidth="2.5" opacity="0.7" />
@@ -136,9 +136,9 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                       y2={100 + 95 * Math.sin(angle)}
                       stroke="hsl(40, 60%, 75%)"
                       strokeWidth="0.8"
-                      opacity="0.5"
-                    />
-                  );
+                      opacity="0.5" />);
+
+
                 })}
                 {/* Center circle — gold filled */}
                 <circle cx="100" cy="100" r="26" fill="url(#goldGrad)" />
@@ -157,31 +157,31 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           </div>
 
           {/* Status Badge */}
-          {isTrialMode && (
-            <div className="mb-6 inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
+          {isTrialMode &&
+          <div className="mb-6 inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium">1 free spin — no account needed</span>
             </div>
-          )}
+          }
 
-          {!isTrialMode && !isPremium && spinsRemaining !== undefined && (
-            <div className="mb-6 inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
+          {!isTrialMode && !isPremium && spinsRemaining !== undefined &&
+          <div className="mb-6 inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
               <span className="text-sm font-medium">
-                {spinsRemaining > 0 ? (
-                  <>{spinsRemaining} spin{spinsRemaining !== 1 ? 's' : ''} remaining today</>
-                ) : (
-                  <span className="text-destructive">No spins left — resets tomorrow</span>
-                )}
+                {spinsRemaining > 0 ?
+              <>{spinsRemaining} spin{spinsRemaining !== 1 ? 's' : ''} remaining today</> :
+
+              <span className="text-destructive">No spins left — resets tomorrow</span>
+              }
               </span>
             </div>
-          )}
+          }
 
-          {isPremium && (
-            <div className="mb-6 inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
+          {isPremium &&
+          <div className="mb-6 inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
               <Star className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold text-primary">Plus — Unlimited Spins</span>
             </div>
-          )}
+          }
 
           {/* CTAs */}
           <div className="flex flex-col gap-3 w-full">
@@ -211,12 +211,12 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           <div className="grid grid-cols-1 gap-3 mb-8">
             <TestimonialCard
               quote="Finally stopped arguing about where to eat."
-              author="Sarah K."
-            />
+              author="Sarah K." />
+
             <TestimonialCard
               quote="The wheel decided and honestly? Best night out ever."
-              author="Marcus T."
-            />
+              author="Marcus T." />
+
           </div>
 
           {/* Footer links */}
@@ -229,15 +229,15 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>);
+
 }
 
-function TestimonialCard({ quote, author }: { quote: string; author: string }) {
+function TestimonialCard({ quote, author }: {quote: string;author: string;}) {
   return (
     <div className="bg-secondary/60 rounded-2xl px-5 py-4 text-center">
       <p className="text-sm text-foreground/80 italic mb-1">"{quote}"</p>
       <p className="text-xs text-muted-foreground font-medium">— {author}</p>
-    </div>
-  );
+    </div>);
+
 }
