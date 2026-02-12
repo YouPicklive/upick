@@ -5,13 +5,11 @@ import { useFreemium } from '@/hooks/useFreemium';
 import { useAuth } from '@/hooks/useAuth';
 import { useTrialSpin } from '@/hooks/useTrialSpin';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { useVoteSession } from '@/hooks/useVoteSession';
 import { usePlacesSearch } from '@/hooks/usePlacesSearch';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
-import { HostLobbyScreen } from '@/components/game/HostLobbyScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
 import { toast } from 'sonner';
 
@@ -46,14 +44,10 @@ const Index = () => {
     upgradeToPremium 
   } = useFreemium();
 
-  const voteSession = useVoteSession();
   const { searchPlaces, isLoading: placesLoading } = usePlacesSearch();
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
-  const [groupSessionId, setGroupSessionId] = useState<string | null>(null);
-  const [finalizing, setFinalizing] = useState(false);
-  const [groupWinner, setGroupWinner] = useState<typeof state.winner>(null);
   const [findingSpots, setFindingSpots] = useState(false);
  
   // Initialize geolocation
@@ -79,46 +73,6 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Start polling when in group lobby
-  useEffect(() => {
-    if (state.mode === 'group-lobby' && groupSessionId) {
-      voteSession.startPolling(groupSessionId);
-      return () => voteSession.stopPolling();
-    }
-  }, [state.mode, groupSessionId]);
-
-  // After startGame sets mode to 'playing', intercept for group mode
-  useEffect(() => {
-    if (state.mode === 'playing' && state.playerCount >= 2 && !groupSessionId) {
-      const createSession = async () => {
-        const sessionId = await voteSession.createSession(
-          state.spots,
-          state.playerCount,
-          state.vibeInput,
-          undefined
-        );
-        if (sessionId) {
-          setGroupSessionId(sessionId);
-          setMode('group-lobby');
-          // Auto-open native share sheet
-          const voteUrl = `${window.location.origin}/vote/${sessionId}`;
-          if (navigator.share) {
-            try {
-              await navigator.share({
-                title: 'Join my Spin Sesh!',
-                text: 'Help us decide — tap to vote!',
-                url: voteUrl,
-              });
-            } catch {
-              // User cancelled share — that's fine
-            }
-          }
-        }
-      };
-      createSession();
-    }
-  }, [state.mode, state.playerCount, groupSessionId, state.spots]);
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -133,7 +87,7 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  const fetchAndStart = async (playerCount: number) => {
+  const handleSoloStart = async () => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
@@ -148,7 +102,7 @@ const Index = () => {
       useSpin();
     }
 
-    setPlayerCount(playerCount);
+    setPlayerCount(1);
 
     // Try to fetch real places if we have coordinates
     if (coordinates) {
@@ -169,30 +123,6 @@ const Index = () => {
     startGame();
   };
 
-  const handleSoloStart = () => fetchAndStart(1);
-  const handleSeshStart = () => fetchAndStart(4);
-
-  const handleFinalize = async () => {
-    if (!groupSessionId) return;
-    setFinalizing(true);
-    const winner = await voteSession.finalize(groupSessionId);
-    setFinalizing(false);
-    if (winner) {
-      // Manually set the winner and go to results
-      // We need to update game state with the winner
-      // Use a workaround: reset to results mode with the winner
-      resetGame();
-      // Re-start with the winner directly
-      setMode('results');
-      // We'll pass the winner through a ref-like state
-      setGroupWinner(winner);
-      setGroupSessionId(null);
-    } else {
-      toast.error('No votes to finalize');
-    }
-  };
-
-
   const handleUpgrade = () => {
     window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
     setShowSpinLimit(false);
@@ -203,8 +133,6 @@ const Index = () => {
       navigate('/auth');
       return;
     }
-    setGroupSessionId(null);
-    setGroupWinner(null);
     resetGame();
   };
 
@@ -225,7 +153,6 @@ const Index = () => {
       <>
         <LandingScreen 
           onSoloStart={handleSoloStart}
-          onSeshStart={handleSeshStart}
           spinsRemaining={isAuthenticated ? spinsRemaining : (canUseTrial ? 1 : 0)}
           isPremium={isPremium}
           isTrialMode={!isAuthenticated && canUseTrial}
@@ -271,21 +198,8 @@ const Index = () => {
     );
   }
 
-  // Group Lobby
-  if (state.mode === 'group-lobby' && groupSessionId) {
-    return (
-      <HostLobbyScreen
-        sessionId={groupSessionId}
-        expectedVoters={state.playerCount}
-        currentVoters={voteSession.totalVoters}
-        onFinalize={handleFinalize}
-        finalizing={finalizing}
-      />
-    );
-  }
-
-  // Playing (solo only now)
-  if (state.mode === 'playing' && currentSpot && state.playerCount === 1) {
+  // Playing
+  if (state.mode === 'playing' && currentSpot) {
     return (
       <PlayingScreen
         spot={currentSpot}
@@ -299,7 +213,7 @@ const Index = () => {
 
   // Results
   if (state.mode === 'results') {
-    const winner = groupWinner || state.winner;
+    const winner = state.winner;
     if (!winner) return null;
     return (
       <ResultsScreen 
