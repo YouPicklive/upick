@@ -88,23 +88,68 @@ interface ShoppingSearchConfig {
 function shoppingSubcategoryConfig(sub: string | null | undefined): ShoppingSearchConfig {
   switch (sub) {
     case "decor":
-      return { types: ["home_goods_store", "furniture_store"], textQueries: ["home decor", "lighting store"] };
+      return { types: ["home_goods_store", "furniture_store"], textQueries: ["home decor store", "interior design store", "lighting store"] };
     case "clothes":
-      return { types: ["clothing_store"], textQueries: ["boutique clothing"] };
+      return { types: ["clothing_store", "shoe_store"], textQueries: ["boutique clothing", "fashion store"] };
     case "games":
-      return { types: [], textQueries: ["board game store", "game store", "comic shop"] };
+      return { types: [], textQueries: ["board game store", "game store", "comic shop", "hobby shop"] };
     case "books":
-      return { types: ["book_store"], textQueries: ["bookstore"] };
+      return { types: ["book_store"], textQueries: ["bookstore", "used books"] };
     case "gifts":
-      return { types: [], textQueries: ["gift shop", "novelty shop"] };
+      return { types: [], textQueries: ["gift shop", "novelty shop", "souvenir shop"] };
     case "vintage":
-      return { types: [], textQueries: ["vintage store", "thrift store", "consignment"] };
+      return { types: [], textQueries: ["vintage store", "thrift store", "consignment shop", "antique store"] };
     case "artisan":
       return { types: [], textQueries: ["local artisan shop", "gallery shop", "makers market", "craft store"] };
     case "random":
     default:
-      return { types: ["store", "shopping_mall", "department_store"], textQueries: ["boutique", "shop"] };
+      return { types: ["shopping_mall", "department_store", "clothing_store"], textQueries: ["boutique", "shop"] };
   }
+}
+
+// Subcategory-specific ALLOWED Google Place types — results must match at least one
+const SHOPPING_ALLOWED_TYPES: Record<string, Set<string>> = {
+  decor: new Set(["home_goods_store", "furniture_store", "home_improvement_store", "art_gallery", "lighting_store", "store"]),
+  clothes: new Set(["clothing_store", "shoe_store", "jewelry_store", "store"]),
+  games: new Set(["store", "book_store"]),
+  books: new Set(["book_store", "library", "store"]),
+  gifts: new Set(["store", "jewelry_store"]),
+  vintage: new Set(["store", "clothing_store", "furniture_store", "home_goods_store"]),
+  artisan: new Set(["store", "art_gallery", "jewelry_store"]),
+};
+
+// Universal exclusion types for ALL shopping subcategories
+const SHOPPING_EXCLUDE_TYPES = new Set([
+  "pharmacy", "drugstore", "health", "hospital", "doctor", "dentist",
+  "veterinary_care", "insurance_agency", "lawyer", "accounting",
+  "plumber", "electrician", "roofing_contractor", "general_contractor",
+  "locksmith", "moving_company", "storage", "car_repair", "car_wash",
+  "gas_station", "convenience_store", "atm", "bank", "post_office",
+  "local_government_office", "courthouse", "fire_station", "police",
+  "funeral_home", "laundry", "dry_cleaning", "car_dealer", "car_rental",
+  "real_estate_agency", "travel_agency", "lodging",
+]);
+
+// Universal exclusion keywords for shopping results
+const SHOPPING_EXCLUDE_KEYWORDS = [
+  "pharmacy", "cvs", "walgreens", "rite aid", "plumbing", "hvac",
+  "contractor", "roofing", "electric", "landscaping", "pest control",
+  "auto repair", "car wash", "insurance", "attorney", "dental",
+  "medical", "clinic", "urgent care", "chiropractic", "storage unit",
+  "dry cleaner", "laundromat", "tax service", "notary",
+];
+
+function isValidShoppingResult(place: any, subcategory: string): boolean {
+  const types: string[] = place.types || [];
+  // Reject if any excluded type matches
+  if (types.some((t: string) => SHOPPING_EXCLUDE_TYPES.has(t))) return false;
+  // Reject by keyword
+  const text = `${place.name || ""}`.toLowerCase();
+  if (SHOPPING_EXCLUDE_KEYWORDS.some(kw => text.includes(kw))) return false;
+  // For specific subcategories (not random), require at least one allowed type
+  const allowed = SHOPPING_ALLOWED_TYPES[subcategory];
+  if (allowed && !types.some((t: string) => allowed.has(t))) return false;
+  return true;
 }
 
 function mapPriceLevel(priceLevel?: number): 1 | 2 | 3 | 4 {
@@ -328,17 +373,17 @@ serve(async (req) => {
       const seenPlaceIds = new Set<string>();
       let allResults: any[] = [];
 
+      const subKey = shoppingSubcategory || "random";
+
       for (const radiusM of radiusSteps) {
         // Try type-based search first
         for (const type of config.types) {
           if (allResults.length >= 10) break;
           const results = await googleNearbySearch(apiKey, latitude, longitude, radiusM, type);
           for (const r of results) {
-            if (!seenPlaceIds.has(r.place_id)) {
+            if (!seenPlaceIds.has(r.place_id) && isValidShoppingResult(r, subKey) && matchesPriceFilter(r.price_level, filters)) {
               seenPlaceIds.add(r.place_id);
-              if (matchesPriceFilter(r.price_level, filters)) {
-                allResults.push(r);
-              }
+              allResults.push(r);
             }
           }
         }
@@ -349,24 +394,23 @@ serve(async (req) => {
             if (allResults.length >= 10) break;
             const results = await googleTextSearch(apiKey, query, latitude, longitude, radiusM);
             for (const r of results) {
-              if (!seenPlaceIds.has(r.place_id)) {
+              if (!seenPlaceIds.has(r.place_id) && isValidShoppingResult(r, subKey) && matchesPriceFilter(r.price_level, filters)) {
                 seenPlaceIds.add(r.place_id);
-                if (matchesPriceFilter(r.price_level, filters)) {
-                  allResults.push(r);
-                }
+                allResults.push(r);
               }
             }
           }
         }
 
-        if (allResults.length >= 4) break; // enough results
+        if (allResults.length >= 4) break;
       }
 
-      // Fallback: if still 0, try broad "shop" query
+      // Fallback: if still 0, try broad text query with subcategory name
       if (allResults.length === 0) {
-        const broadResults = await googleTextSearch(apiKey, "shop", latitude, longitude, 15000);
+        const fallbackQuery = subKey === "random" ? "shop" : `${subKey} store`;
+        const broadResults = await googleTextSearch(apiKey, fallbackQuery, latitude, longitude, 15000);
         for (const r of broadResults) {
-          if (!seenPlaceIds.has(r.place_id)) {
+          if (!seenPlaceIds.has(r.place_id) && isValidShoppingResult(r, subKey)) {
             seenPlaceIds.add(r.place_id);
             allResults.push(r);
           }
