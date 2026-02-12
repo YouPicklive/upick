@@ -75,30 +75,16 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
-  const allowTrialAccess = canUseTrial || isTrialMode;
-  
-  if (!isAuthenticated && !allowTrialAccess) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  const handleSoloStart = () => {
+  const handleSoloStart = useCallback(() => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
     }
     setPlayerCount(1);
     setMode('vibe');
-  };
+  }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode]);
 
-  const handleVibeComplete = async () => {
+  const handleVibeComplete = useCallback(async () => {
     if (isAuthenticated && !canSpin) {
       setShowSpinLimit(true);
       return;
@@ -138,20 +124,20 @@ const Index = () => {
 
     // Fallback to sample spots
     startGame();
-  };
+  }, [isAuthenticated, canSpin, useSpin, state.vibeInput, coordinates, searchPlaces, startGame, setVibeInput]);
 
-  const handleUpgrade = () => {
+  const handleUpgrade = useCallback(() => {
     window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
     setShowSpinLimit(false);
-  };
+  }, []);
 
-  const handlePlayAgain = () => {
+  const handlePlayAgain = useCallback(() => {
     if (!isAuthenticated) {
       navigate('/auth');
       return;
     }
     resetGame();
-  };
+  }, [isAuthenticated, navigate, resetGame]);
 
   // "Not For Me" — dislike and immediately re-spin
   const handleNotForMe = useCallback(async (spotId: string) => {
@@ -173,6 +159,22 @@ const Index = () => {
     }
     startGame();
   }, [coordinates, state.vibeInput, searchPlaces, startGame, dislikeSpot]);
+
+  // --- All hooks above, conditional returns below ---
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  const allowTrialAccess = canUseTrial || isTrialMode;
+  
+  if (!isAuthenticated && !allowTrialAccess) {
+    return <Navigate to="/auth" replace />;
+  }
 
   // Finding spots loading state
   if (findingSpots) {
