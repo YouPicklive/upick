@@ -64,7 +64,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-4">
             YOU SET THE VIBE
             <br />
-            <span className="text-gradient font-calligraphy font-normal text-4xl md:text-5xl"> The chopsticks decide </span>
+            <span className="text-gradient font-display font-light text-4xl md:text-5xl tracking-tight italic">The chopsticks decide</span>
           </h1>
           <p className="text-muted-foreground text-lg mb-10 max-w-sm mx-auto leading-relaxed">Alignment Though Movement
 No overthinking. Just go.
