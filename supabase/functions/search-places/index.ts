@@ -19,7 +19,7 @@ function intentToDBCategories(intent: string | null): string[] {
     case "shopping":
       return ["shopping", "retail", "boutique", "thrift", "market", "vintage", "mall"];
     case "events":
-      return ["event", "concert", "festival", "live-music", "art-show", "pop-up"];
+      return ["event", "concert", "festival", "live-music", "art-show", "pop-up", "nightlife"];
     case "services":
       return ["wellness", "spa", "yoga", "fitness", "gym", "meditation", "massage"];
     case "surprise":
