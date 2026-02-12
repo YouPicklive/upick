@@ -9,14 +9,14 @@ import appIcon from '@/assets/app-icon.png';
 import wheelCenterIcon from '@/assets/wheel-center-icon.png';
 
 const VIBES = [
-  { id: 'reset', name: 'Reset', subtitle: 'Ground, breathe, recalibrate.', icon: '🌿' },
-  { id: 'momentum', name: 'Momentum', subtitle: 'Get moving. Build a spark.', icon: '⚡' },
-  { id: 'golden_hour', name: 'Golden Hour', subtitle: 'Cinematic. Scenic. Aesthetic.', icon: '🌅' },
-  { id: 'explore', name: 'Explore', subtitle: 'Unexpected. Curious. Different.', icon: '🧭' },
-  { id: 'soft_social', name: 'Soft Social', subtitle: 'Connection, low pressure.', icon: '☕' },
-  { id: 'full_send', name: 'Full Send', subtitle: 'Bold. Loud. Out tonight.', icon: '🔥' },
-  { id: 'free_beautiful', name: 'Free & Beautiful', subtitle: 'Low-cost outdoor magic.', icon: '🌸' },
-] as const;
+{ id: 'reset', name: 'Reset', subtitle: 'Ground, breathe, recalibrate.', icon: '🌿' },
+{ id: 'momentum', name: 'Momentum', subtitle: 'Get moving. Build a spark.', icon: '⚡' },
+{ id: 'golden_hour', name: 'Golden Hour', subtitle: 'Cinematic. Scenic. Aesthetic.', icon: '🌅' },
+{ id: 'explore', name: 'Explore', subtitle: 'Unexpected. Curious. Different.', icon: '🧭' },
+{ id: 'soft_social', name: 'Soft Social', subtitle: 'Connection, low pressure.', icon: '☕' },
+{ id: 'full_send', name: 'Full Send', subtitle: 'Bold. Loud. Out tonight.', icon: '🔥' },
+{ id: 'free_beautiful', name: 'Free & Beautiful', subtitle: 'Low-cost outdoor magic.', icon: '🌸' }] as
+const;
 
 interface LandingScreenProps {
   onSoloStart: (selectedVibe?: string) => void;
@@ -41,7 +41,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
   };
 
   const handleVibeSelect = (vibeId: string) => {
-    setSelectedVibe(prev => prev === vibeId ? null : vibeId);
+    setSelectedVibe((prev) => prev === vibeId ? null : vibeId);
     // Smooth scroll to spin button
     setTimeout(() => {
       spinButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -52,9 +52,9 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
     onSoloStart(selectedVibe || undefined);
   };
 
-  const spinLabel = selectedVibe
-    ? `Spin With ${VIBES.find(v => v.id === selectedVibe)?.name}`
-    : 'Spin (Explore)';
+  const spinLabel = selectedVibe ?
+  `Spin With ${VIBES.find((v) => v.id === selectedVibe)?.name}` :
+  'Spin (Explore)';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -120,23 +120,23 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                     key={vibe.id}
                     onClick={() => handleVibeSelect(vibe.id)}
                     className={`relative p-4 rounded-2xl text-left transition-all duration-200 border ${
-                      isSelected
-                        ? 'border-primary bg-primary/8 shadow-md scale-[1.02]'
-                        : 'border-border/50 bg-card hover:border-border hover:shadow-sm'
-                    }`}
-                  >
+                    isSelected ?
+                    'border-primary bg-primary/8 shadow-md scale-[1.02]' :
+                    'border-border/50 bg-card hover:border-border hover:shadow-sm'}`
+                    }>
+
                     <span className="text-xl mb-1.5 block">{vibe.icon}</span>
                     <span className="font-semibold text-sm text-foreground block">{vibe.name}</span>
                     <span className="text-[11px] text-muted-foreground leading-tight block mt-0.5">{vibe.subtitle}</span>
-                    {isSelected && (
-                      <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                    {isSelected &&
+                    <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                         <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
                           <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground" />
                         </svg>
                       </div>
-                    )}
-                  </button>
-                );
+                    }
+                  </button>);
+
               })}
             </div>
           </section>
@@ -145,28 +145,28 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           <div ref={spinButtonRef} className="mb-8">
             {/* Status Badge */}
             <div className="flex justify-center mb-4">
-              {isTrialMode && (
-                <div className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
+              {isTrialMode &&
+              <div className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
                   <Sparkles className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium">1 free spin — no account needed</span>
                 </div>
-              )}
-              {!isTrialMode && !isPremium && spinsRemaining !== undefined && (
-                <div className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
+              }
+              {!isTrialMode && !isPremium && spinsRemaining !== undefined &&
+              <div className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
                   <span className="text-sm font-medium">
-                    {spinsRemaining > 0
-                      ? <>{spinsRemaining} spin{spinsRemaining !== 1 ? 's' : ''} remaining today</>
-                      : <span className="text-destructive">No spins left — resets tomorrow</span>
-                    }
+                    {spinsRemaining > 0 ?
+                  <>{spinsRemaining} spin{spinsRemaining !== 1 ? 's' : ''} remaining today</> :
+                  <span className="text-destructive">No spins left — resets tomorrow</span>
+                  }
                   </span>
                 </div>
-              )}
-              {isPremium && (
-                <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
+              }
+              {isPremium &&
+              <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
                   <Star className="w-4 h-4 text-primary" />
                   <span className="text-sm font-semibold text-primary">Plus — Unlimited Spins</span>
                 </div>
-              )}
+              }
             </div>
 
             <Button variant="hero" size="xl" onClick={handleSpin} className="group w-full">
@@ -200,28 +200,28 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                         onFortunePackChange?.(pack.id);
                       }}
                       className={`flex-shrink-0 snap-start p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 relative min-w-[80px] ${
-                        isSelected && !isLocked
-                          ? 'gradient-warm text-primary-foreground shadow-glow'
-                          : isLocked
-                          ? 'bg-secondary/50 opacity-70'
-                          : 'bg-secondary hover:bg-secondary/80'
-                      }`}
-                    >
+                      isSelected && !isLocked ?
+                      'gradient-warm text-primary-foreground shadow-glow' :
+                      isLocked ?
+                      'bg-secondary/50 opacity-70' :
+                      'bg-secondary hover:bg-secondary/80'}`
+                      }>
+
                       <span className="text-2xl">{pack.emoji}</span>
                       <span className="font-semibold text-xs">{pack.name}</span>
                       <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                         {isLocked && pack.tier === 'pack' ? '$2.99' : isLocked && pack.tier === 'plus' ? 'Plus' : pack.description}
                       </span>
-                      {isLocked && (
-                        <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">
+                      {isLocked &&
+                      <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">
                           <Lock className="w-3 h-3" />
                         </span>
-                      )}
-                      {isSelected && !isLocked && (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-primary-foreground/80">Active</span>
-                      )}
-                    </button>
-                  );
+                      }
+                      {isSelected && !isLocked &&
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-primary-foreground/80">Active</span>
+                      }
+                    </button>);
+
                 })}
               </div>
             </div>
@@ -234,7 +234,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
             </p>
             <div className="grid grid-cols-1 gap-3 mb-8">
               <TestimonialCard quote="Finally stopped arguing about where to eat." author="Sarah K." />
-              <TestimonialCard quote="No because why did that spin work perfectly…" author="Marcus T." />
+              <TestimonialCard quote="The wheel decided and honestly? Best night out ever." author="Marcus T." />
             </div>
             <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
               <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
@@ -248,30 +248,30 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
       </main>
 
       {/* Pack Purchase Modal */}
-      {showPackPurchase && (
-        <PackPurchaseModal
-          ownedPacks={ownedPacks}
-          isPremium={isPremium}
-          onPurchase={(packId) => {
-            onFortunePackChange?.(packId);
-            setShowPackPurchase(false);
-          }}
-          onUpgradePlus={() => {
-            window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
-            setShowPackPurchase(false);
-          }}
-          onClose={() => setShowPackPurchase(false)}
-        />
-      )}
-    </div>
-  );
+      {showPackPurchase &&
+      <PackPurchaseModal
+        ownedPacks={ownedPacks}
+        isPremium={isPremium}
+        onPurchase={(packId) => {
+          onFortunePackChange?.(packId);
+          setShowPackPurchase(false);
+        }}
+        onUpgradePlus={() => {
+          window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
+          setShowPackPurchase(false);
+        }}
+        onClose={() => setShowPackPurchase(false)} />
+
+      }
+    </div>);
+
 }
 
-function TestimonialCard({ quote, author }: { quote: string; author: string }) {
+function TestimonialCard({ quote, author }: {quote: string;author: string;}) {
   return (
     <div className="bg-secondary/60 rounded-2xl px-5 py-4 text-center">
-      <p className="text-sm text-foreground/80 italic mb-1">"{quote}"</p>
+      
       <p className="text-xs text-muted-foreground font-medium">— {author}</p>
-    </div>
-  );
+    </div>);
+
 }
