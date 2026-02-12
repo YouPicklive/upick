@@ -75,14 +75,17 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const handleSoloStart = useCallback(() => {
+  const handleSoloStart = useCallback((selectedVibe?: string) => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
     }
+    if (selectedVibe) {
+      setVibeInput({ selectedVibe: selectedVibe as any });
+    }
     setPlayerCount(1);
     setMode('vibe');
-  }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode]);
+  }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode, setVibeInput]);
 
   const handleVibeComplete = useCallback(async () => {
     if (isAuthenticated && !canSpin) {
@@ -196,6 +199,9 @@ const Index = () => {
           spinsRemaining={isAuthenticated ? spinsRemaining : (canUseTrial ? 1 : 0)}
           isPremium={isPremium}
           isTrialMode={!isAuthenticated && canUseTrial}
+          ownedPacks={ownedPacks}
+          fortunePack={state.preferences.fortunePack}
+          onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
         />
         {showSpinLimit && (
           <SpinLimitModal

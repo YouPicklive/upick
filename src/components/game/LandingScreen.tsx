@@ -1,24 +1,60 @@
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, User, LogOut, Star, Sparkles } from 'lucide-react';
+import { ArrowRight, User, LogOut, Star, Sparkles, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { FORTUNE_PACKS } from '@/hooks/useFortunes';
+import { PackPurchaseModal } from './PackPurchaseModal';
 import appIcon from '@/assets/app-icon.png';
 import wheelCenterIcon from '@/assets/wheel-center-icon.png';
 
+const VIBES = [
+  { id: 'reset', name: 'Reset', subtitle: 'Ground, breathe, recalibrate.', icon: '🌿' },
+  { id: 'momentum', name: 'Momentum', subtitle: 'Get moving. Build a spark.', icon: '⚡' },
+  { id: 'golden_hour', name: 'Golden Hour', subtitle: 'Cinematic. Scenic. Aesthetic.', icon: '🌅' },
+  { id: 'explore', name: 'Explore', subtitle: 'Unexpected. Curious. Different.', icon: '🧭' },
+  { id: 'soft_social', name: 'Soft Social', subtitle: 'Connection, low pressure.', icon: '☕' },
+  { id: 'full_send', name: 'Full Send', subtitle: 'Bold. Loud. Out tonight.', icon: '🔥' },
+  { id: 'free_beautiful', name: 'Free & Beautiful', subtitle: 'Low-cost outdoor magic.', icon: '🌸' },
+] as const;
+
 interface LandingScreenProps {
-  onSoloStart: () => void;
+  onSoloStart: (selectedVibe?: string) => void;
   spinsRemaining?: number;
   isPremium?: boolean;
   isTrialMode?: boolean;
+  ownedPacks?: string[];
+  fortunePack?: string;
+  onFortunePackChange?: (packId: string) => void;
 }
 
-export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode }: LandingScreenProps) {
+export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'free', onFortunePackChange }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
+  const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
+  const [showPackPurchase, setShowPackPurchase] = useState(false);
+  const spinButtonRef = useRef<HTMLDivElement>(null);
+  const packScrollRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = async () => {
     await signOut();
   };
+
+  const handleVibeSelect = (vibeId: string) => {
+    setSelectedVibe(prev => prev === vibeId ? null : vibeId);
+    // Smooth scroll to spin button
+    setTimeout(() => {
+      spinButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  };
+
+  const handleSpin = () => {
+    onSoloStart(selectedVibe || undefined);
+  };
+
+  const spinLabel = selectedVibe
+    ? `Spin With ${VIBES.find(v => v.id === selectedVibe)?.name}`
+    : 'Spin (Explore)';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -42,206 +78,200 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
             onClick={handleSignOut}
             className="p-2 rounded-full hover:bg-secondary transition-colors"
             title="Sign out">
-
               <LogOut className="w-4 h-4 text-muted-foreground" />
             </button>
           </div> :
-
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate('/auth')}
           className="text-muted-foreground hover:text-foreground">
-
             Sign In
           </Button>
         }
       </header>
 
-      {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-16">
-        <div className="max-w-md mx-auto text-center animate-slide-up">
-          {/* Headline */}
-          <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-4">
-            YOU SET THE VIBE
-            <br />
-            <span className="text-gradient font-calligraphy font-normal text-4xl md:text-5xl"> The chopsticks decide </span>
-          </h1>
-          <p className="text-muted-foreground text-lg mb-10 max-w-sm mx-auto leading-relaxed">Alignment Though Movement 
-No overthinking. Just go.
-          </p>
-
-          {/* Wheel Visual */}
-          <div className="relative mb-10">
-            <div className="w-48 h-48 md:w-56 md:h-56 mx-auto relative">
-              {/* Outer glow ring */}
-              <div className="absolute inset-0 rounded-full bg-primary/5 animate-pulse-glow" />
-              {/* Wheel SVG */}
-              <svg viewBox="0 0 200 200" className="w-full h-full animate-gentle-spin" style={{ animationDuration: '30s' }}>
-                <defs>
-                  <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(40, 75%, 65%)" />
-                    <stop offset="50%" stopColor="hsl(32, 80%, 55%)" />
-                    <stop offset="100%" stopColor="hsl(25, 78%, 48%)" />
-                  </linearGradient>
-                  <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(45, 80%, 72%)" />
-                    <stop offset="100%" stopColor="hsl(35, 75%, 58%)" />
-                  </linearGradient>
-                  <linearGradient id="chopstickGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(35, 70%, 65%)" />
-                    <stop offset="40%" stopColor="hsl(30, 60%, 50%)" />
-                    <stop offset="100%" stopColor="hsl(25, 55%, 38%)" />
-                  </linearGradient>
-                  <filter id="centerGlow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur" />
-                    <feFlood floodColor="hsl(32, 80%, 50%)" floodOpacity="0.5" result="color" />
-                    <feComposite in="color" in2="blur" operator="in" result="shadow" />
-                    <feMerge>
-                      <feMergeNode in="shadow" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                {/* Wheel segments — warm gold palette */}
-                {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-                  const angle = i * 45 - 90;
-                  const nextAngle = (i + 1) * 45 - 90;
-                  const rad1 = angle * (Math.PI / 180);
-                  const rad2 = nextAngle * (Math.PI / 180);
-                  const x1 = 100 + 95 * Math.cos(rad1);
-                  const y1 = 100 + 95 * Math.sin(rad1);
-                  const x2 = 100 + 95 * Math.cos(rad2);
-                  const y2 = 100 + 95 * Math.sin(rad2);
-                  const colors = [
-                  'hsl(38, 72%, 62%)',
-                  'hsl(28, 68%, 52%)',
-                  'hsl(42, 65%, 68%)',
-                  'hsl(22, 70%, 48%)',
-                  'hsl(35, 75%, 60%)',
-                  'hsl(30, 65%, 50%)',
-                  'hsl(45, 70%, 66%)',
-                  'hsl(20, 72%, 46%)'];
-
-                  return (
-                    <path
-                      key={i}
-                      d={`M 100 100 L ${x1} ${y1} A 95 95 0 0 1 ${x2} ${y2} Z`}
-                      fill={colors[i]}
-                      opacity={0.9} />);
-
-
-                })}
-                {/* Gold rim */}
-                <circle cx="100" cy="100" r="95" fill="none" stroke="url(#goldLight)" strokeWidth="2.5" opacity="0.7" />
-                {/* Segment lines */}
-                {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-                  const angle = (i * 45 - 90) * (Math.PI / 180);
-                  return (
-                    <line
-                      key={i}
-                      x1="100"
-                      y1="100"
-                      x2={100 + 95 * Math.cos(angle)}
-                      y2={100 + 95 * Math.sin(angle)}
-                      stroke="hsl(40, 60%, 75%)"
-                      strokeWidth="0.8"
-                      opacity="0.5" />);
-
-
-                })}
-                {/* Center icon image with glow */}
-                <g filter="url(#centerGlow)">
-                  <foreignObject x="62" y="62" width="76" height="76">
-                    <img src={wheelCenterIcon} alt="YouPick wheel center" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
-                  </foreignObject>
-                </g>
-              </svg>
-            </div>
+      <main className="flex-1 flex flex-col px-6 pb-16">
+        <div className="max-w-md mx-auto w-full">
+          {/* Hero Section */}
+          <div className="text-center animate-slide-up pt-6 pb-8">
+            <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-3">
+              YOU SET THE VIBE
+              <br />
+              <span className="text-gradient font-calligraphy font-normal text-4xl md:text-5xl"> The chopsticks decide </span>
+            </h1>
+            <p className="text-muted-foreground text-base max-w-sm mx-auto leading-relaxed">
+              Alignment Through Movement — No overthinking. Just go.
+            </p>
           </div>
 
-          {/* Status Badge */}
-          {isTrialMode &&
-          <div className="mb-6 inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">1 free spin — no account needed</span>
-            </div>
-          }
-
-          {!isTrialMode && !isPremium && spinsRemaining !== undefined &&
-          <div className="mb-6 inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
-              <span className="text-sm font-medium">
-                {spinsRemaining > 0 ?
-              <>{spinsRemaining} spin{spinsRemaining !== 1 ? 's' : ''} remaining today</> :
-
-              <span className="text-destructive">No spins left — resets tomorrow</span>
-              }
-              </span>
-            </div>
-          }
-
-          {isPremium &&
-          <div className="mb-6 inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
-              <Star className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-primary">Plus — Unlimited Spins</span>
-            </div>
-          }
-
-          {/* CTAs */}
-          <div className="flex flex-col gap-3 w-full">
-            <div className="text-center">
-              <Button variant="hero" size="xl" onClick={onSoloStart} className="group w-full">
-                Spin the Wheel
-                <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
-              </Button>
-              <p className="text-muted-foreground text-xs mt-2">One quick decision, guided by fate.</p>
+          {/* Vibe Section */}
+          <section className="mb-8">
+            <div className="text-center mb-5">
+              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">How are you feeling?</h2>
+              <p className="text-muted-foreground text-sm mt-1">Pick a vibe. Let fate handle the rest.</p>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              {VIBES.map((vibe) => {
+                const isSelected = selectedVibe === vibe.id;
+                return (
+                  <button
+                    key={vibe.id}
+                    onClick={() => handleVibeSelect(vibe.id)}
+                    className={`relative p-4 rounded-2xl text-left transition-all duration-200 border ${
+                      isSelected
+                        ? 'border-primary bg-primary/8 shadow-md scale-[1.02]'
+                        : 'border-border/50 bg-card hover:border-border hover:shadow-sm'
+                    }`}
+                  >
+                    <span className="text-xl mb-1.5 block">{vibe.icon}</span>
+                    <span className="font-semibold text-sm text-foreground block">{vibe.name}</span>
+                    <span className="text-[11px] text-muted-foreground leading-tight block mt-0.5">{vibe.subtitle}</span>
+                    {isSelected && (
+                      <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
+          {/* Spin Button */}
+          <div ref={spinButtonRef} className="mb-8">
+            {/* Status Badge */}
+            <div className="flex justify-center mb-4">
+              {isTrialMode && (
+                <div className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">1 free spin — no account needed</span>
+                </div>
+              )}
+              {!isTrialMode && !isPremium && spinsRemaining !== undefined && (
+                <div className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
+                  <span className="text-sm font-medium">
+                    {spinsRemaining > 0
+                      ? <>{spinsRemaining} spin{spinsRemaining !== 1 ? 's' : ''} remaining today</>
+                      : <span className="text-destructive">No spins left — resets tomorrow</span>
+                    }
+                  </span>
+                </div>
+              )}
+              {isPremium && (
+                <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
+                  <Star className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">Plus — Unlimited Spins</span>
+                </div>
+              )}
+            </div>
 
+            <Button variant="hero" size="xl" onClick={handleSpin} className="group w-full">
+              {spinLabel}
+              <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+            </Button>
+            <p className="text-muted-foreground text-xs mt-2 text-center">One quick decision, guided by fate.</p>
+          </div>
+
+          {/* Fortune Pack Shelf */}
+          <section className="mb-10">
+            <div className="text-center mb-4">
+              <h3 className="font-display text-base font-bold text-foreground">Fortune Packs</h3>
+              <p className="text-muted-foreground text-xs mt-0.5">Optional — guide your spin.</p>
+            </div>
+
+            <div className="relative">
+              <div ref={packScrollRef} className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+                {FORTUNE_PACKS.map((pack) => {
+                  const isSelected = fortunePack === pack.id;
+                  const isPremiumPack = pack.tier !== 'free';
+                  const isLocked = isPremiumPack && !isPremium && (pack.tier === 'plus' || !ownedPacks.includes(pack.id));
+                  return (
+                    <button
+                      key={pack.id}
+                      onClick={() => {
+                        if (isLocked) {
+                          setShowPackPurchase(true);
+                          return;
+                        }
+                        onFortunePackChange?.(pack.id);
+                      }}
+                      className={`flex-shrink-0 snap-start p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 relative min-w-[80px] ${
+                        isSelected && !isLocked
+                          ? 'gradient-warm text-primary-foreground shadow-glow'
+                          : isLocked
+                          ? 'bg-secondary/50 opacity-70'
+                          : 'bg-secondary hover:bg-secondary/80'
+                      }`}
+                    >
+                      <span className="text-2xl">{pack.emoji}</span>
+                      <span className="font-semibold text-xs">{pack.name}</span>
+                      <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        {isLocked && pack.tier === 'pack' ? '$2.99' : isLocked && pack.tier === 'plus' ? 'Plus' : pack.description}
+                      </span>
+                      {isLocked && (
+                        <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">
+                          <Lock className="w-3 h-3" />
+                        </span>
+                      )}
+                      {isSelected && !isLocked && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-primary-foreground/80">Active</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* Trust & Footer */}
+          <div>
+            <p className="text-center text-muted-foreground text-sm mb-6">
+              Loved by indecisive people everywhere.
+            </p>
+            <div className="grid grid-cols-1 gap-3 mb-8">
+              <TestimonialCard quote="Finally stopped arguing about where to eat." author="Sarah K." />
+              <TestimonialCard quote="The wheel decided and honestly? Best night out ever." author="Marcus T." />
+            </div>
+            <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+              <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+              <span>·</span>
+              <a href="mailto:support@youpick.app" className="hover:text-foreground transition-colors">Contact</a>
+              <span>·</span>
+              <span>© {new Date().getFullYear()} You Pick</span>
+            </div>
           </div>
         </div>
       </main>
 
-      {/* Trust & Footer */}
-      <footer className="px-6 pb-8">
-        <div className="max-w-md mx-auto">
-          {/* Credibility */}
-          <p className="text-center text-muted-foreground text-sm mb-6">
-            Loved by indecisive people everywhere.
-          </p>
-
-          {/* Testimonials */}
-          <div className="grid grid-cols-1 gap-3 mb-8">
-            <TestimonialCard
-              quote="Finally stopped arguing about where to eat."
-              author="Sarah K." />
-
-            <TestimonialCard
-              quote="The wheel decided and honestly? Best night out ever."
-              author="Marcus T." />
-
-          </div>
-
-          {/* Footer links */}
-          <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
-            <span>·</span>
-            <a href="mailto:support@youpick.app" className="hover:text-foreground transition-colors">Contact</a>
-            <span>·</span>
-            <span>© {new Date().getFullYear()} You Pick</span>
-          </div>
-        </div>
-      </footer>
-    </div>);
-
+      {/* Pack Purchase Modal */}
+      {showPackPurchase && (
+        <PackPurchaseModal
+          ownedPacks={ownedPacks}
+          isPremium={isPremium}
+          onPurchase={(packId) => {
+            onFortunePackChange?.(packId);
+            setShowPackPurchase(false);
+          }}
+          onUpgradePlus={() => {
+            window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
+            setShowPackPurchase(false);
+          }}
+          onClose={() => setShowPackPurchase(false)}
+        />
+      )}
+    </div>
+  );
 }
 
-function TestimonialCard({ quote, author }: {quote: string;author: string;}) {
+function TestimonialCard({ quote, author }: { quote: string; author: string }) {
   return (
     <div className="bg-secondary/60 rounded-2xl px-5 py-4 text-center">
       <p className="text-sm text-foreground/80 italic mb-1">"{quote}"</p>
       <p className="text-xs text-muted-foreground font-medium">— {author}</p>
-    </div>);
-
+    </div>
+  );
 }
