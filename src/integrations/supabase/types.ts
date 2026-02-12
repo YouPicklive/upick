@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      businesses: {
+        Row: {
+          active: boolean | null
+          category: string
+          city: string | null
+          created_at: string
+          description: string | null
+          energy: string | null
+          id: string
+          is_outdoor: boolean | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          neighborhood: string | null
+          photo_url: string | null
+          price_level: string | null
+          rating: number | null
+          smoking_friendly: boolean | null
+          state: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          category?: string
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          energy?: string | null
+          id?: string
+          is_outdoor?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          neighborhood?: string | null
+          photo_url?: string | null
+          price_level?: string | null
+          rating?: number | null
+          smoking_friendly?: boolean | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          category?: string
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          energy?: string | null
+          id?: string
+          is_outdoor?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          neighborhood?: string | null
+          photo_url?: string | null
+          price_level?: string | null
+          rating?: number | null
+          smoking_friendly?: boolean | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fortunes: {
         Row: {
           active: boolean
