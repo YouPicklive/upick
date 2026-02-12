@@ -125,7 +125,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                     'border-border/50 bg-card hover:border-border hover:shadow-sm'}`
                     }>
 
-                    <span className="text-xl mb-1.5 block">{vibe.icon}</span>
+                    <span className="mb-1.5 block text-sm text-left">{vibe.icon}</span>
                     <span className="font-semibold text-sm text-foreground block">{vibe.name}</span>
                     <span className="text-[11px] text-muted-foreground leading-tight block mt-0.5">{vibe.subtitle}</span>
                     {isSelected &&
