@@ -22,6 +22,7 @@ const categoryEmojis: Record<string, string> = {
   lunch: '🥗',
   dinner: '🍷',
   desserts: '🍰',
+  shopping: '🛍️',
   'event-planning': '🎪',
 };
 

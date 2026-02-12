@@ -17,6 +17,7 @@ const initialVibeInput: VibeInput = {
   intent: null,
   energy: null,
   filters: [],
+  shoppingSubcategory: null,
 };
 
 const initialState: GameState = {

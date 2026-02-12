@@ -25,10 +25,13 @@ export type VibeIntent = 'food' | 'drinks' | 'activity' | 'shopping' | 'events' 
 export type VibeEnergy = 'chill' | 'social' | 'romantic' | 'adventure' | 'productive' | 'self-care' | 'weird';
 export type VibeFilter = 'cheap' | 'mid' | 'treat' | 'indoor' | 'outdoor' | 'near-me' | 'any-distance';
 
+export type ShoppingSubcategory = 'random' | 'decor' | 'clothes' | 'games' | 'books' | 'gifts' | 'vintage' | 'artisan';
+
 export interface VibeInput {
   intent: VibeIntent | null;
   energy: VibeEnergy | null;
   filters: VibeFilter[];
+  shoppingSubcategory?: ShoppingSubcategory | null;
 }
 
 export type RandomnessLevel = 'wild' | 'balanced' | 'specific';

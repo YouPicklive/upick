@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ArrowLeft, Sparkles, Target, Zap, Lock, Crown } from 'lucide-react';
 import { VibeIntent, VibeEnergy, VibeFilter, VibeInput, computeRandomness, RandomnessLevel } from '@/types/game';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
+import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSubcategoryModal';
 
 interface VibeScreenProps {
   step: 0 | 1 | 2;
@@ -90,10 +92,26 @@ export function VibeScreen({
   // Scroll to top on step change
   useScrollToTop([step]);
 
+  const [showShoppingModal, setShowShoppingModal] = useState(false);
+
   const randomness = computeRandomness(vibeInput);
 
   const handleIntentSelect = (intent: VibeIntent) => {
-    onVibeChange({ intent: vibeInput.intent === intent ? null : intent });
+    if (intent === 'shopping') {
+      // If already selected, deselect
+      if (vibeInput.intent === 'shopping') {
+        onVibeChange({ intent: null, shoppingSubcategory: null });
+      } else {
+        setShowShoppingModal(true);
+      }
+      return;
+    }
+    onVibeChange({ intent: vibeInput.intent === intent ? null : intent, shoppingSubcategory: null });
+  };
+
+  const handleShoppingSubcategorySelect = (sub: ShoppingSubcategory) => {
+    onVibeChange({ intent: 'shopping', shoppingSubcategory: sub });
+    setShowShoppingModal(false);
   };
 
   const handleEnergySelect = (energy: VibeEnergy) => {
@@ -347,6 +365,14 @@ export function VibeScreen({
           <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
         </Button>
       </div>
+
+      {/* Shopping Subcategory Modal */}
+      {showShoppingModal && (
+        <ShoppingSubcategoryModal
+          onSelect={handleShoppingSubcategorySelect}
+          onClose={() => setShowShoppingModal(false)}
+        />
+      )}
     </div>
   );
 }

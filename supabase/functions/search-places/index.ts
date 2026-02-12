@@ -8,6 +8,7 @@ const SearchPlacesSchema = z.object({
   intent: z.enum(["food", "drinks", "activity", "shopping", "events", "services", "surprise"]).nullable().optional(),
   energy: z.string().max(50).nullable().optional(),
   filters: z.array(z.string().max(50)).max(20).nullable().optional(),
+  shoppingSubcategory: z.enum(["random", "decor", "clothes", "games", "books", "gifts", "vintage", "artisan"]).nullable().optional(),
 });
 
 const corsHeaders = {
@@ -37,7 +38,7 @@ function intentToDBCategories(intent: string | null): string[] {
   }
 }
 
-// Map vibe intents to Google Places types
+// Map vibe intents to Google Places types (non-shopping)
 function intentToPlaceTypes(intent: string | null): string[] {
   switch (intent) {
     case "food":
@@ -55,6 +56,34 @@ function intentToPlaceTypes(intent: string | null): string[] {
     case "surprise":
     default:
       return ["restaurant", "bar", "cafe", "tourist_attraction"];
+  }
+}
+
+// Shopping subcategory → Google Places type search config
+interface ShoppingSearchConfig {
+  types: string[];
+  textQueries: string[];
+}
+
+function shoppingSubcategoryConfig(sub: string | null | undefined): ShoppingSearchConfig {
+  switch (sub) {
+    case "decor":
+      return { types: ["home_goods_store", "furniture_store"], textQueries: ["home decor", "lighting store"] };
+    case "clothes":
+      return { types: ["clothing_store"], textQueries: ["boutique clothing"] };
+    case "games":
+      return { types: [], textQueries: ["board game store", "game store", "comic shop"] };
+    case "books":
+      return { types: ["book_store"], textQueries: ["bookstore"] };
+    case "gifts":
+      return { types: [], textQueries: ["gift shop", "novelty shop"] };
+    case "vintage":
+      return { types: [], textQueries: ["vintage store", "thrift store", "consignment"] };
+    case "artisan":
+      return { types: [], textQueries: ["local artisan shop", "gallery shop", "makers market", "craft store"] };
+    case "random":
+    default:
+      return { types: ["store", "shopping_mall", "department_store"], textQueries: ["boutique", "shop"] };
   }
 }
 
@@ -76,9 +105,33 @@ function mapPriceLevelFromString(pl?: string): 1 | 2 | 3 | 4 {
   }
 }
 
+// Map Google price_level (0-4) to app price display string
+function googlePriceToAppLabel(priceLevel?: number): string {
+  if (priceLevel === undefined || priceLevel === null) return "Price unknown";
+  if (priceLevel <= 1) return "$";
+  if (priceLevel === 2) return "$$";
+  if (priceLevel === 3) return "$$$";
+  return "$$$$";
+}
+
+// Check if Google price_level matches user filter
+function matchesPriceFilter(priceLevel: number | undefined | null, filters?: string[]): boolean {
+  if (!filters) return true;
+  const hasCheap = filters.includes("cheap");
+  const hasMid = filters.includes("mid");
+  const hasTreat = filters.includes("treat");
+  if (!hasCheap && !hasMid && !hasTreat) return true;
+  // If price_level is missing, keep eligible (per spec: "do NOT exclude")
+  if (priceLevel === undefined || priceLevel === null) return true;
+  if (hasCheap && priceLevel <= 1) return true;
+  if (hasMid && priceLevel >= 1 && priceLevel <= 3) return true;
+  if (hasTreat && priceLevel >= 3) return true;
+  return false;
+}
+
 function mapCategory(types: string[]): string {
   if (types.some((t) => ["bar", "night_club"].includes(t))) return "bar";
-  if (types.some((t) => ["shopping_mall", "store", "clothing_store", "shoe_store", "jewelry_store", "book_store", "home_goods_store", "furniture_store", "electronics_store"].includes(t))) return "shopping";
+  if (types.some((t) => ["shopping_mall", "store", "clothing_store", "shoe_store", "jewelry_store", "book_store", "home_goods_store", "furniture_store", "electronics_store", "department_store"].includes(t))) return "shopping";
   if (types.some((t) => ["spa", "physiotherapist", "gym"].includes(t))) return "wellness";
   if (types.some((t) => ["cafe", "bakery"].includes(t))) return "cafe";
   if (types.some((t) => ["amusement_park", "bowling_alley", "movie_theater", "museum", "park", "tourist_attraction", "stadium", "zoo", "aquarium", "campground"].includes(t)))
@@ -110,7 +163,7 @@ function mapEnergyToVibeLevel(energy?: string): string {
 
 // Haversine distance in miles
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3958.8; // Earth radius in miles
+  const R = 3958.8;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
@@ -120,13 +173,103 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Determine max radius in miles from filters
 function getMaxRadiusMiles(filters?: string[]): number {
   if (!filters) return 15;
   if (filters.includes("near-me")) return 1;
   if (filters.includes("short-drive")) return 5;
   if (filters.includes("any-distance")) return 45;
-  return 15; // default ~15 miles
+  return 15;
+}
+
+// Richmond, VA fallback coordinates
+const RICHMOND_FALLBACK = { lat: 37.5407, lng: -77.4360 };
+
+// Google Nearby Search by type
+async function googleNearbySearch(
+  apiKey: string,
+  lat: number,
+  lng: number,
+  radius: number,
+  type: string,
+  minPrice?: number,
+  maxPrice?: number
+): Promise<any[]> {
+  const params = new URLSearchParams({
+    location: `${lat},${lng}`,
+    radius: String(radius),
+    type,
+    key: apiKey,
+  });
+  if (minPrice !== undefined) params.set("minprice", String(minPrice));
+  if (maxPrice !== undefined) params.set("maxprice", String(maxPrice));
+  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.results || [];
+}
+
+// Google Text Search
+async function googleTextSearch(
+  apiKey: string,
+  query: string,
+  lat: number,
+  lng: number,
+  radius: number
+): Promise<any[]> {
+  const params = new URLSearchParams({
+    query,
+    location: `${lat},${lng}`,
+    radius: String(radius),
+    key: apiKey,
+  });
+  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.results || [];
+}
+
+// Convert a Google Places result to our Spot format
+function googlePlaceToSpot(place: any, apiKey: string, idx: number, userLat: number, userLng: number): any {
+  let image = "";
+  if (place.photos && place.photos.length > 0) {
+    const photoRef = place.photos[0].photo_reference;
+    image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${photoRef}&key=${apiKey}`;
+  }
+
+  const lat = place.geometry?.location?.lat;
+  const lng = place.geometry?.location?.lng;
+  const distance = (lat && lng) ? Math.round(haversineDistance(userLat, userLng, lat, lng) * 10) / 10 : undefined;
+
+  // Build short description from types
+  const typeLabels = (place.types || [])
+    .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
+    .slice(0, 2)
+    .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()));
+  const description = place.formatted_address || typeLabels.join(", ") || "Local shop";
+
+  return {
+    id: place.place_id || `place-${idx}`,
+    name: place.name,
+    category: "shopping",
+    description,
+    priceLevel: mapPriceLevel(place.price_level),
+    priceLabelOverride: googlePriceToAppLabel(place.price_level),
+    rating: place.rating || 4.0,
+    image,
+    tags: (place.types || [])
+      .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
+      .slice(0, 3)
+      .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())),
+    neighborhood: extractNeighborhood(place.vicinity || place.formatted_address),
+    isOutdoor: false,
+    smokingFriendly: false,
+    vibeLevel: "moderate",
+    plusOnly: false,
+    latitude: lat,
+    longitude: lng,
+    distance,
+    placeId: place.place_id, // for Google Maps link
+  };
 }
 
 serve(async (req) => {
@@ -145,9 +288,82 @@ serve(async (req) => {
       });
     }
 
-    const { latitude, longitude, intent, energy, filters } = parsed.data;
+    const { latitude, longitude, intent, energy, filters, shoppingSubcategory } = parsed.data;
+    const isShopping = intent === "shopping" && shoppingSubcategory;
 
     const maxMiles = getMaxRadiusMiles(filters);
+
+    // ========== SHOPPING SUBCATEGORY PATH ==========
+    if (isShopping) {
+      const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+      if (!apiKey) {
+        return new Response(JSON.stringify({ error: "Google Places API key not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const config = shoppingSubcategoryConfig(shoppingSubcategory);
+      const radiusSteps = [3000, 8000, 15000]; // meters
+      const seenPlaceIds = new Set<string>();
+      let allResults: any[] = [];
+
+      for (const radiusM of radiusSteps) {
+        // Try type-based search first
+        for (const type of config.types) {
+          if (allResults.length >= 10) break;
+          const results = await googleNearbySearch(apiKey, latitude, longitude, radiusM, type);
+          for (const r of results) {
+            if (!seenPlaceIds.has(r.place_id)) {
+              seenPlaceIds.add(r.place_id);
+              if (matchesPriceFilter(r.price_level, filters)) {
+                allResults.push(r);
+              }
+            }
+          }
+        }
+
+        // Then try text-based search
+        if (allResults.length < 10) {
+          for (const query of config.textQueries) {
+            if (allResults.length >= 10) break;
+            const results = await googleTextSearch(apiKey, query, latitude, longitude, radiusM);
+            for (const r of results) {
+              if (!seenPlaceIds.has(r.place_id)) {
+                seenPlaceIds.add(r.place_id);
+                if (matchesPriceFilter(r.price_level, filters)) {
+                  allResults.push(r);
+                }
+              }
+            }
+          }
+        }
+
+        if (allResults.length >= 4) break; // enough results
+      }
+
+      // Fallback: if still 0, try broad "shop" query
+      if (allResults.length === 0) {
+        const broadResults = await googleTextSearch(apiKey, "shop", latitude, longitude, 15000);
+        for (const r of broadResults) {
+          if (!seenPlaceIds.has(r.place_id)) {
+            seenPlaceIds.add(r.place_id);
+            allResults.push(r);
+          }
+        }
+      }
+
+      // Cap at 10 and convert
+      const spots = allResults
+        .slice(0, 10)
+        .map((place, idx) => googlePlaceToSpot(place, apiKey, idx, latitude, longitude));
+
+      return new Response(JSON.stringify({ spots, source: "google-shopping" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ========== STANDARD PATH (non-shopping or shopping without subcategory) ==========
 
     // --- Step 1: Try curated businesses table first ---
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -161,7 +377,7 @@ serve(async (req) => {
       query = query.in("category", dbCategories);
     }
 
-    // Price filters — only include businesses with a matching price_level
+    // Price filters
     if (filters?.includes("cheap")) {
       query = query.in("price_level", ["$"]);
     } else if (filters?.includes("mid")) {
@@ -187,13 +403,11 @@ serve(async (req) => {
       }
     }
 
-    // Fetch more to allow distance filtering
     query = query.limit(100);
 
     const { data: dbSpots, error: dbError } = await query;
 
     if (!dbError && dbSpots && dbSpots.length > 0) {
-      // Filter by distance from user and compute distance
       const withDistance = dbSpots
         .filter((b: any) => b.latitude && b.longitude)
         .map((b: any) => ({
@@ -203,10 +417,7 @@ serve(async (req) => {
         .filter((b: any) => b._distance <= maxMiles)
         .sort((a: any, b: any) => a._distance - b._distance);
 
-      if (withDistance.length === 0) {
-        // No curated businesses in range — fall through to Google
-      } else {
-        // If price filter is active, exclude businesses with null price_level
+      if (withDistance.length > 0) {
         const hasPriceFilter = filters?.includes("cheap") || filters?.includes("mid") || filters?.includes("treat");
         const priceFiltered = hasPriceFilter
           ? withDistance.filter((b: any) => b.price_level !== null)
@@ -221,12 +432,10 @@ serve(async (req) => {
           });
         }
 
-        // Take up to 10, shuffled within proximity bands
         const selected = priceFiltered.slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 10);
 
         const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
 
-        // Auto-fetch photos + description from Google for businesses missing them
         const spots = await Promise.all(
           selected.map(async (b: any) => {
             let image = b.photo_url || "";
@@ -243,12 +452,10 @@ serve(async (req) => {
 
                 const candidate = findData.candidates?.[0];
                 if (candidate) {
-                  // Photo
                   if (!image && candidate.photos?.[0]?.photo_reference) {
                     const ref = candidate.photos[0].photo_reference;
                     image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${apiKey}`;
 
-                    // Persist photo back to DB
                     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
                     if (serviceKey) {
                       const adminClient = createClient(supabaseUrl, serviceKey);
@@ -256,7 +463,6 @@ serve(async (req) => {
                     }
                   }
 
-                  // Description fallback
                   if (!description && candidate.formatted_address) {
                     description = candidate.formatted_address;
                   }
@@ -282,7 +488,7 @@ serve(async (req) => {
               plusOnly: false,
               latitude: b.latitude,
               longitude: b.longitude,
-              distance: Math.round(b._distance * 10) / 10, // miles, 1 decimal
+              distance: Math.round(b._distance * 10) / 10,
             };
           })
         );
@@ -323,25 +529,11 @@ serve(async (req) => {
     const typesToQuery = placeTypes.slice(0, 2);
 
     for (const type of typesToQuery) {
-      const params = new URLSearchParams({
-        location: `${latitude},${longitude}`,
-        radius: String(radius),
-        type,
-        key: apiKey,
-      });
-      if (minPrice !== undefined) params.set("minprice", String(minPrice));
-      if (maxPrice !== undefined) params.set("maxprice", String(maxPrice));
-
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params}`;
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (data.results) {
-        for (const place of data.results) {
-          if (!seenPlaceIds.has(place.place_id)) {
-            seenPlaceIds.add(place.place_id);
-            allResults.push(place);
-          }
+      const results = await googleNearbySearch(apiKey, latitude, longitude, radius, type, minPrice, maxPrice);
+      for (const place of results) {
+        if (!seenPlaceIds.has(place.place_id)) {
+          seenPlaceIds.add(place.place_id);
+          allResults.push(place);
         }
       }
     }
