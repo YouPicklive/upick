@@ -211,13 +211,17 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
               )}
 
               <div className="flex flex-col gap-2.5">
-                <Button variant="hero" size="lg" className="w-full" onClick={handleViewDetails}>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View Details
+                <Button variant="hero" size="lg" className="w-full" asChild>
+                  <a href={`https://www.google.com/search?q=${encodeURIComponent(winner.name)}`} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View Details
+                  </a>
                 </Button>
-                <Button variant="default" size="lg" className="w-full" onClick={handleOpenMaps}>
-                  <Navigation className="w-4 h-4 mr-2" />
-                  Open in Maps
+                <Button variant="default" size="lg" className="w-full" asChild>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}`} target="_blank" rel="noopener noreferrer">
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Open in Maps
+                  </a>
                 </Button>
                 <Button variant="outline" size="lg" className="w-full" onClick={onPlayAgain}>
                   <RotateCcw className="w-4 h-4 mr-2" />
