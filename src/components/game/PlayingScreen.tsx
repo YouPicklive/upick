@@ -228,10 +228,15 @@ export function PlayingScreen({
             </div>
           </div>
 
-          {/* Neighborhood */}
-          {spot.neighborhood && (
-            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-              📍 {spot.neighborhood}
+          {/* Neighborhood & Distance */}
+          {(spot.neighborhood || spot.distance !== undefined) && (
+            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+              📍 {spot.neighborhood || 'Nearby'}
+              {spot.distance !== undefined && (
+                <span className="bg-secondary px-1.5 py-0.5 rounded-full text-[10px] font-medium">
+                  {spot.distance < 1 ? '🚶' : spot.distance < 5 ? '🚗' : '🗺️'} {spot.distance < 0.1 ? '<0.1' : spot.distance} mi
+                </span>
+              )}
             </p>
           )}
 

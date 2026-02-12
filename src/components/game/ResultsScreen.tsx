@@ -184,6 +184,18 @@ export function ResultsScreen({ winner, likedSpots = [], fortunePack = 'free', o
               <h2 className="font-display text-2xl font-bold mb-1 leading-tight">{winner.name}</h2>
               <p className="text-sm text-muted-foreground mb-1">{winner.description}</p>
 
+              {/* Neighborhood & Distance */}
+              {(winner.neighborhood || (winner as any).distance !== undefined) && (
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5 mb-1">
+                  📍 {winner.neighborhood || 'Nearby'}
+                  {(winner as any).distance !== undefined && (
+                    <span className="bg-secondary px-1.5 py-0.5 rounded-full text-[10px] font-medium">
+                      {(winner as any).distance < 1 ? '🚶' : (winner as any).distance < 5 ? '🚗' : '🗺️'} {(winner as any).distance < 0.1 ? '<0.1' : (winner as any).distance} mi
+                    </span>
+                  )}
+                </p>
+              )}
+
               <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground mb-5 mt-3">
                 <span className="flex items-center gap-1">
                   ⭐ <span className="font-semibold text-foreground">{winner.rating}</span>

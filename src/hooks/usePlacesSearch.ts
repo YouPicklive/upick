@@ -60,6 +60,9 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
           smokingFriendly: s.smokingFriendly ?? false,
           vibeLevel: s.vibeLevel as Spot['vibeLevel'],
           plusOnly: false,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          distance: s.distance,
         }));
 
         cache.set(key, spots);
