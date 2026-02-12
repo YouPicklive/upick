@@ -87,12 +87,16 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  const handleSoloStart = async () => {
+  const handleSoloStart = () => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
     }
+    setPlayerCount(1);
+    setMode('vibe');
+  };
 
+  const handleVibeComplete = async () => {
     if (isAuthenticated && !canSpin) {
       setShowSpinLimit(true);
       return;
@@ -101,8 +105,6 @@ const Index = () => {
     if (isAuthenticated) {
       useSpin();
     }
-
-    setPlayerCount(1);
 
     // Try to fetch real places if we have coordinates
     if (coordinates) {
@@ -169,7 +171,7 @@ const Index = () => {
     );
   }
 
-  // Quick Vibe flow (kept for future use but not in main flow)
+  // Quick Vibe flow
   if (state.mode === 'vibe') {
     return (
       <>
@@ -183,7 +185,7 @@ const Index = () => {
           onVibeChange={setVibeInput}
           onPlayerCountChange={setPlayerCount}
           onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
-          onStart={handleSoloStart}
+          onStart={handleVibeComplete}
           onBack={() => setMode('landing')}
         />
         {showSpinLimit && (
