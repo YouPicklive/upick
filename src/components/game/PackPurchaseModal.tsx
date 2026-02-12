@@ -4,6 +4,7 @@ import { Star, Check, ShoppingBag, X, Loader2 } from 'lucide-react';
 import { FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 export const PACK_PRICES: Record<string, { price: number; label: string }> = {
   career: { price: 2.99, label: '$2.99' },
@@ -41,7 +42,7 @@ export function PackPurchaseModal({
         body: { packId },
       });
       if (error) {
-        console.error('Checkout error:', error);
+        logger.error('Checkout error:', error);
         toast.error('Failed to start checkout. Please try again.');
         return;
       }
@@ -50,7 +51,7 @@ export function PackPurchaseModal({
         toast.success('Checkout opened in new tab!');
       }
     } catch (err) {
-      console.error('Error creating checkout:', err);
+      logger.error('Error creating checkout:', err);
       toast.error('Something went wrong. Please try again.');
     } finally {
       setLoadingPackId(null);
