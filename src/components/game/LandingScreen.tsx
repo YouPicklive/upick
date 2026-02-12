@@ -93,6 +93,15 @@ No overthinking. Just go.
                     <stop offset="40%" stopColor="hsl(30, 60%, 50%)" />
                     <stop offset="100%" stopColor="hsl(25, 55%, 38%)" />
                   </linearGradient>
+                  <filter id="centerGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur" />
+                    <feFlood floodColor="hsl(32, 80%, 50%)" floodOpacity="0.5" result="color" />
+                    <feComposite in="color" in2="blur" operator="in" result="shadow" />
+                    <feMerge>
+                      <feMergeNode in="shadow" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
                 </defs>
                 {/* Wheel segments — warm gold palette */}
                 {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
@@ -141,10 +150,12 @@ No overthinking. Just go.
 
 
                 })}
-                {/* Center icon image */}
-                <foreignObject x="62" y="62" width="76" height="76">
-                  <img src={wheelCenterIcon} alt="YouPick wheel center" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
-                </foreignObject>
+                {/* Center icon image with glow */}
+                <g filter="url(#centerGlow)">
+                  <foreignObject x="62" y="62" width="76" height="76">
+                    <img src={wheelCenterIcon} alt="YouPick wheel center" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+                  </foreignObject>
+                </g>
               </svg>
             </div>
           </div>
