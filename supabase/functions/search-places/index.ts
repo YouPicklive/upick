@@ -9,7 +9,27 @@ const SearchPlacesSchema = z.object({
   energy: z.string().max(50).nullable().optional(),
   filters: z.array(z.string().max(50)).max(20).nullable().optional(),
   shoppingSubcategory: z.enum(["random", "decor", "clothes", "games", "books", "gifts", "vintage", "artisan"]).nullable().optional(),
+  selectedVibe: z.string().max(50).nullable().optional(),
 });
+
+// AV/equipment company exclusion for Activities
+const AV_EXCLUDE_TYPES = new Set([
+  "electronics_store", "home_goods_store", "general_contractor",
+  "storage", "moving_company", "car_rental",
+]);
+const AV_EXCLUDE_TERMS = [
+  "audio visual", "audiovisual", "av ", "event production",
+  "event services", "lighting rental", "staging", "party rental",
+  "equipment rental", "production company", "speaker rental",
+  "projector", "truss",
+];
+
+function isAVCompany(place: any): boolean {
+  const types = place.types || [];
+  if (types.some((t: string) => AV_EXCLUDE_TYPES.has(t))) return true;
+  const text = `${place.name || ""} ${place.vicinity || ""} ${place.formatted_address || ""}`.toLowerCase();
+  return AV_EXCLUDE_TERMS.some(term => text.includes(term));
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -532,6 +552,8 @@ serve(async (req) => {
       const results = await googleNearbySearch(apiKey, latitude, longitude, radius, type, minPrice, maxPrice);
       for (const place of results) {
         if (!seenPlaceIds.has(place.place_id)) {
+          // Filter out AV companies for Activities
+          if (intent === "activity" && isAVCompany(place)) continue;
           seenPlaceIds.add(place.place_id);
           allResults.push(place);
         }
