@@ -1,4 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const SearchEventsSchema = z.object({
+  spotName: z.string().trim().min(1).max(200),
+  spotCategory: z.string().trim().min(1).max(100),
+  timeframe: z.enum(["today", "week", "month"]),
+  city: z.string().trim().max(200).optional(),
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,7 +39,17 @@ serve(async (req) => {
   }
 
   try {
-    const { spotName, spotCategory, timeframe, city = 'your area' }: EventSearchRequest = await req.json();
+    const rawBody = await req.json();
+    const parsed = SearchEventsSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ events: [], error: "Invalid input", details: parsed.error.flatten().fieldErrors }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    const { spotName, spotCategory, timeframe, city = 'your area' } = parsed.data;
 
     console.log(`Searching for events: ${spotName} (${spotCategory}) - ${timeframe} in ${city}`);
 

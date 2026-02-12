@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const PackCheckoutSchema = z.object({
+  packId: z.string().trim().min(1).max(100),
+});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,10 +36,20 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
     // Parse request body
-    const { packId } = await req.json();
+    const rawBody = await req.json();
+    const parsed = PackCheckoutSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid input", details: parsed.error.flatten().fieldErrors }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { packId } = parsed.data;
     logStep("Pack ID received", { packId });
 
-    if (!packId || !PACK_PRICE_MAP[packId]) {
+    if (!PACK_PRICE_MAP[packId]) {
       throw new Error(`Invalid pack ID: ${packId}`);
     }
 
