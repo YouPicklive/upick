@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star } from 'lucide-react';
+import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star, Share2 } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
@@ -306,22 +306,26 @@ export function ResultsScreen({
                   </a>
                 </Button>
                 <div className="flex gap-2">
+                  <Button variant="outline" size="lg" className="flex-1" onClick={handleShareMyFate} disabled={isSharing}>
+                    <Share2 className="w-4 h-4 mr-2" />
+                    {isSharing ? 'Sharing...' : 'Share My Fate'}
+                  </Button>
                   <Button variant="outline" size="lg" className="flex-1" onClick={onPlayAgain}>
                     <RotateCcw className="w-4 h-4 mr-2" />
                     {isTrialMode ? 'Create Account' : 'Spin Again'}
                   </Button>
-                  {onNotForMe && (
-                    <Button 
-                      variant="outline" 
-                      size="lg" 
-                      className="flex-1 text-destructive hover:text-destructive" 
-                      onClick={() => onNotForMe(winner.id)}
-                    >
-                      <ThumbsDown className="w-4 h-4 mr-2" />
-                      Not For Me
-                    </Button>
-                  )}
                 </div>
+                {onNotForMe && (
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="w-full text-destructive hover:text-destructive" 
+                    onClick={() => onNotForMe(winner.id)}
+                  >
+                    <ThumbsDown className="w-4 h-4 mr-2" />
+                    Not For Me
+                  </Button>
+                )}
               </div>
             </div>
           </div>
