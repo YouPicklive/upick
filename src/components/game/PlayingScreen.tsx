@@ -244,11 +244,17 @@ export function PlayingScreen({
           <p className="text-muted-foreground text-sm mb-3 leading-relaxed">{spot.description}</p>
 
           <div className="flex items-center gap-3 mb-3 text-sm text-muted-foreground">
-            <div className="flex items-center gap-0.5">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <span key={i} className={i < spot.priceLevel ? 'opacity-100' : 'opacity-25'}>💵</span>
-              ))}
-            </div>
+            {spot.tags.includes('100% Free') ? (
+              <span className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide">
+                ✨ 100% Free
+              </span>
+            ) : (
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <span key={i} className={i < spot.priceLevel ? 'opacity-100' : 'opacity-25'}>💵</span>
+                ))}
+              </div>
+            )}
             {!spot.neighborhood && <span>📍 Nearby</span>}
             {spot.smokingFriendly && <span>🚬</span>}
           </div>

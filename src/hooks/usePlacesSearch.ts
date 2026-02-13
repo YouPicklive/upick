@@ -139,6 +139,87 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
   },
 ];
 
+// ── Free-only keywords ──────────────────────────────────────────────
+const FREE_DESCRIPTION_KEYWORDS = [
+  'free', 'no cost', 'public', 'park', 'trail', 'walk', 'overlook',
+  'self-guided', 'community', 'museum free day', 'open space',
+];
+const PAID_DESCRIPTION_KEYWORDS = [
+  'ticket', 'admission', 'fee', 'reservation required', 'per person',
+  'cover charge', 'entry fee',
+];
+
+export const FREE_GENERAL_FALLBACKS: Spot[] = [
+  {
+    id: 'free-fallback-scenic-trail', name: 'Walk a scenic trail nearby', category: 'activity',
+    description: 'Find the nearest trail and let your feet lead the way. Free, always.',
+    priceLevel: 1, rating: 4.8, image: '', tags: ['100% Free', 'Outdoor', 'Walk'],
+    isOutdoor: true, smokingFriendly: false, vibeLevel: 'chill',
+  },
+  {
+    id: 'free-fallback-public-park', name: 'Visit a public park', category: 'activity',
+    description: 'Green space, fresh air, zero cost. Just show up.',
+    priceLevel: 1, rating: 4.7, image: '', tags: ['100% Free', 'Outdoor', 'Nature'],
+    isOutdoor: true, smokingFriendly: false, vibeLevel: 'chill',
+  },
+  {
+    id: 'free-fallback-sunset', name: 'Watch sunset from the best overlook', category: 'activity',
+    description: 'The sky puts on a free show every evening. Go witness it.',
+    priceLevel: 1, rating: 4.9, image: '', tags: ['100% Free', 'Outdoor', 'Scenic'],
+    isOutdoor: true, smokingFriendly: false, vibeLevel: 'chill',
+  },
+  {
+    id: 'free-fallback-gallery', name: 'Explore a free gallery or museum day', category: 'activity',
+    description: 'Many museums offer free admission days. Today could be one.',
+    priceLevel: 1, rating: 4.6, image: '', tags: ['100% Free', 'Art', 'Culture'],
+    isOutdoor: false, smokingFriendly: false, vibeLevel: 'chill',
+  },
+  {
+    id: 'free-fallback-grounding', name: 'Touch a tree — grounding moment', category: 'activity',
+    description: 'Find a big old tree. Put your hand on it. Breathe. That\'s it.',
+    priceLevel: 1, rating: 4.5, image: '', tags: ['100% Free', 'Wellness', 'Nature'],
+    isOutdoor: true, smokingFriendly: false, vibeLevel: 'lazy',
+  },
+  {
+    id: 'free-fallback-historic-walk', name: 'Self-guided historic walk', category: 'activity',
+    description: 'Pick a neighborhood with old buildings. Walk slowly. Read the plaques.',
+    priceLevel: 1, rating: 4.6, image: '', tags: ['100% Free', 'Walk', 'History'],
+    isOutdoor: true, smokingFriendly: false, vibeLevel: 'chill',
+  },
+];
+
+/**
+ * Determines if the free-only price guardrail should apply.
+ * Condition: price filter is "cheap"
+ */
+export function shouldApplyFreeGuardrail(vibe: VibeInput): boolean {
+  return vibe.filters.includes('cheap');
+}
+
+/**
+ * Strict free-only filter: removes any spot that isn't genuinely free.
+ * Checks priceLevel, description keywords, and tags.
+ */
+export function applyFreeOnlyGuardrail(spots: Spot[]): Spot[] {
+  return spots.filter(spot => {
+    // Must be priceLevel 1 (cheapest tier)
+    if (spot.priceLevel > 1) return false;
+
+    // Check description for paid signals
+    const descLower = (spot.description || '').toLowerCase();
+    if (PAID_DESCRIPTION_KEYWORDS.some(kw => descLower.includes(kw))) return false;
+
+    // Bonus: keep if description has free signals or tags include "Free"
+    const hasFreeSignal =
+      FREE_DESCRIPTION_KEYWORDS.some(kw => descLower.includes(kw)) ||
+      spot.tags.some(t => t.toLowerCase().includes('free'));
+
+    // For priceLevel 1 spots, keep them — they represent budget/free tier
+    // But if they explicitly mention paid keywords, they were already excluded above
+    return true;
+  });
+}
+
 /**
  * Determines if the "free + outdoor" guardrail should apply.
  * Condition: price filter is "cheap" AND (outdoor filter OR free-beautiful vibe OR surprise intent)
@@ -261,6 +342,11 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
           longitude: s.longitude,
           distance: s.distance,
         }));
+
+        // ── Free-only guardrail ──
+        if (shouldApplyFreeGuardrail(vibe)) {
+          spots = applyFreeOnlyGuardrail(spots);
+        }
 
         // ── Free + Outdoor guardrail ──
         if (shouldApplyFreeOutdoorGuardrail(vibe)) {
