@@ -2,6 +2,10 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Spot, VibeInput } from '@/types/game';
 import { logger } from '@/lib/logger';
+import fallbackHollywoodCemetery from '@/assets/fallback-hollywood-cemetery.jpg';
+import fallbackLibbyHill from '@/assets/fallback-libby-hill.jpg';
+import fallbackBelleIsle from '@/assets/fallback-belle-isle.jpg';
+import fallbackCanalWalk from '@/assets/fallback-canal-walk.jpg';
 
 interface UsePlacesSearchReturn {
   searchPlaces: (coords: { latitude: number; longitude: number }, vibe: VibeInput) => Promise<Spot[]>;
@@ -54,7 +58,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'Historic cemetery with river views and peaceful trails',
     priceLevel: 1,
     rating: 4.8,
-    image: '',
+    image: fallbackHollywoodCemetery,
     tags: ['Free', 'Outdoor', 'Scenic', 'Walk'],
     isOutdoor: true,
     smokingFriendly: false,
@@ -68,7 +72,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'Iconic Richmond skyline view at golden hour',
     priceLevel: 1,
     rating: 4.9,
-    image: '',
+    image: fallbackLibbyHill,
     tags: ['Free', 'Outdoor', 'Sunset', 'Views'],
     isOutdoor: true,
     smokingFriendly: false,
@@ -82,7 +86,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'River island with trails, rocks, and swimming spots',
     priceLevel: 1,
     rating: 4.7,
-    image: '',
+    image: fallbackBelleIsle,
     tags: ['Free', 'Outdoor', 'Nature', 'Hike'],
     isOutdoor: true,
     smokingFriendly: false,
@@ -96,7 +100,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'Scenic canal-side path through downtown Richmond',
     priceLevel: 1,
     rating: 4.5,
-    image: '',
+    image: fallbackCanalWalk,
     tags: ['Free', 'Outdoor', 'Walk', 'Downtown'],
     isOutdoor: true,
     smokingFriendly: false,
@@ -110,7 +114,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'Sprawling river park system with endless spots to explore',
     priceLevel: 1,
     rating: 4.8,
-    image: '',
+    image: fallbackBelleIsle,
     tags: ['Free', 'Outdoor', 'River', 'Nature'],
     isOutdoor: true,
     smokingFriendly: false,
@@ -124,7 +128,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'Free historic estate with gardens, animals, and trails',
     priceLevel: 1,
     rating: 4.9,
-    image: '',
+    image: fallbackLibbyHill,
     tags: ['Free', 'Outdoor', 'Garden', 'Animals'],
     isOutdoor: true,
     smokingFriendly: false,
