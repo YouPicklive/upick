@@ -6,6 +6,8 @@ import fallbackHollywoodCemetery from '@/assets/fallback-hollywood-cemetery.jpg'
 import fallbackLibbyHill from '@/assets/fallback-libby-hill.jpg';
 import fallbackBelleIsle from '@/assets/fallback-belle-isle.jpg';
 import fallbackCanalWalk from '@/assets/fallback-canal-walk.jpg';
+import fallbackJamesRiverPark from '@/assets/fallback-james-river-park.jpg';
+import fallbackMaymontPark from '@/assets/fallback-maymont-park.jpg';
 
 interface UsePlacesSearchReturn {
   searchPlaces: (coords: { latitude: number; longitude: number }, vibe: VibeInput) => Promise<Spot[]>;
@@ -114,7 +116,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'Sprawling river park system with endless spots to explore',
     priceLevel: 1,
     rating: 4.8,
-    image: fallbackBelleIsle,
+    image: fallbackJamesRiverPark,
     tags: ['Free', 'Outdoor', 'River', 'Nature'],
     isOutdoor: true,
     smokingFriendly: false,
@@ -128,7 +130,7 @@ export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
     description: 'Free historic estate with gardens, animals, and trails',
     priceLevel: 1,
     rating: 4.9,
-    image: fallbackLibbyHill,
+    image: fallbackMaymontPark,
     tags: ['Free', 'Outdoor', 'Garden', 'Animals'],
     isOutdoor: true,
     smokingFriendly: false,
