@@ -19,30 +19,32 @@ function cacheKey(lat: number, lng: number, intent: string | null, shoppingSub?:
 
 // ── Free + Outdoor guardrail ──────────────────────────────────────────
 
-const FOOD_BAR_CATEGORIES = new Set([
-  'restaurant', 'bar', 'cafe', 'nightlife', 'brunch', 'lunch', 'dinner', 'desserts',
-  'brewery', 'fast_food', 'food_truck', 'meal_takeaway', 'meal_delivery', 'night_club',
-  'food-truck', 'cocktail-lounge', 'wine-bar', 'dive-bar', 'rooftop-bar', 'bakery',
+// Types that MUST be excluded (checked against category + tags, all lowercased)
+const EXCLUDE_TYPES = new Set([
+  'bar', 'pub', 'night_club', 'nightlife', 'liquor_store', 'brewery',
+  'restaurant', 'cafe', 'fast_food', 'meal_takeaway', 'meal_delivery',
+  'food_truck', 'food-truck', 'bakery', 'brunch', 'lunch', 'dinner',
+  'desserts', 'cocktail-lounge', 'wine-bar', 'dive-bar', 'rooftop-bar',
 ]);
 
-const CHAIN_KEYWORDS = [
-  'buffalo wild wings', 'bww', "mcdonald", 'taco bell', "wendy", 'burger king',
-  'kfc', 'subway', 'chipotle', "chick-fil-a", "popeye", "domino", "pizza hut",
-  "applebee", "ihop", "denny", "waffle house", "five guys", "shake shack",
-  "panera", "starbucks", "dunkin",
+// Name substrings that indicate food/drink establishment
+const EXCLUDE_NAME_KEYWORDS = [
+  'bar', 'tavern', 'pub', 'lounge', 'grill', 'brew', 'taproom',
+  'cantina', 'saloon', 'bistro', 'buffalo wild wings', 'bww',
+  "mcdonald", 'taco bell', "wendy", 'burger king', 'kfc', 'subway',
+  'chipotle', "chick-fil-a", "popeye", "domino", "pizza hut",
+  "applebee", "ihop", "denny", "waffle house", "five guys",
+  "shake shack", "panera", "starbucks", "dunkin", 'restaurant',
+  'cafe', 'diner', 'eatery', 'kitchen', 'pizz', 'wings', 'burger',
+  'taqueria', 'sushi', 'ramen', 'pho', 'wok', 'noodle',
 ];
 
-const ALLOWED_OUTDOOR_CATEGORIES = new Set([
-  'park', 'activity', 'tourist_attraction', 'natural_feature', 'campground',
-  'hiking_area', 'garden', 'point_of_interest', 'trail', 'museum', 'art_gallery',
-  'hiking', 'workshop',
+// The ONLY types allowed through for free+outdoor combo
+const ALLOWED_OUTDOOR_TYPES = new Set([
+  'park', 'natural_feature', 'hiking_area', 'campground', 'garden',
+  'tourist_attraction', 'trail', 'activity', 'hiking', 'museum',
+  'art_gallery', 'point_of_interest', 'workshop',
 ]);
-
-const OUTDOOR_SIGNAL_WORDS = [
-  'park', 'trail', 'garden', 'river', 'lake', 'sunset', 'overlook',
-  'cemetery', 'walk', 'hike', 'outdoor', 'nature', 'scenic', 'waterfront',
-  'island', 'canal', 'bridge', 'view',
-];
 
 const FREE_OUTDOOR_FALLBACKS: Spot[] = [
   {
@@ -147,30 +149,63 @@ function shouldApplyFreeOutdoorGuardrail(vibe: VibeInput): boolean {
 }
 
 /**
+ * Normalizes all type info from a spot into a single lowercase array.
+ */
+function normalizeTypes(spot: Spot): string[] {
+  const types: string[] = [];
+  if (spot.category) types.push(spot.category.toLowerCase());
+  if (spot.tags) {
+    for (const t of spot.tags) {
+      types.push(t.toLowerCase().replace(/\s+/g, '_'));
+    }
+  }
+  return types;
+}
+
+/**
  * Filters out restaurants/bars/chains and keeps only outdoor-appropriate results.
+ * Returns { kept, debugLog } for logging.
  */
 function applyFreeOutdoorGuardrail(spots: Spot[]): Spot[] {
-  return spots.filter((spot) => {
-    // Exclude food/bar categories
-    if (FOOD_BAR_CATEGORIES.has(spot.category)) return false;
+  const results: Spot[] = [];
 
-    // Exclude chain restaurants by name
+  for (let i = 0; i < spots.length; i++) {
+    const spot = spots[i];
+    const types = normalizeTypes(spot);
     const nameLower = spot.name.toLowerCase();
-    if (CHAIN_KEYWORDS.some(kw => nameLower.includes(kw))) return false;
+    let excluded = false;
+    let rule = '';
 
-    // Must be an allowed outdoor category
-    if (!ALLOWED_OUTDOOR_CATEGORIES.has(spot.category)) return false;
+    // Rule A: Exclude by type
+    if (!excluded && types.some(t => EXCLUDE_TYPES.has(t))) {
+      excluded = true;
+      rule = `type match: ${types.filter(t => EXCLUDE_TYPES.has(t)).join(',')}`;
+    }
 
-    // Must have at least one "outdoor signal"
-    const descLower = (spot.description || '').toLowerCase();
-    const hasOutdoorSignal =
-      spot.isOutdoor ||
-      OUTDOOR_SIGNAL_WORDS.some(w => descLower.includes(w)) ||
-      (spot.tags && spot.tags.some(t => OUTDOOR_SIGNAL_WORDS.some(w => t.toLowerCase().includes(w)))) ||
-      (spot.rating && spot.rating >= 4.0);
+    // Rule B: Exclude by name keyword
+    if (!excluded && EXCLUDE_NAME_KEYWORDS.some(kw => nameLower.includes(kw))) {
+      excluded = true;
+      rule = `name match: ${EXCLUDE_NAME_KEYWORDS.find(kw => nameLower.includes(kw))}`;
+    }
 
-    return hasOutdoorSignal;
-  });
+    // Rule C: Must have at least one allowed outdoor type
+    if (!excluded && !types.some(t => ALLOWED_OUTDOOR_TYPES.has(t))) {
+      excluded = true;
+      rule = `no allowed outdoor type in: [${types.join(',')}]`;
+    }
+
+    // Debug logging for first 5 items
+    if (i < 5) {
+      console.log(`[FreeOutdoorGuardrail] #${i} "${spot.name}" | types=[${types.join(',')}] | ${excluded ? `EXCLUDED (${rule})` : 'KEPT'}`);
+    }
+
+    if (!excluded) {
+      results.push(spot);
+    }
+  }
+
+  console.log(`[FreeOutdoorGuardrail] ${results.length}/${spots.length} spots survived filtering`);
+  return results;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────
