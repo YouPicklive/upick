@@ -200,17 +200,13 @@ export function applyFreeOutdoorGuardrail(spots: Spot[]): Spot[] {
       rule = `no allowed outdoor type in: [${types.join(',')}]`;
     }
 
-    // Debug logging for first 5 items
-    if (i < 5) {
-      console.log(`[FreeOutdoorGuardrail] #${i} "${spot.name}" | types=[${types.join(',')}] | ${excluded ? `EXCLUDED (${rule})` : 'KEPT'}`);
-    }
 
     if (!excluded) {
       results.push(spot);
     }
   }
 
-  console.log(`[FreeOutdoorGuardrail] ${results.length}/${spots.length} spots survived filtering`);
+  
   return results;
 }
 
