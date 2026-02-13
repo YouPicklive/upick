@@ -186,8 +186,10 @@ function matchesPriceFilter(priceLevel: number | undefined | null, filters?: str
   const hasMid = filters.includes("mid");
   const hasTreat = filters.includes("treat");
   if (!hasCheap && !hasMid && !hasTreat) return true;
-  // If price_level is missing, keep eligible (per spec: "do NOT exclude")
-  if (priceLevel === undefined || priceLevel === null) return true;
+  // When "cheap" (Free) is selected, EXCLUDE unknown prices — free must mean free
+  if (priceLevel === undefined || priceLevel === null) {
+    return hasCheap ? false : true;
+  }
   if (hasCheap && priceLevel <= 1) return true;
   if (hasMid && priceLevel >= 1 && priceLevel <= 3) return true;
   if (hasTreat && priceLevel >= 3) return true;
