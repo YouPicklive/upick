@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { GameState, Spot, SAMPLE_SPOTS, Preferences, VibeInput, VibeIntent, VibeEnergy, VibeFilter, intentToCategories, computeRandomness, YouPickVibe } from '@/types/game';
 import { getMicroAdventures } from '@/data/microAdventures';
+import { applyFreeOutdoorGuardrail, shouldApplyFreeOutdoorGuardrail, FREE_OUTDOOR_FALLBACKS } from '@/hooks/usePlacesSearch';
 
 const initialPreferences: Preferences = {
   location: 'both',
@@ -244,6 +245,18 @@ export function useGameState() {
       if (filteredSpots.length < 6) {
         const micros = getMicroAdventures(state.vibeInput.selectedVibe, 6 - filteredSpots.length);
         filteredSpots = [...filteredSpots, ...micros];
+      }
+    }
+
+    // ── Free + Outdoor guardrail (applies to ALL spot sources) ──
+    if (shouldApplyFreeOutdoorGuardrail(state.vibeInput)) {
+      filteredSpots = applyFreeOutdoorGuardrail(filteredSpots);
+      if (filteredSpots.length < 3) {
+        const fallbacks = FREE_OUTDOOR_FALLBACKS
+          .filter(f => !filteredSpots.some(s => s.id === f.id))
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 6 - filteredSpots.length);
+        filteredSpots = [...filteredSpots, ...fallbacks];
       }
     }
 

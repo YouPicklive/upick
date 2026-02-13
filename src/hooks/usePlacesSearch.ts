@@ -42,11 +42,11 @@ const EXCLUDE_NAME_KEYWORDS = [
 // The ONLY types allowed through for free+outdoor combo
 const ALLOWED_OUTDOOR_TYPES = new Set([
   'park', 'natural_feature', 'hiking_area', 'campground', 'garden',
-  'tourist_attraction', 'trail', 'activity', 'hiking', 'museum',
-  'art_gallery', 'point_of_interest', 'workshop',
+  'tourist_attraction', 'trail', 'hiking', 'museum', 'art_gallery',
+  'nature', 'free', 'outdoor', 'scenic', 'river', 'walk', 'hike',
 ]);
 
-const FREE_OUTDOOR_FALLBACKS: Spot[] = [
+export const FREE_OUTDOOR_FALLBACKS: Spot[] = [
   {
     id: 'fallback-hollywood-cemetery',
     name: 'Walk Hollywood Cemetery + find the best view',
@@ -137,7 +137,7 @@ const FREE_OUTDOOR_FALLBACKS: Spot[] = [
  * Determines if the "free + outdoor" guardrail should apply.
  * Condition: price filter is "cheap" AND (outdoor filter OR free-beautiful vibe OR surprise intent)
  */
-function shouldApplyFreeOutdoorGuardrail(vibe: VibeInput): boolean {
+export function shouldApplyFreeOutdoorGuardrail(vibe: VibeInput): boolean {
   const isFreePrice = vibe.filters.includes('cheap');
   if (!isFreePrice) return false;
 
@@ -166,7 +166,7 @@ function normalizeTypes(spot: Spot): string[] {
  * Filters out restaurants/bars/chains and keeps only outdoor-appropriate results.
  * Returns { kept, debugLog } for logging.
  */
-function applyFreeOutdoorGuardrail(spots: Spot[]): Spot[] {
+export function applyFreeOutdoorGuardrail(spots: Spot[]): Spot[] {
   const results: Spot[] = [];
 
   for (let i = 0; i < spots.length; i++) {
