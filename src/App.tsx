@@ -10,6 +10,8 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Profile from "./pages/Profile";
 import Membership from "./pages/Membership";
 import SavedFortunes from "./pages/SavedFortunes";
+import Feed from "./pages/Feed";
+import EventsToday from "./pages/EventsToday";
 
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +31,8 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/membership" element={<Membership />} />
           <Route path="/saved" element={<SavedFortunes />} />
+          <Route path="/feed" element={<Feed />} />
+          <Route path="/events-today" element={<EventsToday />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

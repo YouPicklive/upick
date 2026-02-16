@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, User, Save, Loader2 } from 'lucide-react';
+import { User, Save, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { GlobalHeader } from '@/components/GlobalHeader';
 import { toast } from 'sonner';
 
 export default function Profile() {
@@ -58,14 +59,11 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="px-6 py-4 flex items-center gap-3 border-b border-border">
-        <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-secondary">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="font-display text-lg font-bold">Profile</h1>
-      </header>
+      <GlobalHeader />
 
       <main className="max-w-md mx-auto px-6 py-8">
+        <h1 className="font-display text-xl font-bold mb-6">Profile</h1>
+
         <div className="flex flex-col items-center mb-8">
           <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-3">
             {avatarUrl ? (

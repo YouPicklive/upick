@@ -8,6 +8,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { usePlacesSearch } from '@/hooks/usePlacesSearch';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedFortunes } from '@/hooks/useSavedFortunes';
+import { useAutoPost } from '@/hooks/useAutoPost';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
@@ -52,6 +53,7 @@ const Index = () => {
   const { searchPlaces, isLoading: placesLoading } = usePlacesSearch();
   const { canSaveFortunes } = useUserEntitlements();
   const { saveFortune } = useSavedFortunes();
+  const { postSpin, postSave } = useAutoPost();
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
@@ -266,6 +268,8 @@ const Index = () => {
   if (state.mode === 'results') {
     const winner = state.winner;
     if (!winner) return null;
+    // Auto-post spin result to feed
+    postSpin(winner);
     return (
       <ResultsScreen 
         winner={winner}
@@ -279,7 +283,10 @@ const Index = () => {
         ownedPacks={ownedPacks}
         onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
         canSaveFortunes={canSaveFortunes}
-        onSaveFortune={(fortuneText, packId) => saveFortune(fortuneText, packId)}
+        onSaveFortune={(fortuneText, packId) => {
+          saveFortune(fortuneText, packId);
+          postSave({ name: winner.name, id: winner.id, category: winner.category });
+        }}
       />
     );
   }

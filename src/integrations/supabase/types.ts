@@ -28,6 +28,7 @@ export type Database = {
           longitude: number | null
           name: string
           neighborhood: string | null
+          owner_user_id: string | null
           photo_url: string | null
           price_level: string | null
           rating: number | null
@@ -49,6 +50,7 @@ export type Database = {
           longitude?: number | null
           name: string
           neighborhood?: string | null
+          owner_user_id?: string | null
           photo_url?: string | null
           price_level?: string | null
           rating?: number | null
@@ -70,6 +72,7 @@ export type Database = {
           longitude?: number | null
           name?: string
           neighborhood?: string | null
+          owner_user_id?: string | null
           photo_url?: string | null
           price_level?: string | null
           rating?: number | null
@@ -107,6 +110,83 @@ export type Database = {
           tags?: string[] | null
           text?: string
           tier?: Database["public"]["Enums"]["fortune_tier"]
+        }
+        Relationships: []
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          city: string | null
+          content: string | null
+          created_at: string
+          event_ends_at: string | null
+          event_starts_at: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          place_category: string | null
+          place_id: string | null
+          place_name: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          content?: string | null
+          created_at?: string
+          event_ends_at?: string | null
+          event_starts_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          place_category?: string | null
+          place_id?: string | null
+          place_name?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          content?: string | null
+          created_at?: string
+          event_ends_at?: string | null
+          event_starts_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          place_category?: string | null
+          place_id?: string | null
+          place_name?: string | null
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
