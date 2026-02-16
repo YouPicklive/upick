@@ -68,16 +68,27 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
         </div>
         {loading ? null : isAuthenticated ?
         <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full">
+            <button
+              onClick={() => navigate('/membership')}
+              className="p-2 rounded-full hover:bg-secondary transition-colors"
+              title="Membership"
+            >
+              <Star className="w-4 h-4 text-primary" />
+            </button>
+            <button
+              onClick={() => navigate('/profile')}
+              className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full hover:bg-secondary/80 transition-colors"
+            >
               <User className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground truncate max-w-[100px]">
                 {user?.email?.split('@')[0]}
               </span>
-            </div>
+            </button>
             <button
-            onClick={handleSignOut}
-            className="p-2 rounded-full hover:bg-secondary transition-colors"
-            title="Sign out">
+              onClick={handleSignOut}
+              className="p-2 rounded-full hover:bg-secondary transition-colors"
+              title="Sign out"
+            >
               <LogOut className="w-4 h-4 text-muted-foreground" />
             </button>
           </div> :
@@ -257,7 +268,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           setShowPackPurchase(false);
         }}
         onUpgradePlus={() => {
-          window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
+          navigate('/membership');
           setShowPackPurchase(false);
         }}
         onClose={() => setShowPackPurchase(false)} />

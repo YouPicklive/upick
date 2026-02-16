@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTrialSpin } from '@/hooks/useTrialSpin';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { usePlacesSearch } from '@/hooks/usePlacesSearch';
+import { useUserEntitlements } from '@/hooks/useUserEntitlements';
+import { useSavedFortunes } from '@/hooks/useSavedFortunes';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
@@ -48,6 +50,8 @@ const Index = () => {
   } = useFreemium();
 
   const { searchPlaces, isLoading: placesLoading } = usePlacesSearch();
+  const { canSaveFortunes } = useUserEntitlements();
+  const { saveFortune } = useSavedFortunes();
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
@@ -88,13 +92,13 @@ const Index = () => {
   }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode, setVibeInput]);
 
   const handleVibeComplete = useCallback(async () => {
-    if (isAuthenticated && !canSpin) {
-      setShowSpinLimit(true);
-      return;
-    }
-
+    // Server-enforced spin gating for authenticated users
     if (isAuthenticated) {
-      useSpin();
+      const spinResult = await useSpin();
+      if (!spinResult.allowed) {
+        setShowSpinLimit(true);
+        return;
+      }
     }
 
     // Map selected vibe to internal intent/energy for backend compatibility
@@ -105,7 +109,7 @@ const Index = () => {
       }
     }
 
-    // Default vibe to 'explore' if none selected (should already be set by VibeScreen)
+    // Default vibe to 'explore' if none selected
     if (!state.vibeInput.selectedVibe) {
       setVibeInput({ selectedVibe: 'explore' });
     }
@@ -127,12 +131,12 @@ const Index = () => {
 
     // Fallback to sample spots
     startGame();
-  }, [isAuthenticated, canSpin, useSpin, state.vibeInput, coordinates, searchPlaces, startGame, setVibeInput]);
+  }, [isAuthenticated, useSpin, state.vibeInput, coordinates, searchPlaces, startGame, setVibeInput]);
 
   const handleUpgrade = useCallback(() => {
-    window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
+    navigate('/membership');
     setShowSpinLimit(false);
-  }, []);
+  }, [navigate]);
 
   const handlePlayAgain = useCallback(() => {
     if (!isAuthenticated) {
@@ -274,6 +278,8 @@ const Index = () => {
         isPremium={isPremium}
         ownedPacks={ownedPacks}
         onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
+        canSaveFortunes={canSaveFortunes}
+        onSaveFortune={(fortuneText, packId) => saveFortune(fortuneText, packId)}
       />
     );
   }

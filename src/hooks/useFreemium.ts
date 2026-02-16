@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { useUserEntitlements } from './useUserEntitlements';
+import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY = 'youpick_freemium';
-const FREE_DAILY_SPINS = 2;
-const FREE_MAX_DISTANCE = 'short-drive'; // Free users limited to 5 miles max
+const FREE_DAILY_SPINS = 1; // Matches DB default
+const FREE_MAX_DISTANCE = 'short-drive';
 
 interface FreemiumData {
   lastSpinDate: string;
   spinsToday: number;
   isPremium: boolean;
-  ownedPacks: string[]; // Array of purchased pack IDs
+  ownedPacks: string[];
 }
 
 const getToday = () => new Date().toISOString().split('T')[0];
@@ -20,30 +21,15 @@ const getStoredData = (): FreemiumData => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const data = JSON.parse(stored) as FreemiumData;
-      // Reset spins if it's a new day
       if (data.lastSpinDate !== getToday()) {
-        return {
-          ...data,
-          lastSpinDate: getToday(),
-          spinsToday: 0,
-        };
+        return { ...data, lastSpinDate: getToday(), spinsToday: 0 };
       }
-      // Ensure ownedPacks exists for backward compatibility
-      return {
-        ...data,
-        ownedPacks: data.ownedPacks || [],
-      };
+      return { ...data, ownedPacks: data.ownedPacks || [] };
     }
   } catch (e) {
     console.error('Error reading freemium data:', e);
   }
-  
-  return {
-    lastSpinDate: getToday(),
-    spinsToday: 0,
-    isPremium: false,
-    ownedPacks: [],
-  };
+  return { lastSpinDate: getToday(), spinsToday: 0, isPremium: false, ownedPacks: [] };
 };
 
 const saveData = (data: FreemiumData) => {
@@ -54,84 +40,110 @@ const saveData = (data: FreemiumData) => {
   }
 };
 
+export interface SpinResult {
+  allowed: boolean;
+  reason: string;
+  remaining?: number;
+}
+
 export function useFreemium() {
-  const { isAuthenticated } = useAuth();
-  const { 
-    isPremium: dbIsPremium, 
-    ownedPacks: dbOwnedPacks, 
+  const { user, isAuthenticated } = useAuth();
+  const {
+    isPremium: dbIsPremium,
+    ownedPacks: dbOwnedPacks,
     upgradeToPremium: dbUpgradeToPremium,
     purchasePack: dbPurchasePack,
+    tier,
+    unlimitedSpins,
+    spinsUsedToday,
+    freeSpinLimitPerDay,
   } = useUserEntitlements();
 
   const [localData, setLocalData] = useState<FreemiumData>(getStoredData);
 
-  // Sync with localStorage on mount and handle day changes
   useEffect(() => {
     const freshData = getStoredData();
     setLocalData(freshData);
     saveData(freshData);
   }, []);
 
-  // Use DB values when authenticated, localStorage when not
   const isPremium = isAuthenticated ? dbIsPremium : localData.isPremium;
   const ownedPacks = isAuthenticated ? dbOwnedPacks : localData.ownedPacks;
 
-  const spinsRemaining = isPremium ? Infinity : Math.max(0, FREE_DAILY_SPINS - localData.spinsToday);
+  // Compute spins remaining
+  const maxFreeSpins = isAuthenticated ? freeSpinLimitPerDay : FREE_DAILY_SPINS;
+  const spinsToday = isAuthenticated ? spinsUsedToday : localData.spinsToday;
+  const spinsRemaining = isPremium ? Infinity : Math.max(0, maxFreeSpins - spinsToday);
   const canSpin = isPremium || spinsRemaining > 0;
 
-  const useSpin = useCallback(() => {
-    if (isPremium) return true;
-    
-    if (spinsRemaining > 0) {
-      const newData = {
-        ...localData,
-        spinsToday: localData.spinsToday + 1,
-        lastSpinDate: getToday(),
-      };
-      setLocalData(newData);
-      saveData(newData);
-      return true;
+  /**
+   * Consume a spin. For authenticated users, calls server-side RPC
+   * which atomically checks and consumes. For guests, uses localStorage.
+   */
+  const useSpin = useCallback(async (): Promise<SpinResult> => {
+    if (isAuthenticated && user) {
+      // Server-side spin consumption
+      try {
+        const { data, error } = await supabase.rpc('check_and_consume_spin', {
+          p_user_id: user.id,
+        });
+
+        if (error) {
+          console.error('Spin RPC error:', error);
+          return { allowed: false, reason: 'error' };
+        }
+
+        const result = data as any;
+        return {
+          allowed: result.allowed,
+          reason: result.reason,
+          remaining: result.remaining,
+        };
+      } catch (err) {
+        console.error('Spin consumption failed:', err);
+        return { allowed: false, reason: 'error' };
+      }
+    } else {
+      // Guest: localStorage
+      if (isPremium) return { allowed: true, reason: 'plus' };
+
+      if (spinsRemaining > 0) {
+        const newData = {
+          ...localData,
+          spinsToday: localData.spinsToday + 1,
+          lastSpinDate: getToday(),
+        };
+        setLocalData(newData);
+        saveData(newData);
+        return { allowed: true, reason: 'free_remaining', remaining: spinsRemaining - 1 };
+      }
+      return { allowed: false, reason: 'limit_reached' };
     }
-    return false;
-  }, [isPremium, localData, spinsRemaining]);
+  }, [isAuthenticated, user, isPremium, localData, spinsRemaining]);
 
   const isDistanceAllowed = useCallback((distance: string): boolean => {
     if (isPremium) return true;
-    
-    // Free users can only use walking and short-drive
     const freeDistances = ['walking', 'short-drive'];
     return freeDistances.includes(distance);
   }, [isPremium]);
 
   const getPremiumDistances = () => ['road-trip', 'epic-adventure', 'any'];
 
-  // Check if a fortune pack is unlocked (owned individually or has Plus)
   const isFortunePackAllowed = useCallback((pack: string): boolean => {
     if (isPremium) return true;
     if (pack === 'free') return true;
-    // Check if pack is individually owned
     return ownedPacks.includes(pack);
   }, [isPremium, ownedPacks]);
 
-  // Packs that require Plus OR individual purchase
   const getPremiumFortunePacks = () => ['plus', 'love', 'career', 'unhinged', 'main_character'];
-
-  // Packs available for individual purchase
   const getPurchasablePacks = () => ['love', 'career', 'unhinged', 'main_character'];
 
-  // Purchase a pack (add to ownedPacks)
   const purchasePack = useCallback(async (packId: string) => {
     if (isAuthenticated) {
-      // Save to database
       await dbPurchasePack(packId);
     } else {
-      // Save to localStorage
       if (localData.ownedPacks.includes(packId)) return;
-      
-      const newData = {
-        ...localData,
-        ownedPacks: [...localData.ownedPacks, packId],
-      };
+      const newData = { ...localData, ownedPacks: [...localData.ownedPacks, packId] };
       setLocalData(newData);
       saveData(newData);
     }
@@ -139,24 +151,16 @@ export function useFreemium() {
 
   const upgradeToPremium = useCallback(async () => {
     if (isAuthenticated) {
-      // Save to database
       await dbUpgradeToPremium();
     } else {
-      // Save to localStorage
       const newData = { ...localData, isPremium: true };
       setLocalData(newData);
       saveData(newData);
     }
   }, [isAuthenticated, dbUpgradeToPremium, localData]);
 
-  // For testing: reset to free
   const resetToFree = useCallback(() => {
-    const newData = {
-      lastSpinDate: getToday(),
-      spinsToday: 0,
-      isPremium: false,
-      ownedPacks: [],
-    };
+    const newData = { lastSpinDate: getToday(), spinsToday: 0, isPremium: false, ownedPacks: [] };
     setLocalData(newData);
     saveData(newData);
   }, []);
@@ -165,8 +169,8 @@ export function useFreemium() {
     isPremium,
     ownedPacks,
     spinsRemaining,
-    spinsToday: localData.spinsToday,
-    maxFreeSpins: FREE_DAILY_SPINS,
+    spinsToday,
+    maxFreeSpins,
     canSpin,
     useSpin,
     isDistanceAllowed,

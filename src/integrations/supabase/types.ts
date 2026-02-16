@@ -110,28 +110,151 @@ export type Database = {
         }
         Relationships: []
       }
-      user_entitlements: {
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      saved_fortunes: {
+        Row: {
+          context: Json
+          created_at: string
+          fortune_pack_id: string | null
+          fortune_text: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          fortune_pack_id?: string | null
+          fortune_text: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          fortune_pack_id?: string | null
+          fortune_text?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stripe_customers: {
         Row: {
           created_at: string
-          id: string
-          owned_packs: string[] | null
-          plus_active: boolean
-          updated_at: string
+          stripe_customer_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          id?: string
-          owned_packs?: string[] | null
-          plus_active?: boolean
-          updated_at?: string
+          stripe_customer_id: string
           user_id: string
         }
         Update: {
           created_at?: string
+          stripe_customer_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stripe_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          current_period_end: string | null
+          price_id: string | null
+          status: string
+          stripe_subscription_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          current_period_end?: string | null
+          price_id?: string | null
+          status: string
+          stripe_subscription_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          current_period_end?: string | null
+          price_id?: string | null
+          status?: string
+          stripe_subscription_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_entitlements: {
+        Row: {
+          can_save_fortunes: boolean
+          created_at: string
+          free_spin_limit_per_day: number
+          id: string
+          owned_packs: string[] | null
+          plus_active: boolean
+          spins_reset_date: string
+          spins_used_today: number
+          tier: string
+          unlimited_spins: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_save_fortunes?: boolean
+          created_at?: string
+          free_spin_limit_per_day?: number
           id?: string
           owned_packs?: string[] | null
           plus_active?: boolean
+          spins_reset_date?: string
+          spins_used_today?: number
+          tier?: string
+          unlimited_spins?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_save_fortunes?: boolean
+          created_at?: string
+          free_spin_limit_per_day?: number
+          id?: string
+          owned_packs?: string[] | null
+          plus_active?: boolean
+          spins_reset_date?: string
+          spins_used_today?: number
+          tier?: string
+          unlimited_spins?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -163,6 +286,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_consume_spin: { Args: { p_user_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Profile from "./pages/Profile";
+import Membership from "./pages/Membership";
+import SavedFortunes from "./pages/SavedFortunes";
 
 import NotFound from "./pages/NotFound";
 
@@ -23,6 +26,9 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/membership" element={<Membership />} />
+          <Route path="/saved" element={<SavedFortunes />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
