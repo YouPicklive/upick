@@ -83,6 +83,66 @@ export type Database = {
         }
         Relationships: []
       }
+      feed_posts: {
+        Row: {
+          body: string | null
+          city: string | null
+          created_at: string
+          id: string
+          is_anonymous: boolean
+          is_bot: boolean
+          lat: number | null
+          lng: number | null
+          post_type: string
+          region: string | null
+          result_address: string | null
+          result_category: string | null
+          result_name: string
+          result_place_id: string | null
+          title: string
+          user_id: string | null
+          visibility: string
+        }
+        Insert: {
+          body?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          is_bot?: boolean
+          lat?: number | null
+          lng?: number | null
+          post_type: string
+          region?: string | null
+          result_address?: string | null
+          result_category?: string | null
+          result_name: string
+          result_place_id?: string | null
+          title: string
+          user_id?: string | null
+          visibility?: string
+        }
+        Update: {
+          body?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          is_bot?: boolean
+          lat?: number | null
+          lng?: number | null
+          post_type?: string
+          region?: string | null
+          result_address?: string | null
+          result_category?: string | null
+          result_name?: string
+          result_place_id?: string | null
+          title?: string
+          user_id?: string | null
+          visibility?: string
+        }
+        Relationships: []
+      }
       fortunes: {
         Row: {
           active: boolean
@@ -194,6 +254,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          default_post_privacy: string
           display_name: string | null
           email: string
           id: string
@@ -203,6 +264,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          default_post_privacy?: string
           display_name?: string | null
           email: string
           id: string
@@ -212,6 +274,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          default_post_privacy?: string
           display_name?: string | null
           email?: string
           id?: string
@@ -243,6 +306,54 @@ export type Database = {
           fortune_pack_id?: string | null
           fortune_text?: string
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spin_events: {
+        Row: {
+          caption: string | null
+          category: string | null
+          city: string | null
+          created_at: string
+          id: string
+          lat: number | null
+          lng: number | null
+          place_id: string | null
+          place_name: string
+          posted_to_feed_at: string | null
+          region: string | null
+          should_post_to_feed: boolean
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
+          place_name: string
+          posted_to_feed_at?: string | null
+          region?: string | null
+          should_post_to_feed?: boolean
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
+          place_name?: string
+          posted_to_feed_at?: string | null
+          region?: string | null
+          should_post_to_feed?: boolean
           user_id?: string
         }
         Relationships: []

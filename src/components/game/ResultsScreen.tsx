@@ -23,6 +23,8 @@ interface ResultsScreenProps {
   onFortunePackChange?: (packId: string) => void;
   canSaveFortunes?: boolean;
   onSaveFortune?: (fortuneText: string, packId: string) => void;
+  onPostToFeed?: (shouldPost: boolean, caption: string) => void;
+  isAuthenticated?: boolean;
 }
 
 const categoryEmojis: Record<string, string> = {
@@ -37,7 +39,7 @@ const categoryEmojis: Record<string, string> = {
 export function ResultsScreen({ 
   winner, likedSpots = [], fortunePack = 'free', onPlayAgain, onNotForMe,
   isTrialMode, userCoordinates, isPremium = false, ownedPacks = [], onFortunePackChange,
-  canSaveFortunes = false, onSaveFortune
+  canSaveFortunes = false, onSaveFortune, onPostToFeed, isAuthenticated = false
 }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
@@ -45,6 +47,9 @@ export function ResultsScreen({
   const [fortune, setFortune] = useState('');
   const [isSharing, setIsSharing] = useState(false);
   const [fortuneSaved, setFortuneSaved] = useState(false);
+  const [postToFeed, setPostToFeed] = useState(true);
+  const [feedCaption, setFeedCaption] = useState('');
+  const [feedPosted, setFeedPosted] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   const { getFortuneByPackId, getPackInfo } = useFortunes();
@@ -74,6 +79,23 @@ export function ResultsScreen({
         searchEvents(winner.name, winner.category, undefined, userCoordinates);
       }
     }, 1500);
+  };
+
+  // Fire feed post on unmount or when user takes an action
+  useEffect(() => {
+    return () => {
+      if (!feedPosted && onPostToFeed) {
+        onPostToFeed(postToFeed, feedCaption);
+      }
+    };
+  }, []);
+
+  // Also fire when user clicks any action button
+  const firePost = () => {
+    if (!feedPosted && onPostToFeed) {
+      setFeedPosted(true);
+      onPostToFeed(postToFeed, feedCaption);
+    }
   };
 
   useEffect(() => {
@@ -325,9 +347,40 @@ export function ResultsScreen({
                 </div>
               )}
 
-              {/* 3 Action Buttons */}
+              {/* Post to Feed toggle */}
+              {isAuthenticated && onPostToFeed && !feedPosted && (
+                <div className="bg-secondary/40 rounded-xl p-3 mb-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                      📣 Post to Feed
+                    </label>
+                    <button
+                      onClick={() => setPostToFeed(!postToFeed)}
+                      className={`w-10 h-6 rounded-full transition-colors relative ${
+                        postToFeed ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 bg-primary-foreground rounded-full absolute top-1 transition-transform ${
+                        postToFeed ? 'translate-x-5' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+                  {postToFeed && (
+                    <input
+                      type="text"
+                      placeholder="Add a caption (optional)"
+                      value={feedCaption}
+                      onChange={(e) => setFeedCaption(e.target.value)}
+                      maxLength={140}
+                      className="w-full bg-background/60 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  )}
+                </div>
+              )}
+
+
               <div className="flex flex-col gap-2.5">
-                <Button variant="hero" size="lg" className="w-full" onClick={handleOpenMaps}>
+                <Button variant="hero" size="lg" className="w-full" onClick={() => { firePost(); handleOpenMaps(); }}>
                   <Navigation className="w-4 h-4 mr-2" />
                   Pick This — Open in Maps
                 </Button>
@@ -338,11 +391,11 @@ export function ResultsScreen({
                   </a>
                 </Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="lg" className="flex-1" onClick={handleShareMyFate} disabled={isSharing}>
+                  <Button variant="outline" size="lg" className="flex-1" onClick={() => { firePost(); handleShareMyFate(); }} disabled={isSharing}>
                     <Share2 className="w-4 h-4 mr-2" />
                     {isSharing ? 'Sharing...' : 'Share My Fate'}
                   </Button>
-                  <Button variant="outline" size="lg" className="flex-1" onClick={onPlayAgain}>
+                  <Button variant="outline" size="lg" className="flex-1" onClick={() => { firePost(); onPlayAgain(); }}>
                     <RotateCcw className="w-4 h-4 mr-2" />
                     {isTrialMode ? 'Create Account' : 'Spin Again'}
                   </Button>

@@ -268,8 +268,6 @@ const Index = () => {
   if (state.mode === 'results') {
     const winner = state.winner;
     if (!winner) return null;
-    // Auto-post spin result to feed
-    postSpin(winner);
     return (
       <ResultsScreen 
         winner={winner}
@@ -278,6 +276,7 @@ const Index = () => {
         onPlayAgain={handlePlayAgain}
         onNotForMe={handleNotForMe}
         isTrialMode={!isAuthenticated}
+        isAuthenticated={isAuthenticated}
         userCoordinates={coordinates}
         isPremium={isPremium}
         ownedPacks={ownedPacks}
@@ -286,6 +285,9 @@ const Index = () => {
         onSaveFortune={(fortuneText, packId) => {
           saveFortune(fortuneText, packId);
           postSave({ name: winner.name, id: winner.id, category: winner.category });
+        }}
+        onPostToFeed={(shouldPost, caption) => {
+          postSpin(winner, { shouldPost, caption });
         }}
       />
     );
