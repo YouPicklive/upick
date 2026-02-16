@@ -9,10 +9,10 @@ import { formatDistanceToNow } from 'date-fns';
 
 function PostTypeLabel({ type }: { type: string }) {
   const labels: Record<string, { text: string; emoji: string }> = {
-    spin: { text: 'spun fate', emoji: '🎡' },
+    spin_result: { text: 'spun fate', emoji: '🎡' },
     save: { text: 'saved a spot', emoji: '📌' },
     review: { text: 'shared a review', emoji: '✍️' },
-    post: { text: 'posted', emoji: '💬' },
+    bot: { text: 'discovered', emoji: '🤖' },
     business_event: { text: 'posted an event', emoji: '📅' },
   };
   const label = labels[type] || { text: type, emoji: '📝' };
@@ -24,7 +24,7 @@ function PostTypeLabel({ type }: { type: string }) {
 }
 
 function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (id: string) => void; isAuthenticated: boolean }) {
-  const displayName = post.display_name || post.username || 'Someone';
+  const displayName = post.is_anonymous ? 'Someone' : (post.display_name || post.username || 'Someone');
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
 
   return (
@@ -32,7 +32,7 @@ function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
         <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0 border border-border/50">
-          {post.avatar_url ? (
+          {!post.is_anonymous && post.avatar_url ? (
             <img src={post.avatar_url} alt="" className="w-full h-full object-cover" />
           ) : (
             <span className="text-sm font-semibold text-muted-foreground">
@@ -43,20 +43,20 @@ function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
-            <PostTypeLabel type={post.type} />
+            <PostTypeLabel type={post.post_type} />
           </div>
           <p className="text-[11px] text-muted-foreground">{timeAgo}</p>
         </div>
       </div>
 
       {/* Place card */}
-      {post.place_name && (
+      {post.result_name && (
         <div className="bg-secondary/50 rounded-lg p-3 mb-3">
-          <p className="text-sm font-semibold text-foreground">{post.place_name}</p>
+          <p className="text-sm font-semibold text-foreground">{post.result_name}</p>
           <div className="flex items-center gap-2 mt-1">
-            {post.place_category && (
+            {post.result_category && (
               <span className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium capitalize">
-                {post.place_category}
+                {post.result_category}
               </span>
             )}
             {post.city && (
@@ -68,17 +68,9 @@ function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (
         </div>
       )}
 
-      {/* Content */}
-      {post.content && (
-        <p className="text-sm text-foreground/80 leading-relaxed mb-3">{post.content}</p>
-      )}
-
-      {/* Event time */}
-      {post.event_starts_at && (
-        <p className="text-xs text-accent font-medium mb-3">
-          📅 {new Date(post.event_starts_at).toLocaleDateString()} at{' '}
-          {new Date(post.event_starts_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-        </p>
+      {/* Body/caption */}
+      {post.body && (
+        <p className="text-sm text-foreground/80 leading-relaxed mb-3">{post.body}</p>
       )}
 
       {/* Actions */}

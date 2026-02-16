@@ -4,19 +4,23 @@ import { useAuth } from './useAuth';
 
 export interface FeedPost {
   id: string;
-  user_id: string;
-  type: string;
-  content: string | null;
-  place_name: string | null;
-  place_id: string | null;
-  place_category: string | null;
+  user_id: string | null;
+  post_type: string;
+  title: string;
+  body: string | null;
+  result_place_id: string | null;
+  result_name: string;
+  result_category: string | null;
+  result_address: string | null;
+  lat: number | null;
+  lng: number | null;
   city: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  event_starts_at: string | null;
-  event_ends_at: string | null;
+  region: string | null;
+  is_anonymous: boolean;
+  is_bot: boolean;
+  visibility: string;
   created_at: string;
-  // Joined
+  // Joined from profiles
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
@@ -29,7 +33,7 @@ interface UseFeedOptions {
   latitude?: number | null;
   longitude?: number | null;
   radiusMiles?: number;
-  type?: string;
+  postType?: string;
 }
 
 export function useFeed(options: UseFeedOptions = {}) {
@@ -40,17 +44,16 @@ export function useFeed(options: UseFeedOptions = {}) {
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch posts with profile join
       let query = supabase
-        .from('posts' as any)
+        .from('feed_posts' as any)
         .select('*')
+        .eq('visibility', 'public')
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (options.type) {
-        query = query.eq('type', options.type);
+      if (options.postType) {
+        query = query.eq('post_type', options.postType);
       }
-
       if (options.city) {
         query = query.eq('city', options.city);
       }
@@ -62,17 +65,19 @@ export function useFeed(options: UseFeedOptions = {}) {
         return;
       }
 
-      // Get unique user IDs to fetch profiles
-      const userIds = [...new Set((postsData as any[]).map((p: any) => p.user_id))];
-      
-      const { data: profiles } = await supabase
-        .from('profiles' as any)
-        .select('id, username, display_name, avatar_url')
-        .in('id', userIds);
+      // Get unique user IDs (skip nulls for anonymous posts)
+      const userIds = [...new Set((postsData as any[]).map((p: any) => p.user_id).filter(Boolean))];
 
-      const profileMap = new Map((profiles as any[] || []).map((p: any) => [p.id, p]));
+      let profileMap = new Map();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles' as any)
+          .select('id, username, display_name, avatar_url')
+          .in('id', userIds);
+        profileMap = new Map((profiles as any[] || []).map((p: any) => [p.id, p]));
+      }
 
-      // Get like counts
+      // Get like counts from post_likes (reusing existing table)
       const postIds = (postsData as any[]).map((p: any) => p.id);
       const { data: likes } = await supabase
         .from('post_likes' as any)
@@ -90,19 +95,19 @@ export function useFeed(options: UseFeedOptions = {}) {
       let filtered = postsData as any[];
       if (options.latitude && options.longitude && options.radiusMiles) {
         filtered = filtered.filter((p: any) => {
-          if (!p.latitude || !p.longitude) return true; // Include posts without coords
-          const dist = haversine(options.latitude!, options.longitude!, p.latitude, p.longitude);
+          if (!p.lat || !p.lng) return true;
+          const dist = haversine(options.latitude!, options.longitude!, p.lat, p.lng);
           return dist <= options.radiusMiles!;
         });
       }
 
       const enriched: FeedPost[] = filtered.map((p: any) => {
-        const profile = profileMap.get(p.user_id);
+        const profile = p.user_id ? profileMap.get(p.user_id) : null;
         return {
           ...p,
           username: profile?.username || null,
-          display_name: profile?.display_name || null,
-          avatar_url: profile?.avatar_url || null,
+          display_name: p.is_anonymous ? null : (profile?.display_name || null),
+          avatar_url: p.is_anonymous ? null : (profile?.avatar_url || null),
           like_count: likeCountMap.get(p.id) || 0,
           liked_by_me: myLikes.has(p.id),
         };
@@ -114,17 +119,17 @@ export function useFeed(options: UseFeedOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [options.city, options.type, options.latitude, options.longitude, options.radiusMiles, user?.id]);
+  }, [options.city, options.postType, options.latitude, options.longitude, options.radiusMiles, user?.id]);
 
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
 
-  // Realtime subscription
+  // Realtime subscription on feed_posts
   useEffect(() => {
     const channel = supabase
       .channel('feed-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_posts' }, () => {
         fetchPosts();
       })
       .subscribe();
@@ -150,26 +155,7 @@ export function useFeed(options: UseFeedOptions = {}) {
     ));
   }, [user, posts]);
 
-  const createPost = useCallback(async (post: {
-    type: string;
-    content?: string;
-    place_name?: string;
-    place_id?: string;
-    place_category?: string;
-    city?: string;
-    latitude?: number;
-    longitude?: number;
-    event_starts_at?: string;
-    event_ends_at?: string;
-  }) => {
-    if (!user) return;
-    await supabase.from('posts' as any).insert({
-      user_id: user.id,
-      ...post,
-    } as any);
-  }, [user]);
-
-  return { posts, loading, refresh: fetchPosts, toggleLike, createPost };
+  return { posts, loading, refresh: fetchPosts, toggleLike };
 }
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {

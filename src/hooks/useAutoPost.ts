@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
 /**
- * Auto-posts spin results and saved places to the community feed.
- * Posts are fire-and-forget — failures are silently ignored to not disrupt UX.
+ * Records spin events and triggers feed posting via edge function.
+ * Fire-and-forget — failures are silently ignored to not disrupt UX.
  */
 export function useAutoPost() {
   const { user, isAuthenticated } = useAuth();
@@ -17,23 +17,38 @@ export function useAutoPost() {
     latitude?: number;
     longitude?: number;
     neighborhood?: string;
-  }) => {
+  }, options?: { shouldPost?: boolean; caption?: string }) => {
     if (!isAuthenticated || !user) return;
     // Deduplicate within session
     if (postedSpins.current.has(spot.id)) return;
     postedSpins.current.add(spot.id);
 
+    const shouldPost = options?.shouldPost ?? true;
+
     try {
-      await supabase.from('posts' as any).insert({
+      // Insert spin_event
+      const { data, error } = await supabase.from('spin_events' as any).insert({
         user_id: user.id,
-        type: 'spin',
-        place_name: spot.name,
         place_id: spot.id,
-        place_category: spot.category || null,
-        city: 'Richmond', // Default for V1
-        latitude: spot.latitude || null,
-        longitude: spot.longitude || null,
-      } as any);
+        place_name: spot.name,
+        category: spot.category || null,
+        lat: spot.latitude || null,
+        lng: spot.longitude || null,
+        city: 'Richmond',
+        region: 'VA',
+        should_post_to_feed: shouldPost,
+        caption: options?.caption || null,
+      } as any).select('id').single();
+
+      if (error || !data) return;
+
+      // Fire edge function to create feed post (fire-and-forget)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      fetch(`${supabaseUrl}/functions/v1/post-spin-to-feed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spin_event_id: (data as any).id }),
+      }).catch(() => { /* silent */ });
     } catch {
       // Silent fail
     }
@@ -43,16 +58,24 @@ export function useAutoPost() {
     name: string;
     id?: string;
     category?: string;
+    latitude?: number;
+    longitude?: number;
   }) => {
     if (!isAuthenticated || !user) return;
     try {
-      await supabase.from('posts' as any).insert({
+      // Directly insert a feed_post for saves (simpler, no edge function needed)
+      await supabase.from('feed_posts' as any).insert({
         user_id: user.id,
-        type: 'save',
-        place_name: spot.name,
-        place_id: spot.id || null,
-        place_category: spot.category || null,
+        post_type: 'save',
+        title: `Saved ${spot.name} 📌`,
+        result_place_id: spot.id || null,
+        result_name: spot.name,
+        result_category: spot.category || null,
+        lat: spot.latitude || null,
+        lng: spot.longitude || null,
         city: 'Richmond',
+        region: 'VA',
+        visibility: 'public',
       } as any);
     } catch {
       // Silent fail
