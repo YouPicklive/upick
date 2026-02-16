@@ -14,6 +14,7 @@ import Membership from "./pages/Membership";
 import SavedFortunes from "./pages/SavedFortunes";
 import Feed from "./pages/Feed";
 import EventsToday from "./pages/EventsToday";
+import AdminModeration from "./pages/AdminModeration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/saved" element={<SavedFortunes />} />
           <Route path="/feed" element={<Feed />} />
           <Route path="/events-today" element={<EventsToday />} />
+          <Route path="/admin/moderation" element={<AdminModeration />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
