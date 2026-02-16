@@ -4,6 +4,7 @@ import { Spot } from '@/types/game';
 import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star, Share2, Bookmark, ChevronLeft, ChevronRight, Heart, MessageSquare } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
+import { ReviewModal } from './ReviewModal';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import { useSavedSpins } from '@/hooks/useSavedSpins';
@@ -494,85 +495,12 @@ export function ResultsScreen({
               {/* Leave a Review */}
               {isAuthenticated && !reviewSubmitted && (
                 <div className="mb-5">
-                  {!showReviewForm ? (
-                    <button
-                      onClick={() => setShowReviewForm(true)}
-                      className="w-full bg-secondary/40 rounded-xl p-3 text-sm font-medium text-foreground flex items-center justify-center gap-1.5 hover:bg-secondary/60 transition-colors"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-primary" /> Leave a Review
-                    </button>
-                  ) : (
-                    <div className="bg-secondary/40 rounded-xl p-3">
-                      <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
-                        <Star className="w-3.5 h-3.5 text-primary" /> Rate {winner.name}
-                      </p>
-                      {/* Star rating */}
-                      <div className="flex gap-1 mb-3">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            onClick={() => setReviewRating(star)}
-                            className="transition-transform hover:scale-110"
-                          >
-                            <Star
-                              className={`w-6 h-6 ${
-                                star <= reviewRating
-                                  ? 'text-accent fill-accent'
-                                  : 'text-muted-foreground/30'
-                              }`}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                      <textarea
-                        placeholder="Share your experience (public)"
-                        value={reviewContent}
-                        onChange={(e) => setReviewContent(e.target.value)}
-                        maxLength={500}
-                        rows={2}
-                        className="w-full bg-background/60 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary mb-2 resize-none"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Private note for yourself (optional)"
-                        value={reviewNote}
-                        onChange={(e) => setReviewNote(e.target.value)}
-                        maxLength={200}
-                        className="w-full bg-background/60 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary mb-2"
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => setShowReviewForm(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="flex-1"
-                          onClick={async () => {
-                            const submitted = await addReview({
-                              place_name: winner.name,
-                              place_id: winner.id || null,
-                              rating: reviewRating,
-                              content: reviewContent || null,
-                              note: reviewNote || null,
-                              is_public: true,
-                            });
-                            if (submitted) {
-                              setReviewSubmitted(true);
-                              setShowReviewForm(false);
-                            }
-                          }}
-                        >
-                          <Star className="w-3.5 h-3.5 mr-1" /> Submit
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => setShowReviewForm(true)}
+                    className="w-full bg-secondary/40 rounded-xl p-3 text-sm font-medium text-foreground flex items-center justify-center gap-1.5 hover:bg-secondary/60 transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-primary" /> Leave a Review
+                  </button>
                 </div>
               )}
               {reviewSubmitted && (
@@ -582,6 +510,21 @@ export function ResultsScreen({
                   </p>
                 </div>
               )}
+
+              <ReviewModal
+                open={showReviewForm}
+                onOpenChange={setShowReviewForm}
+                placeName={winner.name}
+                onSubmit={async (data) => {
+                  const submitted = await addReview({
+                    place_name: winner.name,
+                    place_id: winner.id || null,
+                    ...data,
+                  });
+                  if (submitted) setReviewSubmitted(true);
+                  return !!submitted;
+                }}
+              />
 
 
               <div className="flex flex-col gap-2.5">
