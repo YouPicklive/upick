@@ -348,6 +348,19 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
           spots = applyFreeOnlyGuardrail(spots);
         }
 
+        // ── Events category: exclude outdoor fillers unless price=FREE ──
+        if (vibe.intent === 'events' && !vibe.filters.includes('cheap')) {
+          spots = spots.filter(spot => {
+            const types = normalizeTypes(spot);
+            const nameLower = spot.name.toLowerCase();
+            // Exclude parks/trails/nature from Events results
+            const isOutdoorFiller = types.some(t =>
+              ['park', 'trail', 'hiking', 'campground', 'natural_feature', 'nature'].includes(t)
+            ) || ['trail', 'playground', 'nature area', 'scenic overlook'].some(kw => nameLower.includes(kw));
+            return !isOutdoorFiller;
+          });
+        }
+
         // ── Free + Outdoor guardrail ──
         if (shouldApplyFreeOutdoorGuardrail(vibe)) {
           spots = applyFreeOutdoorGuardrail(spots);
