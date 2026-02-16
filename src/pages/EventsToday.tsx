@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserEntitlements } from '@/hooks/useUserEntitlements';
+import { useSavedActivities } from '@/hooks/useSavedActivities';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Calendar, Clock, MapPin, Loader2, ExternalLink, RefreshCw,
+  Calendar, Clock, MapPin, Loader2, ExternalLink, RefreshCw, Bookmark, BookmarkCheck, Star,
   Music, Trophy, Palette, Drama, UtensilsCrossed, Users, Heart, ShoppingBag, Sparkles, PartyPopper,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface LocalEvent {
   name: string;
@@ -64,30 +69,68 @@ function distanceLabel(miles: number): string {
   return `${miles.toFixed(1)} mi`;
 }
 
-function EventCard({ event }: { event: LocalEvent }) {
+function EventCard({ event, isPremium, isAuthenticated, isSaved, onSave, onUnsave, onUpgrade }: {
+  event: LocalEvent;
+  isPremium: boolean;
+  isAuthenticated: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onUnsave: () => void;
+  onUpgrade: () => void;
+}) {
   const Icon = TYPE_ICONS[event.type || 'other'] || Calendar;
   const colorClass = TYPE_COLORS[event.type || 'other'] || 'bg-secondary text-muted-foreground';
 
+  const handleSaveClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      toast('Sign in to save events', { description: 'Create an account to start saving.' });
+      return;
+    }
+    if (!isPremium) {
+      onUpgrade();
+      return;
+    }
+    if (isSaved) {
+      onUnsave();
+    } else {
+      onSave();
+    }
+  };
+
   return (
-    <a
-      href={event.sourceUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block bg-card rounded-xl border border-border/50 p-4 hover:shadow-card hover:border-primary/20 transition-all group"
-    >
+    <div className="bg-card rounded-xl border border-border/50 p-4 hover:shadow-card hover:border-primary/20 transition-all group">
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${colorClass}`}>
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-            {event.name}
-          </h3>
+          <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="block">
+            <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+              {event.name}
+            </h3>
+          </a>
           {event.venue && (
             <p className="text-xs text-muted-foreground mt-0.5">📍 {event.venue}</p>
           )}
         </div>
-        <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary shrink-0 mt-1 transition-colors" />
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleSaveClick}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isSaved
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground/40 hover:text-primary hover:bg-primary/5'
+            }`}
+            title={isSaved ? 'Remove from saved' : isPremium ? 'Save to profile' : 'Plus members can save events'}
+          >
+            {isSaved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+          </button>
+          <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="p-1.5">
+            <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+          </a>
+        </div>
       </div>
 
       {event.description && (
@@ -114,7 +157,7 @@ function EventCard({ event }: { event: LocalEvent }) {
           </span>
         )}
       </div>
-    </a>
+    </div>
   );
 }
 
@@ -123,6 +166,10 @@ const cache = new Map<string, { events: LocalEvent[]; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
 
 export default function EventsToday() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { isPremium } = useUserEntitlements();
+  const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,7 +207,6 @@ export default function EventsToday() {
 
       let processed: LocalEvent[] = data.events;
 
-      // Add distances
       if (coordinates) {
         processed = processed.map((e: LocalEvent) => {
           if (e.latitude && e.longitude) {
@@ -168,7 +214,6 @@ export default function EventsToday() {
           }
           return e;
         });
-        // Sort by distance
         processed.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
       }
 
@@ -184,11 +229,39 @@ export default function EventsToday() {
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
-  // Auto-refresh every 60s
   useEffect(() => {
     refreshTimer.current = setInterval(fetchEvents, 60_000);
     return () => clearInterval(refreshTimer.current);
   }, [fetchEvents]);
+
+  const handleSaveEvent = (event: LocalEvent) => {
+    saveActivity({
+      activity_type: 'event',
+      title: event.name,
+      venue: event.venue || null,
+      description: event.description || null,
+      category: event.category || event.type || null,
+      event_date: event.date || null,
+      event_time: event.time || null,
+      source_url: event.sourceUrl || null,
+      place_name: event.venue || null,
+      latitude: event.latitude || null,
+      longitude: event.longitude || null,
+      address: event.address || null,
+      feed_post_id: null,
+    });
+  };
+
+  const handleUnsaveEvent = (event: LocalEvent) => {
+    unsaveActivity('event', event.name, event.venue);
+  };
+
+  const handleUpgrade = () => {
+    toast('Plus members can save events ✨', {
+      description: 'Upgrade to save activities to your profile.',
+      action: { label: 'Upgrade', onClick: () => navigate('/membership') },
+    });
+  };
 
   const availableTypes = [...new Set(events.map(e => e.type).filter(Boolean))];
   const displayed = filterType ? events.filter(e => e.type === filterType) : events;
@@ -198,7 +271,6 @@ export default function EventsToday() {
       <GlobalHeader />
 
       <main className="max-w-lg mx-auto px-4 py-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-display text-xl font-bold flex items-center gap-2">
@@ -283,7 +355,16 @@ export default function EventsToday() {
         ) : (
           <div className="space-y-3">
             {displayed.map((event, i) => (
-              <EventCard key={`${event.name}-${i}`} event={event} />
+              <EventCard
+                key={`${event.name}-${i}`}
+                event={event}
+                isPremium={isPremium}
+                isAuthenticated={isAuthenticated}
+                isSaved={isSaved('event', event.name, event.venue)}
+                onSave={() => handleSaveEvent(event)}
+                onUnsave={() => handleUnsaveEvent(event)}
+                onUpgrade={handleUpgrade}
+              />
             ))}
           </div>
         )}

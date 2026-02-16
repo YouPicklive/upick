@@ -1,13 +1,61 @@
 import { useParams } from 'react-router-dom';
 import { usePublicProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { useSavedActivities, SavedActivity } from '@/hooks/useSavedActivities';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { Button } from '@/components/ui/button';
-import { User, Settings, Loader2, Sparkles, MapPin } from 'lucide-react';
+import { User, Settings, Loader2, Sparkles, MapPin, Bookmark, Calendar, ExternalLink, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+
+function SavedActivityCard({ activity }: { activity: SavedActivity }) {
+  return (
+    <div className="bg-card rounded-xl border border-border/50 p-4">
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          {activity.activity_type === 'event' ? (
+            <Calendar className="w-4 h-4 text-primary" />
+          ) : (
+            <Bookmark className="w-4 h-4 text-primary" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground line-clamp-1">{activity.title}</p>
+          {activity.venue && (
+            <p className="text-xs text-muted-foreground mt-0.5">📍 {activity.venue}</p>
+          )}
+          {activity.place_name && activity.place_name !== activity.venue && (
+            <p className="text-xs text-muted-foreground mt-0.5">📍 {activity.place_name}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            {activity.category && (
+              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium capitalize">
+                {activity.category}
+              </span>
+            )}
+            {activity.event_date && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                <Calendar className="w-2.5 h-2.5" /> {activity.event_date}
+              </span>
+            )}
+            {activity.event_time && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                <Clock className="w-2.5 h-2.5" /> {activity.event_time}
+              </span>
+            )}
+          </div>
+        </div>
+        {activity.source_url && (
+          <a href={activity.source_url} target="_blank" rel="noopener noreferrer" className="shrink-0 p-1">
+            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 hover:text-primary transition-colors" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>();
@@ -18,15 +66,18 @@ export default function PublicProfile() {
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [stats, setStats] = useState({ postCount: 0, likesReceived: 0 });
+  const [activeTab, setActiveTab] = useState<'activity' | 'saved'>('activity');
 
   const isOwner = isAuthenticated && user && profile && user.id === profile.id;
+
+  // Fetch saved activities for the profile user
+  const { savedActivities, loading: savedLoading } = useSavedActivities(profile?.id);
 
   useEffect(() => {
     if (!profile?.id) return;
 
     const fetchPosts = async () => {
       setPostsLoading(true);
-      // Fetch user's public feed_posts
       const { data: feedPosts } = await supabase
         .from('feed_posts' as any)
         .select('*')
@@ -38,10 +89,8 @@ export default function PublicProfile() {
 
       setPosts((feedPosts as any[]) || []);
 
-      // Count posts
       const postCount = (feedPosts as any[])?.length || 0;
 
-      // Count likes received on this user's posts
       const postIds = ((feedPosts as any[]) || []).map((p: any) => p.id);
       let likesReceived = 0;
       if (postIds.length > 0) {
@@ -118,6 +167,10 @@ export default function PublicProfile() {
               <p className="font-display text-lg font-bold">{stats.likesReceived}</p>
               <p className="text-[11px] text-muted-foreground">Likes</p>
             </div>
+            <div className="text-center">
+              <p className="font-display text-lg font-bold">{savedActivities.length}</p>
+              <p className="text-[11px] text-muted-foreground">Saved</p>
+            </div>
           </div>
 
           {isOwner && (
@@ -128,37 +181,83 @@ export default function PublicProfile() {
           )}
         </div>
 
-        {/* Posts list */}
-        <div>
-          <h2 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Activity</h2>
-          {postsLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-10">
-              <Sparkles className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No activity yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {posts.map((post: any) => (
-                <div key={post.id} className="bg-card rounded-xl border border-border/50 p-4">
-                  <p className="text-sm font-semibold text-foreground">{post.title}</p>
-                  {post.result_name && post.result_name !== post.title && (
-                    <p className="text-xs text-muted-foreground mt-1">📍 {post.result_name}</p>
-                  )}
-                  {post.body && (
-                    <p className="text-sm text-foreground/70 mt-1">{post.body}</p>
-                  )}
-                  <p className="text-[11px] text-muted-foreground mt-2">
-                    {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 border-b border-border/50">
+          <button
+            onClick={() => setActiveTab('activity')}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'activity'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Activity
+          </button>
+          <button
+            onClick={() => setActiveTab('saved')}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+              activeTab === 'saved'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Bookmark className="w-3.5 h-3.5" /> Saved
+          </button>
         </div>
+
+        {/* Tab content */}
+        {activeTab === 'activity' ? (
+          <div>
+            {postsLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-10">
+                <Sparkles className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No activity yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {posts.map((post: any) => (
+                  <div key={post.id} className="bg-card rounded-xl border border-border/50 p-4">
+                    <p className="text-sm font-semibold text-foreground">{post.title}</p>
+                    {post.result_name && post.result_name !== post.title && (
+                      <p className="text-xs text-muted-foreground mt-1">📍 {post.result_name}</p>
+                    )}
+                    {post.body && (
+                      <p className="text-sm text-foreground/70 mt-1">{post.body}</p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            {savedLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            ) : savedActivities.length === 0 ? (
+              <div className="text-center py-10">
+                <Bookmark className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {isOwner ? 'Save events and activities from the feed to see them here ✨' : 'No saved activities yet'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {savedActivities.map(activity => (
+                  <SavedActivityCard key={activity.id} activity={activity} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
