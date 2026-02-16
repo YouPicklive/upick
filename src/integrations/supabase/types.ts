@@ -200,6 +200,45 @@ export type Database = {
         }
         Relationships: []
       }
+      place_reviews: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_public: boolean
+          note: string | null
+          place_id: string | null
+          place_name: string
+          rating: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          note?: string | null
+          place_id?: string | null
+          place_name: string
+          rating?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          note?: string | null
+          place_id?: string | null
+          place_name?: string
+          rating?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_likes: {
         Row: {
           created_at: string
@@ -332,6 +371,7 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          note: string | null
           place_name: string | null
           source_url: string | null
           title: string
@@ -350,6 +390,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          note?: string | null
           place_name?: string | null
           source_url?: string | null
           title: string
@@ -368,6 +409,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          note?: string | null
           place_name?: string | null
           source_url?: string | null
           title?: string
@@ -399,6 +441,54 @@ export type Database = {
           fortune_pack_id?: string | null
           fortune_text?: string
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_spins: {
+        Row: {
+          address: string | null
+          category: string | null
+          created_at: string
+          fortune_pack: string | null
+          fortune_text: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          note: string | null
+          photo_url: string | null
+          place_id: string | null
+          place_name: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          fortune_pack?: string | null
+          fortune_text?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          note?: string | null
+          photo_url?: string | null
+          place_id?: string | null
+          place_name: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          fortune_pack?: string | null
+          fortune_text?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          note?: string | null
+          photo_url?: string | null
+          place_id?: string | null
+          place_name?: string
           user_id?: string
         }
         Relationships: []
