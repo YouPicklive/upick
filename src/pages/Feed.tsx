@@ -39,7 +39,7 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
   onUnsave: () => void;
   onUpgrade: () => void;
 }) {
-  const displayName = post.is_anonymous ? 'Someone' : (post.display_name || post.username || 'Someone');
+  const displayName = post.is_bot && post.bot_display_name ? post.bot_display_name : (post.is_anonymous ? 'Someone' : (post.display_name || post.username || 'Someone'));
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
 
   const handleSaveClick = () => {
