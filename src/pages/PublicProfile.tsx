@@ -2,9 +2,11 @@ import { useParams } from 'react-router-dom';
 import { usePublicProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { useSavedActivities, SavedActivity } from '@/hooks/useSavedActivities';
+import { useSavedSpins, SavedSpin } from '@/hooks/useSavedSpins';
+import { usePlaceReviews, PlaceReview } from '@/hooks/usePlaceReviews';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { Button } from '@/components/ui/button';
-import { User, Settings, Loader2, Sparkles, MapPin, Bookmark, Calendar, ExternalLink, Clock } from 'lucide-react';
+import { User, Settings, Loader2, Sparkles, MapPin, Bookmark, Calendar, ExternalLink, Clock, Heart, Star, MessageSquare, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -67,11 +69,14 @@ export default function PublicProfile() {
   const [postsLoading, setPostsLoading] = useState(true);
   const [stats, setStats] = useState({ postCount: 0, likesReceived: 0 });
   const [activeTab, setActiveTab] = useState<'activity' | 'saved'>('activity');
+  const [savedSubTab, setSavedSubTab] = useState<'spins' | 'events' | 'reviews'>('spins');
 
   const isOwner = isAuthenticated && user && profile && user.id === profile.id;
 
   // Fetch saved activities for the profile user
   const { savedActivities, loading: savedLoading } = useSavedActivities(profile?.id);
+  const { savedSpins, loading: spinsLoading, deleteSpin } = useSavedSpins(profile?.id);
+  const { reviews, loading: reviewsLoading, deleteReview } = usePlaceReviews(profile?.id);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -168,7 +173,7 @@ export default function PublicProfile() {
               <p className="text-[11px] text-muted-foreground">Likes</p>
             </div>
             <div className="text-center">
-              <p className="font-display text-lg font-bold">{savedActivities.length}</p>
+              <p className="font-display text-lg font-bold">{savedSpins.length + savedActivities.length}</p>
               <p className="text-[11px] text-muted-foreground">Saved</p>
             </div>
           </div>
@@ -238,23 +243,148 @@ export default function PublicProfile() {
           </div>
         ) : (
           <div>
-            {savedLoading ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              </div>
-            ) : savedActivities.length === 0 ? (
-              <div className="text-center py-10">
-                <Bookmark className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {isOwner ? 'Save events and activities from the feed to see them here ✨' : 'No saved activities yet'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {savedActivities.map(activity => (
-                  <SavedActivityCard key={activity.id} activity={activity} />
-                ))}
-              </div>
+            {/* Sub-tabs */}
+            <div className="flex gap-1 mb-4">
+              {([
+                { key: 'spins' as const, label: 'Spins', icon: Heart, count: savedSpins.length },
+                { key: 'events' as const, label: 'Events', icon: Calendar, count: savedActivities.length },
+                { key: 'reviews' as const, label: 'Reviews', icon: Star, count: reviews.length },
+              ]).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setSavedSubTab(tab.key)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${
+                    savedSubTab === tab.key
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  <tab.icon className="w-3 h-3" /> {tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
+
+            {/* Spins sub-tab */}
+            {savedSubTab === 'spins' && (
+              spinsLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                </div>
+              ) : savedSpins.length === 0 ? (
+                <div className="text-center py-10">
+                  <Heart className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {isOwner ? 'Save spin moments from your results to see them here ✨' : 'No saved spins yet'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {savedSpins.map(spin => (
+                    <div key={spin.id} className="bg-card rounded-xl border border-border/50 p-4">
+                      <div className="flex items-start gap-3">
+                        {spin.photo_url && (
+                          <img src={spin.photo_url} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground line-clamp-1">{spin.place_name}</p>
+                          {spin.category && (
+                            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium capitalize">
+                              {spin.category}
+                            </span>
+                          )}
+                          {spin.fortune_text && (
+                            <p className="text-xs italic text-muted-foreground mt-1.5 line-clamp-2">"{spin.fortune_text}"</p>
+                          )}
+                          {spin.note && isOwner && (
+                            <p className="text-xs text-foreground/60 mt-1 flex items-center gap-1">
+                              <MessageSquare className="w-2.5 h-2.5" /> {spin.note}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-muted-foreground mt-1.5">
+                            {formatDistanceToNow(new Date(spin.created_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        {isOwner && (
+                          <button onClick={() => deleteSpin(spin.id)} className="shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Events sub-tab */}
+            {savedSubTab === 'events' && (
+              savedLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                </div>
+              ) : savedActivities.length === 0 ? (
+                <div className="text-center py-10">
+                  <Bookmark className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {isOwner ? 'Save events and activities from the feed ✨' : 'No saved events yet'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {savedActivities.map(activity => (
+                    <SavedActivityCard key={activity.id} activity={activity} />
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Reviews sub-tab */}
+            {savedSubTab === 'reviews' && (
+              reviewsLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center py-10">
+                  <Star className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {isOwner ? 'Leave reviews from your spin results ✨' : 'No reviews yet'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {reviews.map(review => (
+                    <div key={review.id} className="bg-card rounded-xl border border-border/50 p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground line-clamp-1">{review.place_name}</p>
+                          <div className="flex items-center gap-0.5 mt-1">
+                            {[1, 2, 3, 4, 5].map(s => (
+                              <Star key={s} className={`w-3 h-3 ${s <= review.rating ? 'text-accent fill-accent' : 'text-muted-foreground/20'}`} />
+                            ))}
+                          </div>
+                          {review.content && (
+                            <p className="text-xs text-foreground/70 mt-1.5">{review.content}</p>
+                          )}
+                          {review.note && isOwner && (
+                            <p className="text-xs text-foreground/60 mt-1 flex items-center gap-1 italic">
+                              <MessageSquare className="w-2.5 h-2.5" /> {review.note}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-muted-foreground mt-1.5">
+                            {formatDistanceToNow(new Date(review.created_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        {isOwner && (
+                          <button onClick={() => deleteReview(review.id)} className="shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         )}
