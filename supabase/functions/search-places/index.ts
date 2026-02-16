@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import {
+  CATEGORY_RULES,
+  isValidForCategory,
+  applyPreferenceConstraints,
+  runFilterPipeline,
+  type PlaceCandidate,
+} from "../_shared/category-rules.ts";
 
 const SearchPlacesSchema = z.object({
   latitude: z.number().min(-90).max(90),
@@ -12,148 +19,49 @@ const SearchPlacesSchema = z.object({
   selectedVibe: z.string().max(50).nullable().optional(),
 });
 
-// AV/equipment company exclusion for Activities
-const AV_EXCLUDE_TYPES = new Set([
-  "electronics_store", "home_goods_store", "general_contractor",
-  "storage", "moving_company", "car_rental",
-]);
-const AV_EXCLUDE_TERMS = [
-  "audio visual", "audiovisual", "av ", "event production",
-  "event services", "lighting rental", "staging", "party rental",
-  "equipment rental", "production company", "speaker rental",
-  "projector", "truss",
-];
-
-function isAVCompany(place: any): boolean {
-  const types = place.types || [];
-  if (types.some((t: string) => AV_EXCLUDE_TYPES.has(t))) return true;
-  const text = `${place.name || ""} ${place.vicinity || ""} ${place.formatted_address || ""}`.toLowerCase();
-  return AV_EXCLUDE_TERMS.some(term => text.includes(term));
-}
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Map vibe intents to business categories stored in DB
+// ── Helpers ───────────────────────────────────────────────────────────
+
 function intentToDBCategories(intent: string | null): string[] {
   switch (intent) {
-    case "food":
-      return ["restaurant", "cafe", "bakery", "food-truck", "brunch", "lunch", "dinner", "desserts"];
-    case "drinks":
-      return ["bar", "nightlife", "cocktail-lounge", "wine-bar", "dive-bar", "rooftop-bar"];
-    case "activity":
-      return ["activity", "park", "museum", "bowling", "arcade", "escape-room", "golf", "mini-golf", "hiking", "workshop"];
-    case "shopping":
-      return ["shopping", "retail", "boutique", "thrift", "market", "vintage", "mall"];
-    case "events":
-      return ["event", "concert", "festival", "live-music", "art-show", "pop-up", "nightlife"];
-    case "services":
-      return ["wellness", "spa", "yoga", "fitness", "gym", "meditation", "massage"];
-    case "surprise":
-    default:
-      return [];
+    case "food": return ["restaurant", "cafe", "bakery", "food-truck", "brunch", "lunch", "dinner", "desserts"];
+    case "drinks": return ["bar", "nightlife", "cocktail-lounge", "wine-bar", "dive-bar", "rooftop-bar"];
+    case "activity": return ["activity", "park", "museum", "bowling", "arcade", "escape-room", "golf", "mini-golf", "hiking", "workshop"];
+    case "shopping": return ["shopping", "retail", "boutique", "thrift", "market", "vintage", "mall"];
+    case "events": return ["event", "concert", "festival", "live-music", "art-show", "pop-up", "nightlife"];
+    case "services": return ["wellness", "spa", "yoga", "fitness", "gym", "meditation", "massage"];
+    default: return [];
   }
 }
 
-// Map vibe intents to Google Places types (non-shopping, non-events)
 function intentToPlaceTypes(intent: string | null): string[] {
-  switch (intent) {
-    case "food":
-      return ["restaurant", "bakery", "cafe", "meal_takeaway"];
-    case "drinks":
-      return ["bar", "night_club"];
-    case "activity":
-      return ["amusement_park", "bowling_alley", "museum", "park", "tourist_attraction"];
-    case "shopping":
-      return ["shopping_mall", "store", "clothing_store"];
-    case "events":
-      // Events uses dedicated text-search path below, not type search
-      return ["night_club", "stadium"];
-    case "services":
-      return ["spa", "gym", "physiotherapist"];
-    case "surprise":
-    default:
-      return ["restaurant", "bar", "cafe", "tourist_attraction"];
-  }
+  const rules = CATEGORY_RULES[intent || "surprise"];
+  if (!rules) return ["restaurant", "bar", "cafe", "tourist_attraction"];
+  return [...rules.allowedTypes].slice(0, 5); // Google allows few types per query
 }
 
-// ── Events-specific search configuration ──
-const EVENT_TEXT_QUERIES_TIER1 = [
-  "concert near me",
-  "live music tonight",
-  "comedy show",
-  "theater performance",
-  "festival",
-  "art show",
-  "market pop-up",
-  "exhibition",
-  "workshop class",
-];
-
-const EVENT_TEXT_QUERIES_TIER2 = [
-  "brewery live music trivia",
-  "bar karaoke DJ",
-  "yoga fitness class",
-  "museum gallery",
-  "event venue",
-];
-
-// Types to EXCLUDE from Events results when price != free
-const EVENT_EXCLUDE_TYPES_NON_FREE = new Set([
-  "park", "campground", "natural_feature", "hiking_area",
-]);
-
-// Keywords in name/vicinity to exclude from Events when price != free
-const EVENT_EXCLUDE_KEYWORDS_NON_FREE = [
-  "trail", "playground", "nature area", "scenic overlook",
-  "outdoor recreation", "dog park", "skate park",
-];
-
-function isValidEventResult(place: any, isFreePrice: boolean): boolean {
-  const types: string[] = place.types || [];
-  const nameLower = (place.name || "").toLowerCase();
-  const vicinityLower = (place.vicinity || place.formatted_address || "").toLowerCase();
-
-  if (!isFreePrice) {
-    // Exclude generic outdoor/park results
-    if (types.some(t => EVENT_EXCLUDE_TYPES_NON_FREE.has(t))) return false;
-    if (EVENT_EXCLUDE_KEYWORDS_NON_FREE.some(kw => nameLower.includes(kw) || vicinityLower.includes(kw))) return false;
-  }
-  return true;
-}
-
-// Shopping subcategory → Google Places type search config
-interface ShoppingSearchConfig {
-  types: string[];
-  textQueries: string[];
-}
+// Shopping subcategory → Google Places search config
+interface ShoppingSearchConfig { types: string[]; textQueries: string[]; }
 
 function shoppingSubcategoryConfig(sub: string | null | undefined): ShoppingSearchConfig {
   switch (sub) {
-    case "decor":
-      return { types: ["home_goods_store", "furniture_store"], textQueries: ["home decor store", "interior design store", "lighting store"] };
-    case "clothes":
-      return { types: ["clothing_store", "shoe_store"], textQueries: ["boutique clothing", "fashion store"] };
-    case "games":
-      return { types: [], textQueries: ["board game store", "game store", "comic shop", "hobby shop"] };
-    case "books":
-      return { types: ["book_store"], textQueries: ["bookstore", "used books"] };
-    case "gifts":
-      return { types: [], textQueries: ["gift shop", "novelty shop", "souvenir shop"] };
-    case "vintage":
-      return { types: [], textQueries: ["vintage store", "thrift store", "consignment shop", "antique store"] };
-    case "artisan":
-      return { types: [], textQueries: ["local artisan shop", "gallery shop", "makers market", "craft store"] };
-    case "random":
-    default:
-      return { types: ["shopping_mall", "department_store", "clothing_store"], textQueries: ["boutique", "shop"] };
+    case "decor": return { types: ["home_goods_store", "furniture_store"], textQueries: ["home decor store", "interior design store", "lighting store"] };
+    case "clothes": return { types: ["clothing_store", "shoe_store"], textQueries: ["boutique clothing", "fashion store"] };
+    case "games": return { types: [], textQueries: ["board game store", "game store", "comic shop", "hobby shop"] };
+    case "books": return { types: ["book_store"], textQueries: ["bookstore", "used books"] };
+    case "gifts": return { types: [], textQueries: ["gift shop", "novelty shop", "souvenir shop"] };
+    case "vintage": return { types: [], textQueries: ["vintage store", "thrift store", "consignment shop", "antique store"] };
+    case "artisan": return { types: [], textQueries: ["local artisan shop", "gallery shop", "makers market", "craft store"] };
+    default: return { types: ["shopping_mall", "department_store", "clothing_store"], textQueries: ["boutique", "shop"] };
   }
 }
 
-// Subcategory-specific ALLOWED Google Place types — results must match at least one
+// Subcategory-specific ALLOWED Google Place types
 const SHOPPING_ALLOWED_TYPES: Record<string, Set<string>> = {
   decor: new Set(["home_goods_store", "furniture_store", "home_improvement_store", "art_gallery", "lighting_store", "store"]),
   clothes: new Set(["clothing_store", "shoe_store", "jewelry_store", "store"]),
@@ -163,40 +71,6 @@ const SHOPPING_ALLOWED_TYPES: Record<string, Set<string>> = {
   vintage: new Set(["store", "clothing_store", "furniture_store", "home_goods_store"]),
   artisan: new Set(["store", "art_gallery", "jewelry_store"]),
 };
-
-// Universal exclusion types for ALL shopping subcategories
-const SHOPPING_EXCLUDE_TYPES = new Set([
-  "pharmacy", "drugstore", "health", "hospital", "doctor", "dentist",
-  "veterinary_care", "insurance_agency", "lawyer", "accounting",
-  "plumber", "electrician", "roofing_contractor", "general_contractor",
-  "locksmith", "moving_company", "storage", "car_repair", "car_wash",
-  "gas_station", "convenience_store", "atm", "bank", "post_office",
-  "local_government_office", "courthouse", "fire_station", "police",
-  "funeral_home", "laundry", "dry_cleaning", "car_dealer", "car_rental",
-  "real_estate_agency", "travel_agency", "lodging",
-]);
-
-// Universal exclusion keywords for shopping results
-const SHOPPING_EXCLUDE_KEYWORDS = [
-  "pharmacy", "cvs", "walgreens", "rite aid", "plumbing", "hvac",
-  "contractor", "roofing", "electric", "landscaping", "pest control",
-  "auto repair", "car wash", "insurance", "attorney", "dental",
-  "medical", "clinic", "urgent care", "chiropractic", "storage unit",
-  "dry cleaner", "laundromat", "tax service", "notary",
-];
-
-function isValidShoppingResult(place: any, subcategory: string): boolean {
-  const types: string[] = place.types || [];
-  // Reject if any excluded type matches
-  if (types.some((t: string) => SHOPPING_EXCLUDE_TYPES.has(t))) return false;
-  // Reject by keyword
-  const text = `${place.name || ""}`.toLowerCase();
-  if (SHOPPING_EXCLUDE_KEYWORDS.some(kw => text.includes(kw))) return false;
-  // For specific subcategories (not random), require at least one allowed type
-  const allowed = SHOPPING_ALLOWED_TYPES[subcategory];
-  if (allowed && !types.some((t: string) => allowed.has(t))) return false;
-  return true;
-}
 
 function mapPriceLevel(priceLevel?: number): 1 | 2 | 3 | 4 {
   if (priceLevel === undefined || priceLevel === null) return 2;
@@ -208,15 +82,10 @@ function mapPriceLevel(priceLevel?: number): 1 | 2 | 3 | 4 {
 
 function mapPriceLevelFromString(pl?: string): 1 | 2 | 3 | 4 {
   switch (pl) {
-    case "$": return 1;
-    case "$$": return 2;
-    case "$$$": return 3;
-    case "$$$$": return 4;
-    default: return 2;
+    case "$": return 1; case "$$": return 2; case "$$$": return 3; case "$$$$": return 4; default: return 2;
   }
 }
 
-// Map Google price_level (0-4) to app price display string
 function googlePriceToAppLabel(priceLevel?: number): string {
   if (priceLevel === undefined || priceLevel === null) return "Price unknown";
   if (priceLevel <= 1) return "$";
@@ -225,17 +94,13 @@ function googlePriceToAppLabel(priceLevel?: number): string {
   return "$$$$";
 }
 
-// Check if Google price_level matches user filter
 function matchesPriceFilter(priceLevel: number | undefined | null, filters?: string[]): boolean {
   if (!filters) return true;
   const hasCheap = filters.includes("cheap");
   const hasMid = filters.includes("mid");
   const hasTreat = filters.includes("treat");
   if (!hasCheap && !hasMid && !hasTreat) return true;
-  // When "cheap" (Free) is selected, EXCLUDE unknown prices — free must mean free
-  if (priceLevel === undefined || priceLevel === null) {
-    return hasCheap ? false : true;
-  }
+  if (priceLevel === undefined || priceLevel === null) return hasCheap ? false : true;
   if (hasCheap && priceLevel <= 1) return true;
   if (hasMid && priceLevel >= 1 && priceLevel <= 3) return true;
   if (hasTreat && priceLevel >= 3) return true;
@@ -243,147 +108,139 @@ function matchesPriceFilter(priceLevel: number | undefined | null, filters?: str
 }
 
 function mapCategory(types: string[]): string {
-  if (types.some((t) => ["bar", "night_club"].includes(t))) return "bar";
-  if (types.some((t) => ["shopping_mall", "store", "clothing_store", "shoe_store", "jewelry_store", "book_store", "home_goods_store", "furniture_store", "electronics_store", "department_store"].includes(t))) return "shopping";
-  if (types.some((t) => ["spa", "physiotherapist", "gym"].includes(t))) return "wellness";
-  if (types.some((t) => ["cafe", "bakery"].includes(t))) return "cafe";
-  if (types.some((t) => ["amusement_park", "bowling_alley", "movie_theater", "museum", "park", "tourist_attraction", "stadium", "zoo", "aquarium", "campground"].includes(t)))
-    return "activity";
+  if (types.some(t => ["bar", "night_club"].includes(t))) return "bar";
+  if (types.some(t => ["shopping_mall", "store", "clothing_store", "shoe_store", "jewelry_store", "book_store", "home_goods_store", "furniture_store", "electronics_store", "department_store"].includes(t))) return "shopping";
+  if (types.some(t => ["spa", "physiotherapist", "gym", "yoga_studio", "beauty_salon"].includes(t))) return "wellness";
+  if (types.some(t => ["cafe", "bakery"].includes(t))) return "cafe";
+  if (types.some(t => ["amusement_park", "bowling_alley", "movie_theater", "museum", "park", "tourist_attraction", "stadium", "zoo", "aquarium", "campground", "hiking_area", "art_gallery"].includes(t))) return "activity";
   return "restaurant";
 }
 
 function inferVibeLevel(types: string[], _rating?: number): string {
-  if (types.some((t) => ["night_club"].includes(t))) return "dancing";
-  if (types.some((t) => ["bar", "bowling_alley", "amusement_park", "gym", "stadium"].includes(t))) return "active";
-  if (types.some((t) => ["spa", "park", "museum", "cafe", "bakery"].includes(t))) return "chill";
+  if (types.some(t => ["night_club"].includes(t))) return "dancing";
+  if (types.some(t => ["bar", "bowling_alley", "amusement_park", "gym", "stadium"].includes(t))) return "active";
+  if (types.some(t => ["spa", "park", "museum", "cafe", "bakery"].includes(t))) return "chill";
   return "moderate";
 }
 
 function extractNeighborhood(formattedAddress?: string): string {
   if (!formattedAddress) return "Nearby";
-  const parts = formattedAddress.split(",").map((p) => p.trim());
+  const parts = formattedAddress.split(",").map(p => p.trim());
   return parts[1] || parts[0] || "Nearby";
 }
 
 function mapEnergyToVibeLevel(energy?: string): string {
   switch (energy) {
-    case "chill": return "chill";
-    case "moderate": return "moderate";
-    case "hype": return "active";
-    default: return "moderate";
+    case "chill": return "chill"; case "moderate": return "moderate"; case "hype": return "active"; default: return "moderate";
   }
 }
 
-// Haversine distance in miles
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function getMaxRadiusMiles(filters?: string[]): number {
   if (!filters) return 15;
-  if (filters.includes("near-me")) return 1;
+  if (filters.includes("near-me")) return 5;
   if (filters.includes("short-drive")) return 5;
   if (filters.includes("any-distance")) return 45;
   return 15;
 }
 
-// Richmond, VA fallback coordinates
-const RICHMOND_FALLBACK = { lat: 37.5407, lng: -77.4360 };
+function getGoogleRadiusMeters(filters?: string[], intent?: string | null): number {
+  if (filters?.includes("near-me")) return 2500;
+  if (filters?.includes("any-distance")) return 25000;
+  if (intent === "events") return 8000;
+  return 5000;
+}
 
-// Google Nearby Search by type
+// ── Google API ────────────────────────────────────────────────────────
+
 async function googleNearbySearch(
-  apiKey: string,
-  lat: number,
-  lng: number,
-  radius: number,
-  type: string,
-  minPrice?: number,
-  maxPrice?: number
+  apiKey: string, lat: number, lng: number, radius: number, type: string,
+  minPrice?: number, maxPrice?: number
 ): Promise<any[]> {
   const params = new URLSearchParams({
-    location: `${lat},${lng}`,
-    radius: String(radius),
-    type,
-    key: apiKey,
+    location: `${lat},${lng}`, radius: String(radius), type, key: apiKey,
   });
   if (minPrice !== undefined) params.set("minprice", String(minPrice));
   if (maxPrice !== undefined) params.set("maxprice", String(maxPrice));
-  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params}`;
-  const res = await fetch(url);
+  const res = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params}`);
   const data = await res.json();
   return data.results || [];
 }
 
-// Google Text Search
 async function googleTextSearch(
-  apiKey: string,
-  query: string,
-  lat: number,
-  lng: number,
-  radius: number
+  apiKey: string, query: string, lat: number, lng: number, radius: number
 ): Promise<any[]> {
   const params = new URLSearchParams({
-    query,
-    location: `${lat},${lng}`,
-    radius: String(radius),
-    key: apiKey,
+    query, location: `${lat},${lng}`, radius: String(radius), key: apiKey,
   });
-  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`;
-  const res = await fetch(url);
+  const res = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`);
   const data = await res.json();
   return data.results || [];
 }
 
-// Convert a Google Places result to our Spot format
-function googlePlaceToSpot(place: any, apiKey: string, idx: number, userLat: number, userLng: number): any {
+// ── Convert to app Spot format ────────────────────────────────────────
+
+function googlePlaceToSpot(place: any, apiKey: string, idx: number, userLat: number, userLng: number, intentOverride?: string): any {
   let image = "";
   if (place.photos && place.photos.length > 0) {
     const photoRef = place.photos[0].photo_reference;
     image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${photoRef}&key=${apiKey}`;
   }
-
   const lat = place.geometry?.location?.lat;
   const lng = place.geometry?.location?.lng;
   const distance = (lat && lng) ? Math.round(haversineDistance(userLat, userLng, lat, lng) * 10) / 10 : undefined;
-
-  // Build short description from types
-  const typeLabels = (place.types || [])
+  const types = place.types || [];
+  const category = intentOverride || mapCategory(types);
+  const typeLabels = types
     .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
     .slice(0, 2)
     .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()));
-  const description = place.formatted_address || typeLabels.join(", ") || "Local shop";
 
   return {
     id: place.place_id || `place-${idx}`,
     name: place.name,
-    category: "shopping",
-    description,
+    category,
+    description: place.vicinity || place.formatted_address || typeLabels.join(", ") || "A great spot nearby",
     priceLevel: mapPriceLevel(place.price_level),
     priceLabelOverride: googlePriceToAppLabel(place.price_level),
     rating: place.rating || 4.0,
     image,
-    tags: (place.types || [])
+    tags: types
       .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
       .slice(0, 3)
       .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())),
     neighborhood: extractNeighborhood(place.vicinity || place.formatted_address),
-    isOutdoor: false,
+    isOutdoor: types.some((t: string) => ["park", "campground", "stadium", "hiking_area"].includes(t)),
     smokingFriendly: false,
-    vibeLevel: "moderate",
+    vibeLevel: inferVibeLevel(types, place.rating),
     plusOnly: false,
     latitude: lat,
     longitude: lng,
     distance,
-    placeId: place.place_id, // for Google Maps link
+    placeId: place.place_id,
   };
 }
+
+// ── Events-specific text queries ──────────────────────────────────────
+
+const EVENT_TEXT_QUERIES_TIER1 = [
+  "concert near me", "live music tonight", "comedy show",
+  "theater performance", "festival", "art show",
+  "market pop-up", "exhibition", "workshop class",
+];
+const EVENT_TEXT_QUERIES_TIER2 = [
+  "brewery live music trivia", "bar karaoke DJ",
+  "yoga fitness class", "museum gallery", "event venue",
+];
+
+// ── Main handler ──────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -396,86 +253,103 @@ serve(async (req) => {
 
     if (!parsed.success) {
       return new Response(JSON.stringify({ error: "Invalid input", details: parsed.error.flatten().fieldErrors }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const { latitude, longitude, intent, energy, filters, shoppingSubcategory } = parsed.data;
-    const isShopping = intent === "shopping" && shoppingSubcategory;
-
-    const maxMiles = getMaxRadiusMiles(filters);
+    const effectiveIntent = intent || "surprise";
+    const filterArr = filters || [];
+    const maxMiles = getMaxRadiusMiles(filterArr);
+    const googleRadius = getGoogleRadiusMeters(filterArr, intent);
 
     // ========== SHOPPING SUBCATEGORY PATH ==========
-    if (isShopping) {
+    if (intent === "shopping" && shoppingSubcategory) {
       const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
       if (!apiKey) {
         return new Response(JSON.stringify({ error: "Google Places API key not configured" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const config = shoppingSubcategoryConfig(shoppingSubcategory);
-      const radiusSteps = [3000, 8000, 15000]; // meters
+      const radiusSteps = [3000, 8000, 15000];
       const seenPlaceIds = new Set<string>();
-      let allResults: any[] = [];
-
+      let allRawResults: any[] = [];
       const subKey = shoppingSubcategory || "random";
+      const allowed = SHOPPING_ALLOWED_TYPES[subKey];
 
       for (const radiusM of radiusSteps) {
-        // Try type-based search first
         for (const type of config.types) {
-          if (allResults.length >= 10) break;
+          if (allRawResults.length >= 20) break;
           const results = await googleNearbySearch(apiKey, latitude, longitude, radiusM, type);
           for (const r of results) {
-            if (!seenPlaceIds.has(r.place_id) && isValidShoppingResult(r, subKey) && matchesPriceFilter(r.price_level, filters)) {
+            if (!seenPlaceIds.has(r.place_id)) {
               seenPlaceIds.add(r.place_id);
-              allResults.push(r);
+              allRawResults.push(r);
             }
           }
         }
-
-        // Then try text-based search
-        if (allResults.length < 10) {
+        if (allRawResults.length < 20) {
           for (const query of config.textQueries) {
-            if (allResults.length >= 10) break;
+            if (allRawResults.length >= 20) break;
             const results = await googleTextSearch(apiKey, query, latitude, longitude, radiusM);
             for (const r of results) {
-              if (!seenPlaceIds.has(r.place_id) && isValidShoppingResult(r, subKey) && matchesPriceFilter(r.price_level, filters)) {
+              if (!seenPlaceIds.has(r.place_id)) {
                 seenPlaceIds.add(r.place_id);
-                allResults.push(r);
+                allRawResults.push(r);
               }
             }
           }
         }
-
-        if (allResults.length >= 4) break;
+        if (allRawResults.length >= 10) break;
       }
 
-      // Fallback: if still 0, try broad text query with subcategory name
-      if (allResults.length === 0) {
+      // Fallback broad search
+      if (allRawResults.length === 0) {
         const fallbackQuery = subKey === "random" ? "shop" : `${subKey} store`;
         const broadResults = await googleTextSearch(apiKey, fallbackQuery, latitude, longitude, 15000);
         for (const r of broadResults) {
-          if (!seenPlaceIds.has(r.place_id) && isValidShoppingResult(r, subKey)) {
+          if (!seenPlaceIds.has(r.place_id)) {
             seenPlaceIds.add(r.place_id);
-            allResults.push(r);
+            allRawResults.push(r);
           }
         }
       }
 
-      // Cap at 10 and convert
-      const spots = allResults
+      // Run through unified pipeline for "shopping" category
+      const pipelineResults = runFilterPipeline(
+        allRawResults.map(r => ({
+          ...r,
+          types: r.types || [],
+          name: r.name || "",
+        })),
+        "shopping",
+        filterArr,
+        8,
+        2
+      );
+
+      // Additional subcategory filter: require allowed types for specific subcategories
+      let finalResults = pipelineResults;
+      if (allowed) {
+        finalResults = pipelineResults.filter(p =>
+          (p.types || []).some(t => allowed.has(t)) || finalResults.length < 4
+        );
+        if (finalResults.length < 4) finalResults = pipelineResults; // fallback
+      }
+
+      const spots = finalResults
+        .filter(p => matchesPriceFilter(p.price_level ?? undefined, filterArr))
         .slice(0, 10)
-        .map((place, idx) => googlePlaceToSpot(place, apiKey, idx, latitude, longitude));
+        .map((place, idx) => googlePlaceToSpot(place, apiKey, idx, latitude, longitude, "shopping"));
 
       return new Response(JSON.stringify({ spots, source: "google-shopping" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ========== STANDARD PATH (non-shopping or shopping without subcategory) ==========
+    // ========== STANDARD PATH ==========
 
     // --- Step 1: Try curated businesses table first ---
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -489,34 +363,24 @@ serve(async (req) => {
       query = query.in("category", dbCategories);
     }
 
-    // Price filters
-    if (filters?.includes("cheap")) {
+    if (filterArr.includes("cheap")) {
       query = query.in("price_level", ["$"]);
-    } else if (filters?.includes("mid")) {
+    } else if (filterArr.includes("mid")) {
       query = query.in("price_level", ["$$"]);
-    } else if (filters?.includes("treat")) {
+    } else if (filterArr.includes("treat")) {
       query = query.in("price_level", ["$$$", "$$$$"]);
     }
 
-    // Energy filter
     if (energy) {
       const energyMap: Record<string, string[]> = {
-        chill: ["chill"],
-        social: ["moderate", "hype"],
-        romantic: ["chill", "moderate"],
-        adventure: ["hype"],
-        productive: ["chill"],
-        "self-care": ["chill"],
-        weird: ["hype", "moderate"],
+        chill: ["chill"], social: ["moderate", "hype"], romantic: ["chill", "moderate"],
+        adventure: ["hype"], productive: ["chill"], "self-care": ["chill"], weird: ["hype", "moderate"],
       };
       const energyValues = energyMap[energy];
-      if (energyValues) {
-        query = query.in("energy", energyValues);
-      }
+      if (energyValues) query = query.in("energy", energyValues);
     }
 
     query = query.limit(100);
-
     const { data: dbSpots, error: dbError } = await query;
 
     if (!dbError && dbSpots && dbSpots.length > 0) {
@@ -530,22 +394,19 @@ serve(async (req) => {
         .sort((a: any, b: any) => a._distance - b._distance);
 
       if (withDistance.length > 0) {
-        const hasPriceFilter = filters?.includes("cheap") || filters?.includes("mid") || filters?.includes("treat");
+        const hasPriceFilter = filterArr.includes("cheap") || filterArr.includes("mid") || filterArr.includes("treat");
         const priceFiltered = hasPriceFilter
           ? withDistance.filter((b: any) => b.price_level !== null)
           : withDistance;
+
         if (priceFiltered.length === 0) {
           return new Response(JSON.stringify({
-            spots: [],
-            source: "curated",
-            message: "Nothing aligned here yet — try expanding your radius or adjusting price."
-          }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+            spots: [], source: "curated",
+            message: "Nothing aligned here yet — try expanding your radius or adjusting price.",
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         const selected = priceFiltered.slice(0, 20).sort(() => Math.random() - 0.5).slice(0, 10);
-
         const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
 
         const spots = await Promise.all(
@@ -561,23 +422,18 @@ serve(async (req) => {
                 const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(q)}&inputtype=textquery&fields=place_id,${fields}${locationBias}&key=${apiKey}`;
                 const findRes = await fetch(findUrl);
                 const findData = await findRes.json();
-
                 const candidate = findData.candidates?.[0];
                 if (candidate) {
                   if (!image && candidate.photos?.[0]?.photo_reference) {
                     const ref = candidate.photos[0].photo_reference;
                     image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${apiKey}`;
-
                     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
                     if (serviceKey) {
                       const adminClient = createClient(supabaseUrl, serviceKey);
                       adminClient.from("businesses").update({ photo_url: image }).eq("id", b.id).then(() => {});
                     }
                   }
-
-                  if (!description && candidate.formatted_address) {
-                    description = candidate.formatted_address;
-                  }
+                  if (!description && candidate.formatted_address) description = candidate.formatted_address;
                 }
               } catch (e) {
                 console.error(`Google enrichment failed for ${b.name}:`, e);
@@ -585,9 +441,7 @@ serve(async (req) => {
             }
 
             return {
-              id: b.id,
-              name: b.name,
-              category: b.category,
+              id: b.id, name: b.name, category: b.category,
               description: description || "A great spot nearby",
               priceLevel: mapPriceLevelFromString(b.price_level),
               rating: b.rating ? Number(b.rating) : 4.0,
@@ -598,8 +452,7 @@ serve(async (req) => {
               smokingFriendly: b.smoking_friendly ?? false,
               vibeLevel: mapEnergyToVibeLevel(b.energy),
               plusOnly: false,
-              latitude: b.latitude,
-              longitude: b.longitude,
+              latitude: b.latitude, longitude: b.longitude,
               distance: Math.round(b._distance * 10) / 10,
             };
           })
@@ -615,176 +468,149 @@ serve(async (req) => {
     const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "No businesses found and Google Places API key not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const isFreePrice = filters?.includes("cheap") || false;
+    const isFreePrice = filterArr.includes("cheap");
 
-    // ========== EVENTS-SPECIFIC PATH ==========
+    // ========== EVENTS PATH ==========
     if (intent === "events") {
-      let radius = 8000;
-      if (filters?.includes("near-me")) radius = 2000;
-      if (filters?.includes("any-distance")) radius = 25000;
-
+      let radius = googleRadius;
       const seenIds = new Set<string>();
-      const tier1Results: any[] = [];
-      const tier2Results: any[] = [];
+      const allRawResults: any[] = [];
 
-      // Tier 1: Scheduled events (text search)
-      for (const query of EVENT_TEXT_QUERIES_TIER1) {
-        if (tier1Results.length >= 10) break;
-        const results = await googleTextSearch(apiKey, query, latitude, longitude, radius);
+      // Tier 1: Scheduled events
+      for (const q of EVENT_TEXT_QUERIES_TIER1) {
+        if (allRawResults.length >= 20) break;
+        const results = await googleTextSearch(apiKey, q, latitude, longitude, radius);
         for (const place of results) {
-          if (!seenIds.has(place.place_id) && isValidEventResult(place, isFreePrice)) {
+          if (!seenIds.has(place.place_id)) {
             seenIds.add(place.place_id);
-            tier1Results.push(place);
+            allRawResults.push(place);
           }
         }
       }
 
       // Tier 2: Businesses hosting events
-      if (tier1Results.length + tier2Results.length < 10) {
-        for (const query of EVENT_TEXT_QUERIES_TIER2) {
-          if (tier1Results.length + tier2Results.length >= 10) break;
-          const results = await googleTextSearch(apiKey, query, latitude, longitude, radius);
+      if (allRawResults.length < 15) {
+        for (const q of EVENT_TEXT_QUERIES_TIER2) {
+          if (allRawResults.length >= 20) break;
+          const results = await googleTextSearch(apiKey, q, latitude, longitude, radius);
           for (const place of results) {
-            if (!seenIds.has(place.place_id) && isValidEventResult(place, isFreePrice)) {
+            if (!seenIds.has(place.place_id)) {
               seenIds.add(place.place_id);
-              tier2Results.push(place);
+              allRawResults.push(place);
             }
           }
         }
       }
 
-      // Failsafe: expand radius if zero results
-      if (tier1Results.length + tier2Results.length === 0) {
+      // Failsafe: expand radius
+      if (allRawResults.length === 0) {
         const expandedRadius = Math.min(radius * 3, 50000);
-        for (const query of EVENT_TEXT_QUERIES_TIER1.slice(0, 3)) {
-          const results = await googleTextSearch(apiKey, query, latitude, longitude, expandedRadius);
+        for (const q of EVENT_TEXT_QUERIES_TIER1.slice(0, 3)) {
+          const results = await googleTextSearch(apiKey, q, latitude, longitude, expandedRadius);
           for (const place of results) {
-            if (!seenIds.has(place.place_id) && isValidEventResult(place, isFreePrice)) {
+            if (!seenIds.has(place.place_id)) {
               seenIds.add(place.place_id);
-              tier1Results.push(place);
+              allRawResults.push(place);
             }
           }
         }
       }
 
-      // Combine: Tier 1 first, then Tier 2
-      const combined = [...tier1Results, ...tier2Results].slice(0, 10);
+      // Events-specific: exclude outdoor fillers unless Free price
+      let eventCandidates = allRawResults;
+      if (!isFreePrice) {
+        const OUTDOOR_EXCLUDE = new Set(["park", "campground", "natural_feature", "hiking_area"]);
+        const OUTDOOR_KW = ["trail", "playground", "nature area", "scenic overlook", "outdoor recreation", "dog park", "skate park"];
+        eventCandidates = allRawResults.filter(p => {
+          const types: string[] = p.types || [];
+          const nameLow = (p.name || "").toLowerCase();
+          if (types.some(t => OUTDOOR_EXCLUDE.has(t))) return false;
+          if (OUTDOOR_KW.some(kw => nameLow.includes(kw))) return false;
+          return true;
+        });
+      }
 
-      const spots = combined.map((place, idx) => {
-        let image = "";
-        if (place.photos && place.photos.length > 0) {
-          const photoRef = place.photos[0].photo_reference;
-          image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${photoRef}&key=${apiKey}`;
-        }
+      // Run through pipeline
+      const validated = runFilterPipeline(
+        eventCandidates.map(r => ({ ...r, types: r.types || [], name: r.name || "" })),
+        "events",
+        filterArr,
+        6,
+        3
+      );
 
-        const category = mapCategory(place.types || []);
-        const vibeLevel = inferVibeLevel(place.types || [], place.rating);
-
-        return {
-          id: place.place_id || `event-${idx}`,
-          name: place.name,
-          category,
-          description: place.vicinity || place.formatted_address || "Local event venue",
-          priceLevel: mapPriceLevel(place.price_level),
-          rating: place.rating || 4.0,
-          image,
-          tags: (place.types || [])
-            .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
-            .slice(0, 3)
-            .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())),
-          neighborhood: extractNeighborhood(place.vicinity),
-          isOutdoor: false,
-          smokingFriendly: false,
-          vibeLevel,
-          plusOnly: false,
-          latitude: place.geometry?.location?.lat,
-          longitude: place.geometry?.location?.lng,
-        };
-      });
+      const spots = validated.slice(0, 10).map((place, idx) =>
+        googlePlaceToSpot(place, apiKey, idx, latitude, longitude)
+      );
 
       return new Response(JSON.stringify({ spots, source: "google-events" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ========== STANDARD GOOGLE FALLBACK (non-events) ==========
+    // ========== STANDARD GOOGLE FALLBACK ==========
     const placeTypes = intentToPlaceTypes(intent);
-    let radius = 5000;
-    if (filters?.includes("near-me")) radius = 1500;
-    if (filters?.includes("any-distance")) radius = 15000;
 
     let minPrice: number | undefined;
     let maxPrice: number | undefined;
-    if (filters?.includes("cheap")) {
-      maxPrice = 1;
-    } else if (filters?.includes("mid")) {
-      minPrice = 1;
-      maxPrice = 3;
-    } else if (filters?.includes("treat")) {
-      minPrice = 3;
-    }
+    if (filterArr.includes("cheap")) { maxPrice = 1; }
+    else if (filterArr.includes("mid")) { minPrice = 1; maxPrice = 3; }
+    else if (filterArr.includes("treat")) { minPrice = 3; }
 
-    const allResults: any[] = [];
+    const allRawResults: any[] = [];
     const seenPlaceIds = new Set<string>();
-    const typesToQuery = placeTypes.slice(0, 2);
+    const typesToQuery = placeTypes.slice(0, 3);
 
+    // Fetch from multiple types
     for (const type of typesToQuery) {
-      const results = await googleNearbySearch(apiKey, latitude, longitude, radius, type, minPrice, maxPrice);
+      const results = await googleNearbySearch(apiKey, latitude, longitude, googleRadius, type, minPrice, maxPrice);
       for (const place of results) {
         if (!seenPlaceIds.has(place.place_id)) {
-          // Filter out AV companies for Activities
-          if (intent === "activity" && isAVCompany(place)) continue;
           seenPlaceIds.add(place.place_id);
-          allResults.push(place);
+          allRawResults.push(place);
         }
       }
     }
 
-    const spots = allResults.slice(0, 10).map((place, idx) => {
-      let image = "";
-      if (place.photos && place.photos.length > 0) {
-        const photoRef = place.photos[0].photo_reference;
-        image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${photoRef}&key=${apiKey}`;
+    // If too few, widen radius
+    if (allRawResults.length < 8 && !filterArr.includes("near-me")) {
+      const widerRadius = Math.min(googleRadius * 2, 25000);
+      for (const type of typesToQuery.slice(0, 2)) {
+        const results = await googleNearbySearch(apiKey, latitude, longitude, widerRadius, type, minPrice, maxPrice);
+        for (const place of results) {
+          if (!seenPlaceIds.has(place.place_id)) {
+            seenPlaceIds.add(place.place_id);
+            allRawResults.push(place);
+          }
+        }
       }
+    }
 
-      const category = mapCategory(place.types || []);
-      const vibeLevel = inferVibeLevel(place.types || [], place.rating);
+    // Run through unified pipeline
+    const validated = runFilterPipeline(
+      allRawResults.map(r => ({ ...r, types: r.types || [], name: r.name || "" })),
+      effectiveIntent,
+      filterArr,
+      8,
+      2
+    );
 
-      return {
-        id: place.place_id || `place-${idx}`,
-        name: place.name,
-        category,
-        description: place.vicinity || place.formatted_address || "A great spot nearby",
-        priceLevel: mapPriceLevel(place.price_level),
-        rating: place.rating || 4.0,
-        image,
-        tags: (place.types || [])
-          .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
-          .slice(0, 3)
-          .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())),
-        neighborhood: extractNeighborhood(place.vicinity),
-        isOutdoor: (place.types || []).some((t: string) => ["park", "campground", "stadium"].includes(t)),
-        smokingFriendly: false,
-        vibeLevel,
-        plusOnly: false,
-        latitude: place.geometry?.location?.lat,
-        longitude: place.geometry?.location?.lng,
-      };
-    });
+    const spots = validated.slice(0, 10).map((place, idx) =>
+      googlePlaceToSpot(place, apiKey, idx, latitude, longitude)
+    );
 
     return new Response(JSON.stringify({ spots, source: "google" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (err) {
     console.error("search-places error:", err);
     return new Response(JSON.stringify({ error: "Failed to search places" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
