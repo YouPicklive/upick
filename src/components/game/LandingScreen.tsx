@@ -7,6 +7,7 @@ import { FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { PackPurchaseModal } from './PackPurchaseModal';
 import appIcon from '@/assets/app-icon.png';
 import wheelCenterIcon from '@/assets/wheel-center-icon.png';
+import { GlobalHeader } from '@/components/GlobalHeader';
 
 const VIBES = [
 { id: 'reset', name: 'Reset', subtitle: 'Ground, breathe, recalibrate.', icon: '🌿' },
@@ -58,49 +59,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary overflow-hidden">
-            <img src={appIcon} alt="You Pick" className="w-full h-full object-cover" />
-          </div>
-          <span className="font-display font-bold text-lg tracking-tight">You Pick</span>
-        </div>
-        {loading ? null : isAuthenticated ?
-        <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/membership')}
-              className="p-2 rounded-full hover:bg-secondary transition-colors"
-              title="Membership"
-            >
-              <Star className="w-4 h-4 text-primary" />
-            </button>
-            <button
-              onClick={() => navigate('/profile')}
-              className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full hover:bg-secondary/80 transition-colors"
-            >
-              <User className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground truncate max-w-[100px]">
-                {user?.email?.split('@')[0]}
-              </span>
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="p-2 rounded-full hover:bg-secondary transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div> :
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/auth')}
-          className="text-muted-foreground hover:text-foreground">
-            Sign In
-          </Button>
-        }
-      </header>
+      <GlobalHeader />
 
       <main className="flex-1 flex flex-col px-6 pb-16">
         <div className="max-w-md mx-auto w-full">

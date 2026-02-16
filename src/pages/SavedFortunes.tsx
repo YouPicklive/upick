@@ -1,16 +1,17 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bookmark, Star, Trash2, Loader2 } from 'lucide-react';
+import { Bookmark, Star, Trash2, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedFortunes } from '@/hooks/useSavedFortunes';
+import { GlobalHeader } from '@/components/GlobalHeader';
 import { toast } from 'sonner';
 
 export default function SavedFortunes() {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { canSaveFortunes, isPremium, upgradeToPremium } = useUserEntitlements();
+  const { canSaveFortunes } = useUserEntitlements();
   const { savedFortunes, loading, deleteFortune } = useSavedFortunes();
 
   useEffect(() => {
@@ -32,17 +33,10 @@ export default function SavedFortunes() {
     );
   }
 
-  // Upsell for free users
   if (!canSaveFortunes) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="px-6 py-4 flex items-center gap-3 border-b border-border">
-          <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-secondary">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="font-display text-lg font-bold">Saved Fortunes</h1>
-        </header>
-
+        <GlobalHeader />
         <main className="max-w-md mx-auto px-6 py-16 text-center">
           <Bookmark className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <h2 className="font-display text-xl font-bold mb-2">Save Your Favorites</h2>
@@ -50,8 +44,7 @@ export default function SavedFortunes() {
             With Plus, you can save fortunes that resonate with you and revisit them anytime.
           </p>
           <Button variant="hero" size="lg" onClick={() => navigate('/membership')}>
-            <Star className="w-4 h-4 mr-2" />
-            Upgrade to Plus
+            <Star className="w-4 h-4 mr-2" /> Upgrade to Plus
           </Button>
         </main>
       </div>
@@ -60,15 +53,14 @@ export default function SavedFortunes() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="px-6 py-4 flex items-center gap-3 border-b border-border">
-        <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-secondary">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="font-display text-lg font-bold">Saved Fortunes</h1>
-        <span className="ml-auto text-sm text-muted-foreground">{savedFortunes.length} saved</span>
-      </header>
+      <GlobalHeader />
 
       <main className="max-w-md mx-auto px-6 py-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="font-display text-xl font-bold">Saved Fortunes</h1>
+          <span className="text-sm text-muted-foreground">{savedFortunes.length} saved</span>
+        </div>
+
         {savedFortunes.length === 0 ? (
           <div className="text-center py-16">
             <Bookmark className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
