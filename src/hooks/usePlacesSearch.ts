@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Spot, VibeInput } from '@/types/game';
 import { logger } from '@/lib/logger';
+import { isValidSpotForIntent } from '@/lib/category-rules';
 import fallbackHollywoodCemetery from '@/assets/fallback-hollywood-cemetery.jpg';
 import fallbackLibbyHill from '@/assets/fallback-libby-hill.jpg';
 import fallbackBelleIsle from '@/assets/fallback-belle-isle.jpg';
@@ -342,6 +343,9 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
           longitude: s.longitude,
           distance: s.distance,
         }));
+
+        // Client-side safety net: validate against category rules
+        spots = spots.filter(spot => isValidSpotForIntent(spot, vibe.intent));
 
         // ── Free-only guardrail ──
         if (shouldApplyFreeGuardrail(vibe)) {
