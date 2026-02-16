@@ -58,7 +58,7 @@ function intentToDBCategories(intent: string | null): string[] {
   }
 }
 
-// Map vibe intents to Google Places types (non-shopping)
+// Map vibe intents to Google Places types (non-shopping, non-events)
 function intentToPlaceTypes(intent: string | null): string[] {
   switch (intent) {
     case "food":
@@ -70,13 +70,59 @@ function intentToPlaceTypes(intent: string | null): string[] {
     case "shopping":
       return ["shopping_mall", "store", "clothing_store"];
     case "events":
-      return ["stadium", "movie_theater", "night_club"];
+      // Events uses dedicated text-search path below, not type search
+      return ["night_club", "stadium"];
     case "services":
       return ["spa", "gym", "physiotherapist"];
     case "surprise":
     default:
       return ["restaurant", "bar", "cafe", "tourist_attraction"];
   }
+}
+
+// ── Events-specific search configuration ──
+const EVENT_TEXT_QUERIES_TIER1 = [
+  "concert near me",
+  "live music tonight",
+  "comedy show",
+  "theater performance",
+  "festival",
+  "art show",
+  "market pop-up",
+  "exhibition",
+  "workshop class",
+];
+
+const EVENT_TEXT_QUERIES_TIER2 = [
+  "brewery live music trivia",
+  "bar karaoke DJ",
+  "yoga fitness class",
+  "museum gallery",
+  "event venue",
+];
+
+// Types to EXCLUDE from Events results when price != free
+const EVENT_EXCLUDE_TYPES_NON_FREE = new Set([
+  "park", "campground", "natural_feature", "hiking_area",
+]);
+
+// Keywords in name/vicinity to exclude from Events when price != free
+const EVENT_EXCLUDE_KEYWORDS_NON_FREE = [
+  "trail", "playground", "nature area", "scenic overlook",
+  "outdoor recreation", "dog park", "skate park",
+];
+
+function isValidEventResult(place: any, isFreePrice: boolean): boolean {
+  const types: string[] = place.types || [];
+  const nameLower = (place.name || "").toLowerCase();
+  const vicinityLower = (place.vicinity || place.formatted_address || "").toLowerCase();
+
+  if (!isFreePrice) {
+    // Exclude generic outdoor/park results
+    if (types.some(t => EVENT_EXCLUDE_TYPES_NON_FREE.has(t))) return false;
+    if (EVENT_EXCLUDE_KEYWORDS_NON_FREE.some(kw => nameLower.includes(kw) || vicinityLower.includes(kw))) return false;
+  }
+  return true;
 }
 
 // Shopping subcategory → Google Places type search config
@@ -574,6 +620,99 @@ serve(async (req) => {
       });
     }
 
+    const isFreePrice = filters?.includes("cheap") || false;
+
+    // ========== EVENTS-SPECIFIC PATH ==========
+    if (intent === "events") {
+      let radius = 8000;
+      if (filters?.includes("near-me")) radius = 2000;
+      if (filters?.includes("any-distance")) radius = 25000;
+
+      const seenIds = new Set<string>();
+      const tier1Results: any[] = [];
+      const tier2Results: any[] = [];
+
+      // Tier 1: Scheduled events (text search)
+      for (const query of EVENT_TEXT_QUERIES_TIER1) {
+        if (tier1Results.length >= 10) break;
+        const results = await googleTextSearch(apiKey, query, latitude, longitude, radius);
+        for (const place of results) {
+          if (!seenIds.has(place.place_id) && isValidEventResult(place, isFreePrice)) {
+            seenIds.add(place.place_id);
+            tier1Results.push(place);
+          }
+        }
+      }
+
+      // Tier 2: Businesses hosting events
+      if (tier1Results.length + tier2Results.length < 10) {
+        for (const query of EVENT_TEXT_QUERIES_TIER2) {
+          if (tier1Results.length + tier2Results.length >= 10) break;
+          const results = await googleTextSearch(apiKey, query, latitude, longitude, radius);
+          for (const place of results) {
+            if (!seenIds.has(place.place_id) && isValidEventResult(place, isFreePrice)) {
+              seenIds.add(place.place_id);
+              tier2Results.push(place);
+            }
+          }
+        }
+      }
+
+      // Failsafe: expand radius if zero results
+      if (tier1Results.length + tier2Results.length === 0) {
+        const expandedRadius = Math.min(radius * 3, 50000);
+        for (const query of EVENT_TEXT_QUERIES_TIER1.slice(0, 3)) {
+          const results = await googleTextSearch(apiKey, query, latitude, longitude, expandedRadius);
+          for (const place of results) {
+            if (!seenIds.has(place.place_id) && isValidEventResult(place, isFreePrice)) {
+              seenIds.add(place.place_id);
+              tier1Results.push(place);
+            }
+          }
+        }
+      }
+
+      // Combine: Tier 1 first, then Tier 2
+      const combined = [...tier1Results, ...tier2Results].slice(0, 10);
+
+      const spots = combined.map((place, idx) => {
+        let image = "";
+        if (place.photos && place.photos.length > 0) {
+          const photoRef = place.photos[0].photo_reference;
+          image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${photoRef}&key=${apiKey}`;
+        }
+
+        const category = mapCategory(place.types || []);
+        const vibeLevel = inferVibeLevel(place.types || [], place.rating);
+
+        return {
+          id: place.place_id || `event-${idx}`,
+          name: place.name,
+          category,
+          description: place.vicinity || place.formatted_address || "Local event venue",
+          priceLevel: mapPriceLevel(place.price_level),
+          rating: place.rating || 4.0,
+          image,
+          tags: (place.types || [])
+            .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
+            .slice(0, 3)
+            .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())),
+          neighborhood: extractNeighborhood(place.vicinity),
+          isOutdoor: false,
+          smokingFriendly: false,
+          vibeLevel,
+          plusOnly: false,
+          latitude: place.geometry?.location?.lat,
+          longitude: place.geometry?.location?.lng,
+        };
+      });
+
+      return new Response(JSON.stringify({ spots, source: "google-events" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ========== STANDARD GOOGLE FALLBACK (non-events) ==========
     const placeTypes = intentToPlaceTypes(intent);
     let radius = 5000;
     if (filters?.includes("near-me")) radius = 1500;
