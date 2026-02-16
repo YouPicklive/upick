@@ -319,6 +319,51 @@ export type Database = {
         }
         Relationships: []
       }
+      social_shares: {
+        Row: {
+          approved_at: string | null
+          caption: string | null
+          created_at: string
+          id: string
+          lat: number | null
+          lng: number | null
+          place_id: string | null
+          place_name: string | null
+          platform: string
+          post_url: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          caption?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
+          place_name?: string | null
+          platform: string
+          post_url: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          caption?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
+          place_name?: string | null
+          platform?: string
+          post_url?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       spin_events: {
         Row: {
           caption: string | null
