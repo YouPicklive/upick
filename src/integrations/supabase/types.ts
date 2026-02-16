@@ -179,6 +179,27 @@ export type Database = {
         }
         Relationships: []
       }
+      place_photos: {
+        Row: {
+          id: string
+          photo_urls: string[]
+          place_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          photo_urls?: string[]
+          place_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          photo_urls?: string[]
+          place_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_likes: {
         Row: {
           created_at: string

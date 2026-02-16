@@ -185,14 +185,71 @@ async function googleTextSearch(
   return data.results || [];
 }
 
+// ── Photo caching helpers ─────────────────────────────────────────────
+
+async function getCachedPhotos(supabaseUrl: string, serviceKey: string, placeId: string): Promise<string[] | null> {
+  const adminClient = createClient(supabaseUrl, serviceKey);
+  const { data } = await adminClient
+    .from("place_photos")
+    .select("photo_urls, updated_at")
+    .eq("place_id", placeId)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  // Check if cache is older than 7 days
+  const updatedAt = new Date(data.updated_at);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  if (updatedAt < sevenDaysAgo) return null;
+
+  return data.photo_urls as string[];
+}
+
+async function setCachedPhotos(supabaseUrl: string, serviceKey: string, placeId: string, photoUrls: string[]): Promise<void> {
+  const adminClient = createClient(supabaseUrl, serviceKey);
+  await adminClient
+    .from("place_photos")
+    .upsert(
+      { place_id: placeId, photo_urls: photoUrls, updated_at: new Date().toISOString() },
+      { onConflict: "place_id" }
+    );
+}
+
+function buildPhotoUrls(photos: any[], apiKey: string, maxWidth: number = 1200): string[] {
+  return (photos || [])
+    .slice(0, 5)
+    .map((p: any) => `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${p.photo_reference}&key=${apiKey}`);
+}
+
 // ── Convert to app Spot format ────────────────────────────────────────
 
-function googlePlaceToSpot(place: any, apiKey: string, idx: number, userLat: number, userLng: number, intentOverride?: string): any {
-  let image = "";
-  if (place.photos && place.photos.length > 0) {
-    const photoRef = place.photos[0].photo_reference;
-    image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${photoRef}&key=${apiKey}`;
+async function googlePlaceToSpot(
+  place: any, apiKey: string, idx: number, userLat: number, userLng: number,
+  intentOverride?: string, supabaseUrl?: string, serviceKey?: string
+): Promise<any> {
+  const placeId = place.place_id;
+  let photoUrls: string[] = [];
+
+  // Try cache first
+  if (placeId && supabaseUrl && serviceKey) {
+    try {
+      const cached = await getCachedPhotos(supabaseUrl, serviceKey, placeId);
+      if (cached && cached.length > 0) {
+        photoUrls = cached;
+      }
+    } catch (_) {}
   }
+
+  // Build from Google data if not cached
+  if (photoUrls.length === 0 && place.photos && place.photos.length > 0) {
+    photoUrls = buildPhotoUrls(place.photos, apiKey, 1200);
+    // Cache asynchronously
+    if (placeId && supabaseUrl && serviceKey) {
+      setCachedPhotos(supabaseUrl, serviceKey, placeId, photoUrls).catch(() => {});
+    }
+  }
+
+  const image = photoUrls[0] || "";
   const lat = place.geometry?.location?.lat;
   const lng = place.geometry?.location?.lng;
   const distance = (lat && lng) ? Math.round(haversineDistance(userLat, userLng, lat, lng) * 10) / 10 : undefined;
@@ -204,7 +261,7 @@ function googlePlaceToSpot(place: any, apiKey: string, idx: number, userLat: num
     .map((t: string) => t.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()));
 
   return {
-    id: place.place_id || `place-${idx}`,
+    id: placeId || `place-${idx}`,
     name: place.name,
     category,
     description: place.vicinity || place.formatted_address || typeLabels.join(", ") || "A great spot nearby",
@@ -212,6 +269,7 @@ function googlePlaceToSpot(place: any, apiKey: string, idx: number, userLat: num
     priceLabelOverride: googlePriceToAppLabel(place.price_level),
     rating: place.rating || 4.0,
     image,
+    photoUrls,
     tags: types
       .filter((t: string) => !["point_of_interest", "establishment"].includes(t))
       .slice(0, 3)
@@ -224,7 +282,7 @@ function googlePlaceToSpot(place: any, apiKey: string, idx: number, userLat: num
     latitude: lat,
     longitude: lng,
     distance,
-    placeId: place.place_id,
+    placeId,
   };
 }
 
@@ -339,10 +397,14 @@ serve(async (req) => {
         if (finalResults.length < 4) finalResults = pipelineResults; // fallback
       }
 
-      const spots = finalResults
-        .filter(p => matchesPriceFilter(p.price_level ?? undefined, filterArr))
-        .slice(0, 10)
-        .map((place, idx) => googlePlaceToSpot(place, apiKey, idx, latitude, longitude, "shopping"));
+      const serviceKeySh = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const sbUrlSh = Deno.env.get("SUPABASE_URL")!;
+      const spots = await Promise.all(
+        finalResults
+          .filter(p => matchesPriceFilter(p.price_level ?? undefined, filterArr))
+          .slice(0, 10)
+          .map((place, idx) => googlePlaceToSpot(place, apiKey, idx, latitude, longitude, "shopping", sbUrlSh, serviceKeySh || undefined))
+      );
 
       return new Response(JSON.stringify({ spots, source: "google-shopping" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -426,7 +488,7 @@ serve(async (req) => {
                 if (candidate) {
                   if (!image && candidate.photos?.[0]?.photo_reference) {
                     const ref = candidate.photos[0].photo_reference;
-                    image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${apiKey}`;
+                    image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${ref}&key=${apiKey}`;
                     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
                     if (serviceKey) {
                       const adminClient = createClient(supabaseUrl, serviceKey);
@@ -543,8 +605,12 @@ serve(async (req) => {
         3
       );
 
-      const spots = validated.slice(0, 10).map((place, idx) =>
-        googlePlaceToSpot(place, apiKey, idx, latitude, longitude)
+      const serviceKeyEv = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const sbUrlEv = Deno.env.get("SUPABASE_URL")!;
+      const spots = await Promise.all(
+        validated.slice(0, 10).map((place, idx) =>
+          googlePlaceToSpot(place, apiKey, idx, latitude, longitude, undefined, sbUrlEv, serviceKeyEv || undefined)
+        )
       );
 
       return new Response(JSON.stringify({ spots, source: "google-events" }), {
@@ -599,8 +665,12 @@ serve(async (req) => {
       2
     );
 
-    const spots = validated.slice(0, 10).map((place, idx) =>
-      googlePlaceToSpot(place, apiKey, idx, latitude, longitude)
+    const serviceKeyStd = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const sbUrlStd = Deno.env.get("SUPABASE_URL")!;
+    const spots = await Promise.all(
+      validated.slice(0, 10).map((place, idx) =>
+        googlePlaceToSpot(place, apiKey, idx, latitude, longitude, undefined, sbUrlStd, serviceKeyStd || undefined)
+      )
     );
 
     return new Response(JSON.stringify({ spots, source: "google" }), {

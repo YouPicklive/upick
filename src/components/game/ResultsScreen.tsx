@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star, Share2, Bookmark } from 'lucide-react';
+import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star, Share2, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
@@ -35,6 +35,56 @@ const categoryEmojis: Record<string, string> = {
   nightlife: '🌙',
   wellness: '🧘',
 };
+
+/** Mini photo carousel for result cards with multiple Google photos */
+function PhotoCarousel({ photos, alt, category }: { photos: string[]; alt: string; category: string }) {
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [failed, setFailed] = useState<Set<number>>(new Set());
+
+  const validPhotos = photos.filter((_, i) => !failed.has(i));
+  if (validPhotos.length === 0) {
+    return <SpotImage src="" alt={alt} category={category} className="w-full h-full" />;
+  }
+
+  const safeIdx = Math.min(currentIdx, validPhotos.length - 1);
+
+  return (
+    <div className="relative w-full h-full group">
+      <img
+        src={validPhotos[safeIdx]}
+        alt={`${alt} photo ${safeIdx + 1}`}
+        className="w-full h-full object-cover"
+        loading="lazy"
+        draggable={false}
+        onError={() => {
+          const origIdx = photos.indexOf(validPhotos[safeIdx]);
+          setFailed(prev => new Set(prev).add(origIdx));
+        }}
+      />
+      {validPhotos.length > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); setCurrentIdx((safeIdx - 1 + validPhotos.length) % validPhotos.length); }}
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 bg-background/60 backdrop-blur-sm rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setCurrentIdx((safeIdx + 1) % validPhotos.length); }}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-background/60 backdrop-blur-sm rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+            {validPhotos.map((_, i) => (
+              <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === safeIdx ? 'bg-primary' : 'bg-background/50'}`} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function ResultsScreen({ 
   winner, likedSpots = [], fortunePack = 'free', onPlayAgain, onNotForMe,
@@ -271,10 +321,14 @@ export function ResultsScreen({
               }}
             />
 
-            {/* Business Image */}
+            {/* Business Image — mini carousel if multiple photos */}
             <div className="relative h-48 overflow-hidden">
-              <SpotImage src={winner.image} alt={winner.name} category={winner.category} className="w-full h-full" />
-              <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/30 to-transparent" />
+              {winner.photoUrls && winner.photoUrls.length > 1 ? (
+                <PhotoCarousel photos={winner.photoUrls} alt={winner.name} category={winner.category} />
+              ) : (
+                <SpotImage src={winner.image} alt={winner.name} category={winner.category} className="w-full h-full" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/30 to-transparent pointer-events-none" />
               <div className="absolute bottom-3 left-4 right-4">
                 <span className="text-xs font-medium text-muted-foreground capitalize">
                   {winner.cuisine || winner.category}

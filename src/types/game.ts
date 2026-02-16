@@ -18,6 +18,9 @@ export interface Spot {
   latitude?: number;
   longitude?: number;
   distance?: number; // miles from user
+  // Google Places
+  placeId?: string;
+  photoUrls?: string[]; // multiple photos for carousel
 }
 
 // --- Quick Vibe types ---
