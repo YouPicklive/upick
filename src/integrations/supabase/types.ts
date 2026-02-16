@@ -86,6 +86,7 @@ export type Database = {
       feed_posts: {
         Row: {
           body: string | null
+          bot_display_name: string | null
           city: string | null
           created_at: string
           id: string
@@ -105,6 +106,7 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          bot_display_name?: string | null
           city?: string | null
           created_at?: string
           id?: string
@@ -124,6 +126,7 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          bot_display_name?: string | null
           city?: string | null
           created_at?: string
           id?: string

@@ -20,6 +20,7 @@ export interface FeedPost {
   is_bot: boolean;
   visibility: string;
   created_at: string;
+  bot_display_name: string | null;
   // Joined from profiles
   username: string | null;
   display_name: string | null;
@@ -105,8 +106,9 @@ export function useFeed(options: UseFeedOptions = {}) {
         const profile = p.user_id ? profileMap.get(p.user_id) : null;
         return {
           ...p,
+          bot_display_name: p.bot_display_name || null,
           username: profile?.username || null,
-          display_name: p.is_anonymous ? null : (profile?.display_name || null),
+          display_name: p.is_bot && p.bot_display_name ? p.bot_display_name : (p.is_anonymous ? null : (profile?.display_name || null)),
           avatar_url: p.is_anonymous ? null : (profile?.avatar_url || null),
           like_count: likeCountMap.get(p.id) || 0,
           liked_by_me: myLikes.has(p.id),
