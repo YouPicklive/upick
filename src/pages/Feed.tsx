@@ -3,12 +3,15 @@ import { GlobalHeader } from '@/components/GlobalHeader';
 import { useFeed, FeedPost } from '@/hooks/useFeed';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserEntitlements } from '@/hooks/useUserEntitlements';
+import { useSavedActivities } from '@/hooks/useSavedActivities';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, MapPin, Loader2, Sparkles, Compass, Share2, ExternalLink, Instagram } from 'lucide-react';
+import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { SharePostModal } from '@/components/game/SharePostModal';
+import { toast } from 'sonner';
 
 function PostTypeLabel({ type }: { type: string }) {
   const labels: Record<string, { text: string; emoji: string }> = {
@@ -26,21 +29,33 @@ function PostTypeLabel({ type }: { type: string }) {
   );
 }
 
-function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (id: string) => void; isAuthenticated: boolean }) {
+function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, onUnsave, onUpgrade }: {
+  post: FeedPost;
+  onLike: (id: string) => void;
+  isAuthenticated: boolean;
+  isPremium: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onUnsave: () => void;
+  onUpgrade: () => void;
+}) {
   const displayName = post.is_anonymous ? 'Someone' : (post.display_name || post.username || 'Someone');
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
 
+  const handleSaveClick = () => {
+    if (!isAuthenticated) { toast('Sign in to save activities'); return; }
+    if (!isPremium) { onUpgrade(); return; }
+    if (isSaved) onUnsave(); else onSave();
+  };
+
   return (
     <div className="bg-card rounded-xl border border-border/50 p-4 transition-shadow hover:shadow-card">
-      {/* Header */}
       <div className="flex items-start gap-3 mb-3">
         <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0 border border-border/50">
           {!post.is_anonymous && post.avatar_url ? (
             <img src={post.avatar_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-sm font-semibold text-muted-foreground">
-              {displayName[0]?.toUpperCase()}
-            </span>
+            <span className="text-sm font-semibold text-muted-foreground">{displayName[0]?.toUpperCase()}</span>
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -52,7 +67,6 @@ function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (
         </div>
       </div>
 
-      {/* Place card */}
       {post.result_name && (
         <div className="bg-secondary/50 rounded-lg p-3 mb-3">
           <p className="text-sm font-semibold text-foreground">{post.result_name}</p>
@@ -71,12 +85,10 @@ function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (
         </div>
       )}
 
-      {/* Body/caption */}
       {post.body && (
         <p className="text-sm text-foreground/80 leading-relaxed mb-3">{post.body}</p>
       )}
 
-      {/* Actions */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => isAuthenticated && onLike(post.id)}
@@ -86,6 +98,14 @@ function FeedCard({ post, onLike, isAuthenticated }: { post: FeedPost; onLike: (
         >
           <Heart className={`w-4 h-4 ${post.liked_by_me ? 'fill-primary' : ''}`} />
           {post.like_count > 0 && post.like_count}
+        </button>
+        <button
+          onClick={handleSaveClick}
+          className={`flex items-center gap-1.5 text-sm transition-colors ${
+            isSaved ? 'text-primary font-medium' : 'text-muted-foreground hover:text-primary'
+          }`}
+        >
+          {isSaved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
         </button>
       </div>
     </div>
@@ -153,6 +173,8 @@ function SocialShareFeedCard({ share }: { share: SocialShareCard }) {
 export default function Feed() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { isPremium } = useUserEntitlements();
+  const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
   const { posts, loading, toggleLike } = useFeed({
     latitude: coordinates?.latitude,
@@ -162,7 +184,6 @@ export default function Feed() {
   const [shareOpen, setShareOpen] = useState(false);
   const [socialShares, setSocialShares] = useState<SocialShareCard[]>([]);
 
-  // Fetch approved social shares
   const fetchSocialShares = useCallback(async () => {
     const { data } = await supabase
       .from('social_shares' as any)
@@ -186,22 +207,44 @@ export default function Feed() {
     setSocialShares((data as any[]).map((s: any) => {
       const prof = profileMap.get(s.user_id);
       return {
-        id: s.id,
-        platform: s.platform,
-        post_url: s.post_url,
-        place_name: s.place_name,
-        caption: s.caption,
-        created_at: s.created_at,
-        username: prof?.username || null,
-        display_name: prof?.display_name || null,
-        avatar_url: prof?.avatar_url || null,
+        id: s.id, platform: s.platform, post_url: s.post_url,
+        place_name: s.place_name, caption: s.caption, created_at: s.created_at,
+        username: prof?.username || null, display_name: prof?.display_name || null, avatar_url: prof?.avatar_url || null,
       };
     }));
   }, []);
 
   useEffect(() => { fetchSocialShares(); }, [fetchSocialShares]);
 
-  // Merge feed posts and social shares into one timeline, sorted by created_at desc
+  const handleSaveFeedPost = (post: FeedPost) => {
+    saveActivity({
+      activity_type: 'feed_post',
+      title: post.title || post.result_name,
+      venue: null,
+      description: post.body || null,
+      category: post.result_category || post.post_type,
+      event_date: null,
+      event_time: null,
+      source_url: null,
+      place_name: post.result_name || null,
+      latitude: post.lat || null,
+      longitude: post.lng || null,
+      address: post.result_address || null,
+      feed_post_id: post.id,
+    });
+  };
+
+  const handleUnsaveFeedPost = (post: FeedPost) => {
+    unsaveActivity('feed_post', post.title || post.result_name, null);
+  };
+
+  const handleUpgrade = () => {
+    toast('Plus members can save activities ✨', {
+      description: 'Upgrade to save events and posts to your profile.',
+      action: { label: 'Upgrade', onClick: () => navigate('/membership') },
+    });
+  };
+
   const mergedFeed = [
     ...posts.map(p => ({ type: 'post' as const, data: p, created_at: p.created_at })),
     ...socialShares.map(s => ({ type: 'share' as const, data: s, created_at: s.created_at })),
@@ -250,10 +293,15 @@ export default function Feed() {
                 <SocialShareFeedCard key={`share-${item.data.id}`} share={item.data as SocialShareCard} />
               ) : (
                 <FeedCard
-                  key={`post-${item.data.id}`}
+                  key={`post-${(item.data as FeedPost).id}`}
                   post={item.data as FeedPost}
                   onLike={toggleLike}
                   isAuthenticated={isAuthenticated}
+                  isPremium={isPremium}
+                  isSaved={isSaved('feed_post', (item.data as FeedPost).title || (item.data as FeedPost).result_name, null)}
+                  onSave={() => handleSaveFeedPost(item.data as FeedPost)}
+                  onUnsave={() => handleUnsaveFeedPost(item.data as FeedPost)}
+                  onUpgrade={handleUpgrade}
                 />
               )
             )}

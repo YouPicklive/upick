@@ -292,6 +292,63 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_activities: {
+        Row: {
+          activity_type: string
+          address: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          event_date: string | null
+          event_time: string | null
+          feed_post_id: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          place_name: string | null
+          source_url: string | null
+          title: string
+          user_id: string
+          venue: string | null
+        }
+        Insert: {
+          activity_type: string
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          event_time?: string | null
+          feed_post_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          place_name?: string | null
+          source_url?: string | null
+          title: string
+          user_id: string
+          venue?: string | null
+        }
+        Update: {
+          activity_type?: string
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          event_time?: string | null
+          feed_post_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          place_name?: string | null
+          source_url?: string | null
+          title?: string
+          user_id?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
       saved_fortunes: {
         Row: {
           context: Json
