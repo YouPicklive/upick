@@ -2,12 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-interface Profile {
+export interface Profile {
   id: string;
   email: string;
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  bio: string | null;
+  city: string | null;
+  region: string | null;
+  default_post_privacy: string;
   created_at: string;
   updated_at: string;
 }
@@ -49,7 +53,7 @@ export function useProfile() {
     fetchProfile();
   }, [isAuthenticated, user?.id]);
 
-  const updateProfile = useCallback(async (updates: Partial<Pick<Profile, 'display_name' | 'username' | 'avatar_url'>>) => {
+  const updateProfile = useCallback(async (updates: Partial<Pick<Profile, 'display_name' | 'username' | 'avatar_url' | 'bio' | 'city' | 'region' | 'default_post_privacy'>>) => {
     if (!user) return { error: 'Not authenticated' };
 
     const { error: updateError } = await supabase
@@ -63,5 +67,40 @@ export function useProfile() {
     return { error: null };
   }, [user?.id]);
 
-  return { profile, loading, error, updateProfile };
+  const checkUsernameAvailable = useCallback(async (username: string): Promise<boolean> => {
+    if (!user) return false;
+    const { data } = await supabase
+      .from('profiles' as any)
+      .select('id')
+      .eq('username', username)
+      .neq('id', user.id)
+      .maybeSingle();
+    return !data;
+  }, [user?.id]);
+
+  return { profile, loading, error, updateProfile, checkUsernameAvailable };
+}
+
+/** Fetch any user's public profile by username */
+export function usePublicProfile(username: string | undefined) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!username) { setLoading(false); return; }
+
+    const fetch = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('profiles' as any)
+        .select('*')
+        .eq('username', username)
+        .maybeSingle();
+      setProfile(data as unknown as Profile);
+      setLoading(false);
+    };
+    fetch();
+  }, [username]);
+
+  return { profile, loading };
 }

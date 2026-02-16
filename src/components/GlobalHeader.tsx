@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, Bookmark, Star, Rss, Calendar, ChevronDown } from 'lucide-react';
+import { User, LogOut, Bookmark, Star, Rss, Calendar, ChevronDown, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import appIcon from '@/assets/app-icon.png';
@@ -35,13 +35,15 @@ export function GlobalHeader() {
 
   const displayName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || '';
   const avatarUrl = profile?.avatar_url;
+  const profilePath = profile?.username ? `/u/${profile.username}` : '/settings';
 
   const menuItems = [
-    { label: 'View Profile', icon: User, path: '/profile' },
+    { label: 'Profile', icon: User, path: profilePath },
     { label: 'Feed', icon: Rss, path: '/feed' },
     { label: 'Events Today', icon: Calendar, path: '/events-today' },
     { label: 'Saved Fortunes', icon: Bookmark, path: '/saved' },
     { label: 'Membership', icon: Star, path: '/membership' },
+    { label: 'Settings', icon: Settings, path: '/settings' },
   ];
 
   return (
@@ -76,7 +78,7 @@ export function GlobalHeader() {
 
       {/* Right side */}
       {loading ? (
-        <div className="w-9 h-9" /> // placeholder to prevent layout shift
+        <div className="w-9 h-9" />
       ) : isAuthenticated ? (
         <div className="relative" ref={menuRef}>
           <button
@@ -104,7 +106,7 @@ export function GlobalHeader() {
               {/* Menu items */}
               {menuItems.map(item => (
                 <button
-                  key={item.path}
+                  key={item.path + item.label}
                   onClick={() => { setOpen(false); navigate(item.path); }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary/60 transition-colors ${
                     location.pathname === item.path ? 'text-primary font-medium' : 'text-foreground'

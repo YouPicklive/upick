@@ -8,11 +8,12 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
+import Settings from "./pages/Settings";
 import Membership from "./pages/Membership";
 import SavedFortunes from "./pages/SavedFortunes";
 import Feed from "./pages/Feed";
 import EventsToday from "./pages/EventsToday";
-
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,8 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/u/:username" element={<PublicProfile />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/membership" element={<Membership />} />
           <Route path="/saved" element={<SavedFortunes />} />
           <Route path="/feed" element={<Feed />} />
