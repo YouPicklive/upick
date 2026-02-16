@@ -342,6 +342,8 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
           latitude: s.latitude,
           longitude: s.longitude,
           distance: s.distance,
+          placeId: s.placeId,
+          photoUrls: s.photoUrls || [],
         }));
 
         // Client-side safety net: validate against category rules
