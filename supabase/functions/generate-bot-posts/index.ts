@@ -131,6 +131,8 @@ Deno.serve(async (req) => {
       const caption = getCaption(biz.category);
       const hoursAgo = i * 4 + Math.floor(Math.random() * 3);
 
+      const avatarUrl = `${supabaseUrl}/storage/v1/object/public/bot-avatars/${botName.toLowerCase()}.jpg`;
+
       posts.push({
         post_type: "spin_result",
         title: `${botName} landed on ${biz.name} 🎯`,
@@ -144,6 +146,7 @@ Deno.serve(async (req) => {
         is_anonymous: false,
         is_bot: true,
         bot_display_name: botName,
+        bot_avatar_url: avatarUrl,
         visibility: "public",
         created_at: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
       });
