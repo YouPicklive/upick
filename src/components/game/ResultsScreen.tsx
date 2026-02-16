@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spot } from '@/types/game';
-import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star, Share2 } from 'lucide-react';
+import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navigation, ThumbsDown, Lock, Star, Share2, Bookmark } from 'lucide-react';
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import html2canvas from 'html2canvas';
 import { formatDistanceWithEmoji, type Coordinates } from '@/hooks/useGeolocation';
+import { toast } from 'sonner';
 
 interface ResultsScreenProps {
   winner: Spot;
@@ -20,6 +21,8 @@ interface ResultsScreenProps {
   isPremium?: boolean;
   ownedPacks?: string[];
   onFortunePackChange?: (packId: string) => void;
+  canSaveFortunes?: boolean;
+  onSaveFortune?: (fortuneText: string, packId: string) => void;
 }
 
 const categoryEmojis: Record<string, string> = {
@@ -33,13 +36,15 @@ const categoryEmojis: Record<string, string> = {
 
 export function ResultsScreen({ 
   winner, likedSpots = [], fortunePack = 'free', onPlayAgain, onNotForMe,
-  isTrialMode, userCoordinates, isPremium = false, ownedPacks = [], onFortunePackChange
+  isTrialMode, userCoordinates, isPremium = false, ownedPacks = [], onFortunePackChange,
+  canSaveFortunes = false, onSaveFortune
 }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [fortune, setFortune] = useState('');
   const [isSharing, setIsSharing] = useState(false);
+  const [fortuneSaved, setFortuneSaved] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   const { getFortuneByPackId, getPackInfo } = useFortunes();
@@ -281,14 +286,41 @@ export function ResultsScreen({
                 <span>{Array.from({ length: winner.priceLevel }).map(() => '$').join('')}</span>
               </div>
 
-              {/* Fortune with pack badge */}
+              {/* Fortune with pack badge + save */}
               {fortune && (
-                <div className="bg-secondary/60 rounded-xl p-3 mb-5">
-                  <p className="text-sm italic text-muted-foreground leading-relaxed">"{fortune}"</p>
+                <div className="bg-secondary/60 rounded-xl p-3 mb-5 relative">
+                  <p className="text-sm italic text-muted-foreground leading-relaxed pr-8">"{fortune}"</p>
                   {fortunePack !== 'free' && (
                     <p className="text-[10px] text-primary font-medium mt-1.5">
                       Guided by: {packInfo.emoji} {packInfo.name}
                     </p>
+                  )}
+                  {/* Save Fortune Button */}
+                  {onSaveFortune && (
+                    <button
+                      onClick={() => {
+                        if (!canSaveFortunes) {
+                          toast.info('Upgrade to Plus to save fortunes', {
+                            action: { label: 'Upgrade', onClick: () => window.location.href = '/membership' },
+                          });
+                          return;
+                        }
+                        if (fortuneSaved) return;
+                        onSaveFortune(fortune, fortunePack);
+                        setFortuneSaved(true);
+                        toast.success('Fortune saved! ✨');
+                      }}
+                      className={`absolute top-2.5 right-2.5 p-1.5 rounded-full transition-colors ${
+                        fortuneSaved
+                          ? 'text-primary'
+                          : canSaveFortunes
+                          ? 'text-muted-foreground hover:text-primary'
+                          : 'text-muted-foreground/40'
+                      }`}
+                      title={canSaveFortunes ? (fortuneSaved ? 'Saved!' : 'Save fortune') : 'Plus feature'}
+                    >
+                      <Bookmark className={`w-4 h-4 ${fortuneSaved ? 'fill-current' : ''}`} />
+                    </button>
                   )}
                 </div>
               )}

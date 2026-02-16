@@ -8,6 +8,12 @@ interface UserEntitlements {
   user_id: string;
   plus_active: boolean;
   owned_packs: string[];
+  tier: string;
+  unlimited_spins: boolean;
+  can_save_fortunes: boolean;
+  free_spin_limit_per_day: number;
+  spins_used_today: number;
+  spins_reset_date: string;
   created_at: string;
   updated_at: string;
 }
@@ -15,6 +21,11 @@ interface UserEntitlements {
 interface SubscriptionStatus {
   subscribed: boolean;
   subscription_end: string | null;
+  tier?: string;
+  unlimited_spins?: boolean;
+  can_save_fortunes?: boolean;
+  spins_used_today?: number;
+  free_spin_limit_per_day?: number;
 }
 
 export function useUserEntitlements() {
@@ -23,8 +34,6 @@ export function useUserEntitlements() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
-  
-  // Use ref to track if we've already checked subscription this session
   const hasCheckedSubscription = useRef(false);
 
   // Fetch entitlements from database
@@ -38,7 +47,6 @@ export function useUserEntitlements() {
     const fetchEntitlements = async () => {
       setLoading(true);
       setError(null);
-
       try {
         const { data, error: fetchError } = await supabase
           .from('user_entitlements')
@@ -54,11 +62,17 @@ export function useUserEntitlements() {
 
         if (data) {
           setEntitlements({
-            ...data,
-            owned_packs: data.owned_packs || [],
+            ...(data as any),
+            owned_packs: (data as any).owned_packs || [],
+            tier: (data as any).tier || 'free',
+            unlimited_spins: (data as any).unlimited_spins || false,
+            can_save_fortunes: (data as any).can_save_fortunes || false,
+            free_spin_limit_per_day: (data as any).free_spin_limit_per_day || 1,
+            spins_used_today: (data as any).spins_used_today || 0,
+            spins_reset_date: (data as any).spins_reset_date || new Date().toISOString().split('T')[0],
           });
         } else {
-          logger.info('No entitlements found for user - will be created on first purchase');
+          logger.info('No entitlements found for user');
           setEntitlements(null);
         }
       } catch (err) {
@@ -78,11 +92,11 @@ export function useUserEntitlements() {
 
     const checkSubscription = async () => {
       try {
-        logger.log('[useUserEntitlements] Checking subscription status with Stripe...');
+        logger.log('[useUserEntitlements] Checking subscription status...');
         hasCheckedSubscription.current = true;
-        
+
         const { data, error: fnError } = await supabase.functions.invoke<SubscriptionStatus>('check-subscription');
-        
+
         if (fnError) {
           logger.error('[useUserEntitlements] Error checking subscription:', fnError);
           return;
@@ -91,18 +105,24 @@ export function useUserEntitlements() {
         if (data) {
           logger.log('[useUserEntitlements] Subscription check result:', data);
           setSubscriptionEnd(data.subscription_end);
-          
+
           // Refetch entitlements after sync
           const { data: refreshedData } = await supabase
             .from('user_entitlements')
             .select('*')
             .eq('user_id', user.id)
             .maybeSingle();
-            
+
           if (refreshedData) {
             setEntitlements({
-              ...refreshedData,
-              owned_packs: refreshedData.owned_packs || [],
+              ...(refreshedData as any),
+              owned_packs: (refreshedData as any).owned_packs || [],
+              tier: (refreshedData as any).tier || 'free',
+              unlimited_spins: (refreshedData as any).unlimited_spins || false,
+              can_save_fortunes: (refreshedData as any).can_save_fortunes || false,
+              free_spin_limit_per_day: (refreshedData as any).free_spin_limit_per_day || 1,
+              spins_used_today: (refreshedData as any).spins_used_today || 0,
+              spins_reset_date: (refreshedData as any).spins_reset_date || new Date().toISOString().split('T')[0],
             });
           }
         }
@@ -114,55 +134,72 @@ export function useUserEntitlements() {
     checkSubscription();
   }, [isAuthenticated, user?.id]);
 
-  // Periodic subscription check (every 60 seconds)
+  // Periodic check (60s)
   useEffect(() => {
     if (!isAuthenticated || !user) return;
-
     const interval = setInterval(async () => {
       try {
         const { data } = await supabase.functions.invoke<SubscriptionStatus>('check-subscription');
-        if (data) {
-          setSubscriptionEnd(data.subscription_end);
-        }
+        if (data) setSubscriptionEnd(data.subscription_end);
       } catch (err) {
         logger.error('[useUserEntitlements] Periodic check failed:', err);
       }
     }, 60000);
-
     return () => clearInterval(interval);
   }, [isAuthenticated, user?.id]);
 
-  // Note: Premium upgrades are handled by Stripe checkout
   const upgradeToPremium = useCallback(async () => {
-    window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank');
+    const { data, error } = await supabase.functions.invoke('create-checkout', {
+      body: { returnUrl: window.location.origin + '/membership' },
+    });
+    if (error) {
+      logger.error('Checkout error:', error);
+      return { success: false, error: error.message };
+    }
+    if (data?.url) {
+      window.location.href = data.url;
+    }
     return { success: true, message: 'Redirecting to checkout...' };
   }, []);
 
-  // Note: Pack purchases are handled by Stripe webhook
+  const openCustomerPortal = useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke('customer-portal');
+    if (error) {
+      logger.error('Portal error:', error);
+      return { success: false, error: error.message };
+    }
+    if (data?.url) {
+      window.location.href = data.url;
+    }
+    return { success: true };
+  }, []);
+
   const purchasePack = useCallback(async (packId: string) => {
     logger.info('Pack purchase requested:', packId);
     return { success: false, error: 'Pack purchases coming soon via Stripe' };
   }, []);
 
-  // Manually refresh subscription status
   const refreshSubscription = useCallback(async () => {
     if (!user) return;
-    
     hasCheckedSubscription.current = false;
     const { data } = await supabase.functions.invoke<SubscriptionStatus>('check-subscription');
     if (data) {
       setSubscriptionEnd(data.subscription_end);
-      
       const { data: refreshedData } = await supabase
         .from('user_entitlements')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
-        
       if (refreshedData) {
         setEntitlements({
-          ...refreshedData,
-          owned_packs: refreshedData.owned_packs || [],
+          ...(refreshedData as any),
+          owned_packs: (refreshedData as any).owned_packs || [],
+          tier: (refreshedData as any).tier || 'free',
+          unlimited_spins: (refreshedData as any).unlimited_spins || false,
+          can_save_fortunes: (refreshedData as any).can_save_fortunes || false,
+          free_spin_limit_per_day: (refreshedData as any).free_spin_limit_per_day || 1,
+          spins_used_today: (refreshedData as any).spins_used_today || 0,
+          spins_reset_date: (refreshedData as any).spins_reset_date || new Date().toISOString().split('T')[0],
         });
       }
     }
@@ -173,9 +210,15 @@ export function useUserEntitlements() {
     loading,
     error,
     isPremium: entitlements?.plus_active ?? false,
+    tier: entitlements?.tier ?? 'free',
+    unlimitedSpins: entitlements?.unlimited_spins ?? false,
+    canSaveFortunes: entitlements?.can_save_fortunes ?? false,
+    spinsUsedToday: entitlements?.spins_used_today ?? 0,
+    freeSpinLimitPerDay: entitlements?.free_spin_limit_per_day ?? 1,
     ownedPacks: entitlements?.owned_packs ?? [],
     subscriptionEnd,
     upgradeToPremium,
+    openCustomerPortal,
     purchasePack,
     refreshSubscription,
   };
