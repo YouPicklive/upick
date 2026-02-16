@@ -2,10 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
 
 const SearchEventsSchema = z.object({
-  spotName: z.string().trim().min(1).max(200),
-  spotCategory: z.string().trim().min(1).max(100),
+  spotName: z.string().trim().min(1).max(200).optional(),
+  spotCategory: z.string().trim().min(1).max(100).optional(),
   timeframe: z.enum(["today", "week", "month"]),
   city: z.string().trim().max(200).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  radiusMiles: z.number().min(1).max(100).optional(),
+  mode: z.enum(["spot", "discover"]).optional(), // "spot" = old behavior, "discover" = broad local events
 });
 
 const corsHeaders = {
@@ -13,24 +17,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-interface EventSearchRequest {
-  spotName: string;
-  spotCategory: string;
-  timeframe: 'today' | 'week' | 'month';
-  city?: string;
-}
-
 interface Event {
   name: string;
   date: string;
   time?: string;
   venue?: string;
   description?: string;
-  type?: 'music' | 'sports' | 'festival' | 'comedy' | 'food' | 'art' | 'other';
+  type?: string;
   latitude?: number;
   longitude?: number;
   address?: string;
   sourceUrl?: string;
+  category?: string;
 }
 
 serve(async (req) => {
@@ -49,23 +47,21 @@ serve(async (req) => {
       );
     }
 
-    const { spotName, spotCategory, timeframe, city = 'your area' } = parsed.data;
+    const { spotName, spotCategory, timeframe, city = 'Richmond, VA', latitude, longitude, radiusMiles = 25, mode = spotName ? 'spot' : 'discover' } = parsed.data;
 
-    console.log(`Searching for events: ${spotName} (${spotCategory}) - ${timeframe} in ${city}`);
+    console.log(`Event search mode=${mode}, timeframe=${timeframe}, city=${city}, radius=${radiusMiles}mi`);
 
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.toLocaleString('en-US', { month: 'long' });
     const currentDay = now.getDate();
     const currentDateStr = `${currentMonth} ${currentDay}, ${currentYear}`;
-
-    const eventCategories = ['nightlife', 'bar', 'activity', 'wellness', 'cafe'];
-    const isEventCategory = eventCategories.includes(spotCategory);
+    const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' });
 
     let timeDescription = '';
     switch (timeframe) {
       case 'today':
-        timeDescription = `happening today (${currentDateStr})`;
+        timeDescription = `happening today (${dayOfWeek}, ${currentDateStr})`;
         break;
       case 'week':
         timeDescription = `happening this week (starting ${currentDateStr})`;
@@ -75,70 +71,68 @@ serve(async (req) => {
         break;
     }
 
-    let searchQuery = '';
-    
-    const isMusicVenue = spotName.toLowerCase().includes('club') || 
-                         spotName.toLowerCase().includes('lounge') || 
-                         spotName.toLowerCase().includes('venue') ||
-                         spotCategory === 'nightlife';
-    
-    const isSportsVenue = spotName.toLowerCase().includes('stadium') || 
-                          spotName.toLowerCase().includes('arena') || 
-                          spotName.toLowerCase().includes('field') ||
-                          spotName.toLowerCase().includes('court');
+    const locationContext = latitude && longitude
+      ? `within ${radiusMiles} miles of coordinates ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (near ${city})`
+      : `in or near ${city}`;
 
-    const isArtVenue = spotName.toLowerCase().includes('gallery') || 
-                       spotName.toLowerCase().includes('museum') || 
-                       spotName.toLowerCase().includes('art') ||
-                       spotName.toLowerCase().includes('studio');
+    let searchQuery: string;
 
-    if (isMusicVenue) {
-      searchQuery = `Find live music events, concerts, or DJ performances ${timeDescription} at music venues or clubs in ${city}. List up to 3 events with the event name, date, time, and venue. If no specific events found, suggest general music nights.`;
-    } else if (isSportsVenue) {
-      searchQuery = `Find upcoming sporting events ${timeDescription} in ${city}. Include professional and local sports games, matches, or tournaments. List up to 3 events with team names, sport type, date, time, and venue.`;
-    } else if (isArtVenue) {
-      searchQuery = `Find art exhibitions, gallery openings, and art shows ${timeDescription} in ${city}. List up to 3 events with exhibition name, artist (if applicable), date, time, and venue.`;
-    } else if (isEventCategory) {
-      searchQuery = `Find fun events or activities ${timeDescription} related to ${spotCategory} in ${city}. List up to 3 events with name, date, time, and location.`;
+    if (mode === 'spot' && spotName) {
+      // Legacy spot-specific mode
+      searchQuery = `Find events ${timeDescription} related to "${spotName}" (${spotCategory || 'general'}) ${locationContext}. List up to 5 events.`;
     } else {
-      searchQuery = `Find popular local events ${timeDescription} in ${city}. Include concerts, sports, art shows, festivals, and community events.`;
+      // Discovery mode — broad local events
+      searchQuery = `Find ALL types of local events ${timeDescription} ${locationContext}.
+
+Search comprehensively across ALL these categories:
+1. **Arts & Culture**: Paint & sip nights, pottery classes, art walks, gallery openings, museum exhibits, craft workshops
+2. **Music & Nightlife**: Live music, concerts, DJ sets, open mic nights, karaoke, jazz nights
+3. **Food & Drink**: Food truck rallies, wine tastings, brewery events, cooking classes, supper clubs, farmers markets
+4. **Community & Social**: Book clubs, meetup groups, networking events, community cleanups, volunteer events, swap meets
+5. **Sports & Fitness**: Yoga in the park, run clubs, pickup games, boxing classes, dance fitness, cycling groups
+6. **Comedy & Theater**: Stand-up shows, improv nights, theater performances, spoken word, poetry slams
+7. **Family & Kids**: Story time, family festivals, kids workshops, outdoor movie nights
+8. **Wellness & Spiritual**: Sound baths, meditation circles, breathwork sessions, wellness workshops
+9. **Markets & Shopping**: Pop-up shops, artisan markets, vintage fairs, craft fairs
+10. **Festivals & Special Events**: Seasonal festivals, block parties, parades, charity galas, fundraisers
+
+Include events from sources like:
+- Eventbrite, Meetup.com, Facebook Events
+- Ticketmaster, StubHub
+- Local venue websites and calendars
+- Community boards and local newspapers
+
+Return at least 10-15 events if possible, up to 20.`;
     }
 
-    const generalSearchQuery = `${searchQuery}
-
-Also include any notable local events ${timeDescription}:
-- Concerts and live music performances
-- Sporting events (NBA, NFL, MLB, NHL, college sports, local leagues)
-- Art gallery openings and exhibitions
-- Art festivals and cultural events
-- Museum special exhibits
-- Festivals or special community events
-- Comedy shows and theater performances
-- Food and drink events
+    const fullPrompt = `${searchQuery}
 
 Format your response as a JSON array with this structure:
 [
   {
     "name": "Event Name",
-    "date": "Date",
-    "time": "Time (if known)",
+    "date": "Date (e.g. February 16, 2026)",
+    "time": "Time (e.g. 7:00 PM)",
     "venue": "Real Venue Name",
-    "description": "Brief description",
-    "type": "music|sports|festival|comedy|food|art|other",
+    "description": "Brief 1-2 sentence description",
+    "type": "music|sports|festival|comedy|food|art|community|wellness|family|market|other",
+    "category": "Subcategory (e.g. Paint & Sip, Book Club, Live Music, Yoga, etc.)",
     "latitude": approximate_latitude_number,
     "longitude": approximate_longitude_number,
-    "address": "Full address if known",
-    "sourceUrl": "URL to the event page, venue website, or ticketing page (e.g. eventbrite, ticketmaster, venue site)"
+    "address": "Full street address",
+    "sourceUrl": "URL to event page, venue site, or ticket link"
   }
 ]
 
-IMPORTANT:
-- Include approximate GPS coordinates (latitude and longitude) for each venue if possible. Use real venue locations.
-- Use REAL business names, real venue names, real event titles — no placeholders.
-- Include a sourceUrl for each event: the event listing page, venue website, or ticket purchase link. If unknown, use a Google search URL for the event.
+CRITICAL RULES:
+- Use REAL business names, REAL venue names, REAL event types that actually exist in ${city}.
+- Include approximate GPS coordinates using real venue locations.
 - All dates must be ${currentYear} or later.
+- Include a sourceUrl for each event (event page, venue website, or Google search URL).
+- Prioritize variety — mix different categories, don't just list concerts.
+- Include small community events like book clubs and paint nights, not just big headliners.
 
-Return only the JSON array, no other text.`;
+Return ONLY the JSON array.`;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
@@ -161,25 +155,24 @@ Return only the JSON array, no other text.`;
         messages: [
           {
             role: 'system',
-            content: `You are a helpful assistant that finds local events. Today's date is ${currentDateStr}. The current year is ${currentYear}. 
+            content: `You are a local events expert for ${city}. Today is ${dayOfWeek}, ${currentDateStr}. The current year is ${currentYear}.
 
-CRITICAL REQUIREMENTS:
-- Only return FUTURE events from ${currentYear} onwards
-- All dates must be in ${currentYear} or later
-- Never return past events or events from previous years
-- Use REAL event names, REAL venue names, REAL business names — never use placeholder or generic text
-- If you cannot find specific future events, create realistic upcoming events for the requested timeframe
-- Always include a sourceUrl — use the event listing page, venue website, or a Google search URL
+You know the real venues, businesses, and community spaces in this city. You return realistic, plausible events that match the types of events these venues actually host.
 
-Always respond with valid JSON arrays only.`,
+CRITICAL:
+- Only return events from ${currentYear} onwards
+- Use REAL venue names that exist in ${city}
+- Include a diverse mix of event types — from big concerts to small book clubs
+- Always respond with valid JSON arrays only
+- If you know of actual scheduled events, include those. Otherwise, create realistic events based on what these venues typically host.`,
           },
           {
             role: 'user',
-            content: generalSearchQuery,
+            content: fullPrompt,
           },
         ],
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 3000,
       }),
     });
 
@@ -195,17 +188,16 @@ Always respond with valid JSON arrays only.`,
     const aiData = await aiResponse.json();
     const content = aiData.choices?.[0]?.message?.content || '[]';
     
-    console.log('AI Response:', content);
+    console.log('AI Response length:', content.length);
 
     let events: Event[] = [];
     try {
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         events = JSON.parse(jsonMatch[0]);
-        // Ensure sourceUrl fallback
         events = events.map(e => ({
           ...e,
-          sourceUrl: e.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent((e.name || '') + ' ' + (e.venue || '') + ' event')}`,
+          sourceUrl: e.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent((e.name || '') + ' ' + (e.venue || '') + ' ' + city + ' event')}`,
         }));
       }
     } catch (parseError) {
