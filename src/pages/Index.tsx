@@ -14,6 +14,7 @@ import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
+import { FooterBar } from '@/components/FooterBar';
 import { vibeToInternalMapping } from '@/types/game';
 import { toast } from 'sonner';
 
@@ -209,6 +210,7 @@ const Index = () => {
           fortunePack={state.preferences.fortunePack}
           onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
         />
+        <FooterBar onSpin={() => handleSoloStart()} />
         {showSpinLimit && (
           <SpinLimitModal
             spinsToday={spinsToday}
@@ -239,6 +241,7 @@ const Index = () => {
           onStart={handleVibeComplete}
           onBack={() => setMode('landing')}
         />
+        <FooterBar onSpin={handleVibeComplete} />
         {showSpinLimit && (
           <SpinLimitModal
             spinsToday={spinsToday}
