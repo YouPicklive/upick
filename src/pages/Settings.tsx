@@ -8,6 +8,7 @@ import { User, Save, Loader2, Check, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { AvatarPicker } from '@/components/AvatarPicker';
 import { toast } from 'sonner';
 
 const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
@@ -130,7 +131,8 @@ export default function Settings() {
               <User className="w-8 h-8 text-muted-foreground" />
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{profile?.email}</p>
+          <p className="text-sm text-muted-foreground mb-4">{profile?.email}</p>
+          <AvatarPicker selected={avatarUrl} onSelect={setAvatarUrl} />
         </div>
 
         <div className="space-y-5">
@@ -186,16 +188,7 @@ export default function Settings() {
             <p className="text-[11px] text-muted-foreground text-right mt-0.5">{bio.length}/160</p>
           </div>
 
-          <div>
-            <Label htmlFor="avatarUrl" className="text-sm font-medium">Avatar URL</Label>
-            <Input
-              id="avatarUrl"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://..."
-              className="mt-1.5"
-            />
-          </div>
+          {/* Avatar URL field removed — users pick from preset avatars above */}
 
           <div className="grid grid-cols-2 gap-3">
             <div>

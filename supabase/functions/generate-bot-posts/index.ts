@@ -16,16 +16,13 @@ const BOT_HANDLES = [
   "weekend.warrior_", "zen.explorer",
 ];
 
-// Map handles to avatar filenames (reuse existing avatar images)
-const AVATAR_MAP: Record<string, string> = {
-  "vibes.rva": "alex", "wanderlust_22": "mia", "rva.explorer": "jordan",
-  "sunset.chaser": "taylor", "localfoodie_": "sam", "urban.nomad": "casey",
-  "chill.seeker": "riley", "nightowl.rva": "drew", "coffeewanderer": "jamie",
-  "trailmix.va": "morgan", "brunchclub_": "ava", "hidden.gems.rva": "liam",
-  "spontaneous.one": "zoe", "good.eats.only": "kai", "river.city.life": "nina",
-  "the.vibe.finder": "eli", "rva.adventures": "luna", "soul.food.lover": "ren",
-  "weekend.warrior_": "sage", "zen.explorer": "ivy",
-};
+// Use the same 4 preset avatars as user profiles
+const PRESET_AVATARS = [
+  "cool-cat.png",
+  "happy-ghost.png",
+  "friendly-mushroom.png",
+  "smiling-star.png",
+];
 
 const CAPTIONS: Record<string, string[]> = {
   restaurant: [
@@ -143,8 +140,8 @@ Deno.serve(async (req) => {
 
       const caption = getCaption(biz.category);
       const hoursAgo = i * 3 + Math.floor(Math.random() * 3);
-      const avatarFile = AVATAR_MAP[handle] || "alex";
-      const avatarUrl = `${supabaseUrl}/storage/v1/object/public/bot-avatars/${avatarFile}.jpg`;
+      const avatarFile = pickRandom(PRESET_AVATARS);
+      const avatarUrl = `${supabaseUrl}/storage/v1/object/public/avatars/presets/${avatarFile}`;
 
       posts.push({
         post_type: "spin_result",
