@@ -8,7 +8,7 @@ import { useSavedActivities } from '@/hooks/useSavedActivities';
 import { supabase } from '@/integrations/supabase/client';
 import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { SharePostModal } from '@/components/game/SharePostModal';
 import { toast } from 'sonner';
@@ -60,7 +60,23 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
+            {post.is_bot && post.bot_display_name ? (
+              <Link
+                to={`/bot/${encodeURIComponent(post.bot_display_name.replace(/^@/, ''))}`}
+                className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors"
+              >
+                {displayName}
+              </Link>
+            ) : post.user_id && post.username ? (
+              <Link
+                to={`/u/${post.username}`}
+                className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors"
+              >
+                {displayName}
+              </Link>
+            ) : (
+              <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
+            )}
             <PostTypeLabel type={post.post_type} />
           </div>
           <p className="text-[11px] text-muted-foreground">{timeAgo}</p>
