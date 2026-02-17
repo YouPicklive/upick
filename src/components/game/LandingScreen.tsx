@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, User, LogOut, Star, Sparkles, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -34,12 +34,25 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
   const { user, isAuthenticated, signOut, loading } = useAuth();
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
+  const [showFloatingCTA, setShowFloatingCTA] = useState(false);
   const spinButtonRef = useRef<HTMLDivElement>(null);
   const packScrollRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = async () => {
     await signOut();
   };
+
+  // Show floating CTA when main spin button scrolls out of view
+  useEffect(() => {
+    const el = spinButtonRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowFloatingCTA(!entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const handleVibeSelect = (vibeId: string) => {
     setSelectedVibe((prev) => prev === vibeId ? null : vibeId);
@@ -231,10 +244,25 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           setShowPackPurchase(false);
         }}
         onClose={() => setShowPackPurchase(false)} />
-
       }
-    </div>);
 
+      {/* Floating Spin CTA */}
+      <div
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-md transition-all duration-300 ${
+          showFloatingCTA ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <Button
+          variant="hero"
+          size="xl"
+          onClick={handleSpin}
+          className="w-full shadow-lg shadow-primary/25 group"
+        >
+          {spinLabel}
+          <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+        </Button>
+      </div>
+    </div>);
 }
 
 function TestimonialCard({ quote, author }: {quote: string;author: string;}) {
