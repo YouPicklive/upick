@@ -8,9 +8,11 @@ import { PackPurchaseModal } from './PackPurchaseModal';
 import appIcon from '@/assets/app-icon.png';
 import wheelCenterIcon from '@/assets/wheel-center-icon.png';
 import { GlobalHeader } from '@/components/GlobalHeader';
-import { CityLabel } from '@/components/CityLabel';
 import { CityPickerModal } from '@/components/CityPickerModal';
 import { useSelectedCity } from '@/hooks/useSelectedCity';
+import { ActiveFilterChips } from './ActiveFilterChips';
+import { VibeFilter } from '@/types/game';
+import { toast } from 'sonner';
 
 const VIBES = [
 { id: 'reset', name: 'Reset', subtitle: 'Ground, breathe, recalibrate.', icon: '🌿' },
@@ -30,12 +32,28 @@ interface LandingScreenProps {
   ownedPacks?: string[];
   fortunePack?: string;
   onFortunePackChange?: (packId: string) => void;
+  activeFilters?: VibeFilter[];
+  onClearFilter?: (filter: VibeFilter) => void;
+  onOpenPreferences?: () => void;
 }
 
-export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'free', onFortunePackChange }: LandingScreenProps) {
+export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'free', onFortunePackChange, activeFilters = [], onClearFilter, onOpenPreferences }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
   const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
+
+  const handleCitySelect = (city: any) => {
+    selectCity(city);
+    toast(`Now exploring ${city.label}.`, { duration: 2500 });
+  };
+
+  const handleClearBudget = (filter: VibeFilter) => {
+    onClearFilter?.(filter);
+    // Check if this was the last budget filter
+    if (activeFilters.length <= 1) {
+      toast('Full randomness activated.', { duration: 2500 });
+    }
+  };
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
   const [showFloatingCTA, setShowFloatingCTA] = useState(false);
@@ -81,7 +99,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
       <CityPickerModal
         open={isPickerOpen}
         onClose={closePicker}
-        onSelectCity={selectCity}
+        onSelectCity={handleCitySelect}
         onUseCurrentLocation={clearCity}
         savedCities={savedCities}
         popularCities={popularCities}
@@ -91,13 +109,14 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 
       <main className="flex-1 flex flex-col px-6 pb-16">
         <div className="max-w-md mx-auto w-full">
-          {/* Location Label */}
-          <div className="flex justify-center pt-4 pb-2">
-            <CityLabel
-              label={selectedCity ? selectedCity.label : 'Use Current Location'}
-              onClick={openPicker}
-            />
-          </div>
+          {/* Active Filter Chips */}
+          <ActiveFilterChips
+            cityLabel={selectedCity ? selectedCity.label : 'Current Location'}
+            budgetFilters={activeFilters}
+            onCityTap={openPicker}
+            onBudgetTap={() => onOpenPreferences?.()}
+            onClearBudget={handleClearBudget}
+          />
 
           {/* Hero Section */}
           <div className="text-center animate-slide-up pt-2 pb-8">
