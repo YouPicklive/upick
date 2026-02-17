@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { MapPin, Navigation, Clock, Star, Search, X } from 'lucide-react';
-import { CitySelection, POPULAR_CITIES } from '@/hooks/useSelectedCity';
+import { CitySelection, CityRecord } from '@/hooks/useSelectedCity';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface CityPickerModalProps {
@@ -11,43 +11,35 @@ interface CityPickerModalProps {
   onSelectCity: (city: CitySelection) => void;
   onUseCurrentLocation: () => void;
   savedCities: CitySelection[];
+  popularCities: CitySelection[];
+  allCities: CityRecord[];
   onRemoveSaved?: (label: string) => void;
 }
 
-// Extended searchable cities beyond just the popular ones
-const ALL_CITIES: CitySelection[] = [
-  ...POPULAR_CITIES,
-  { name: 'Philadelphia', state: 'PA', label: 'Philadelphia, PA', latitude: 39.9526, longitude: -75.1652 },
-  { name: 'Baltimore', state: 'MD', label: 'Baltimore, MD', latitude: 39.2904, longitude: -76.6122 },
-  { name: 'Raleigh', state: 'NC', label: 'Raleigh, NC', latitude: 35.7796, longitude: -78.6382 },
-  { name: 'Charlotte', state: 'NC', label: 'Charlotte, NC', latitude: 35.2271, longitude: -80.8431 },
-  { name: 'Atlanta', state: 'GA', label: 'Atlanta, GA', latitude: 33.7490, longitude: -84.3880 },
-  { name: 'Nashville', state: 'TN', label: 'Nashville, TN', latitude: 36.1627, longitude: -86.7816 },
-  { name: 'Miami', state: 'FL', label: 'Miami, FL', latitude: 25.7617, longitude: -80.1918 },
-  { name: 'Chicago', state: 'IL', label: 'Chicago, IL', latitude: 41.8781, longitude: -87.6298 },
-  { name: 'Los Angeles', state: 'CA', label: 'Los Angeles, CA', latitude: 34.0522, longitude: -118.2437 },
-  { name: 'San Francisco', state: 'SF', label: 'San Francisco, CA', latitude: 37.7749, longitude: -122.4194 },
-  { name: 'Portland', state: 'OR', label: 'Portland, OR', latitude: 45.5152, longitude: -122.6784 },
-  { name: 'Seattle', state: 'WA', label: 'Seattle, WA', latitude: 47.6062, longitude: -122.3321 },
-  { name: 'Denver', state: 'CO', label: 'Denver, CO', latitude: 39.7392, longitude: -104.9903 },
-  { name: 'Boston', state: 'MA', label: 'Boston, MA', latitude: 42.3601, longitude: -71.0589 },
-  { name: 'Williamsburg', state: 'VA', label: 'Williamsburg, VA', latitude: 37.2707, longitude: -76.7075 },
-  { name: 'Hampton', state: 'VA', label: 'Hampton, VA', latitude: 37.0299, longitude: -76.3452 },
-];
-
-export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocation, savedCities, onRemoveSaved }: CityPickerModalProps) {
+export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocation, savedCities, popularCities, allCities, onRemoveSaved }: CityPickerModalProps) {
   const [search, setSearch] = useState('');
   const { coordinates } = useGeolocation();
+
+  const searchableCities: CitySelection[] = useMemo(() => {
+    return allCities.map(c => ({
+      id: c.id,
+      name: c.name,
+      state: c.state || undefined,
+      label: c.state ? `${c.name}, ${c.state}` : c.name,
+      latitude: c.lat,
+      longitude: c.lng,
+    }));
+  }, [allCities]);
 
   const filteredCities = useMemo(() => {
     if (!search.trim()) return [];
     const q = search.toLowerCase().trim();
-    return ALL_CITIES.filter(c =>
+    return searchableCities.filter(c =>
       c.label.toLowerCase().includes(q) ||
       c.name.toLowerCase().includes(q) ||
       (c.state && c.state.toLowerCase().includes(q))
     ).slice(0, 8);
-  }, [search]);
+  }, [search, searchableCities]);
 
   const handleCurrentLocation = () => {
     onUseCurrentLocation();
@@ -94,7 +86,7 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
             ) : (
               filteredCities.map(city => (
                 <button
-                  key={city.label}
+                  key={city.id}
                   onClick={() => handleSelect(city)}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
                 >
@@ -131,7 +123,7 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
                 </p>
                 <div className="space-y-1">
                   {savedCities.map(city => (
-                    <div key={city.label} className="flex items-center gap-1">
+                    <div key={city.id} className="flex items-center gap-1">
                       <button
                         onClick={() => handleSelect(city)}
                         className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
@@ -154,23 +146,25 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
             )}
 
             {/* Popular cities */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Star className="w-3 h-3" /> Popular Cities
-              </p>
-              <div className="space-y-1">
-                {POPULAR_CITIES.map(city => (
-                  <button
-                    key={city.label}
-                    onClick={() => handleSelect(city)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-sm">{city.label}</span>
-                  </button>
-                ))}
+            {popularCities.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Star className="w-3 h-3" /> Popular Cities
+                </p>
+                <div className="space-y-1">
+                  {popularCities.map(city => (
+                    <button
+                      key={city.id}
+                      onClick={() => handleSelect(city)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-sm">{city.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </DialogContent>

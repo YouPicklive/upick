@@ -6,17 +6,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Username-style bot handles (not real names)
-const BOT_HANDLES = [
-  "vibes.rva", "wanderlust_22", "rva.explorer", "sunset.chaser",
-  "localfoodie_", "urban.nomad", "chill.seeker", "nightowl.rva",
-  "coffeewanderer", "trailmix.va", "brunchclub_", "hidden.gems.rva",
-  "spontaneous.one", "good.eats.only", "river.city.life",
-  "the.vibe.finder", "rva.adventures", "soul.food.lover",
-  "weekend.warrior_", "zen.explorer",
-];
+// Bot handles per city pattern
+function makeBotName(cityName: string): string {
+  return `YouPick ${cityName}`;
+}
 
-// Use the same 4 preset avatars as user profiles
+// Preset avatars
 const PRESET_AVATARS = [
   "cool-cat.png",
   "happy-ghost.png",
@@ -24,24 +19,44 @@ const PRESET_AVATARS = [
   "smiling-star.png",
 ];
 
-const CAPTIONS: Record<string, string[]> = {
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ── Caption pools ──
+
+const DAILY_PROMPT_TITLES = [
+  "Today's vibe in {city} ✨",
+  "What's the move, {city}?",
+  "{city}, what are we doing today?",
+  "Good morning, {city} 🌅",
+  "Let {city} surprise you today",
+  "{city} is calling — are you listening?",
+];
+
+const DAILY_PROMPT_CAPTIONS = [
+  "Tap Spin and let the universe decide 🎯",
+  "Save 2 options and pick later — no pressure.",
+  "Open the app, close your eyes, and trust the spin.",
+  "Your next favorite spot is one tap away ✨",
+  "Don't overthink it. Just spin.",
+  "Today is a good day to discover something new.",
+];
+
+const NEARBY_CAPTIONS: Record<string, string[]> = {
   restaurant: [
     "This spot never misses. Incredible flavors every time.",
     "Came for the vibes, stayed for the food. 10/10.",
     "The menu here is chef's kiss 🤌",
-    "Didn't know I needed this in my life until now.",
-    "Cozy atmosphere + amazing food = perfect evening.",
     "First time here and I'm already planning my next visit.",
   ],
   cafe: [
     "Perfect coffee spot. The latte art alone is worth it ☕",
     "Found my new favorite study spot. Quiet and cozy.",
-    "The pour-over here is something special.",
     "Rainy day + good coffee = everything I needed.",
   ],
   bar: [
     "This cocktail menu is next level 🍸",
-    "Incredible tap list. Trying the flight was the right call.",
     "Best happy hour in town, don't sleep on this spot.",
     "The bartender recommended something off-menu and it was incredible.",
   ],
@@ -49,45 +64,24 @@ const CAPTIONS: Record<string, string[]> = {
     "Didn't expect this to be so fun. Highly recommend!",
     "Perfect way to spend the afternoon. No regrets.",
     "This is what weekends are made for 🌿",
-    "Added to my must-do-again list immediately.",
   ],
   wellness: [
     "Treating myself today. This is exactly what I needed 🧖",
     "Left feeling like a completely different person. So relaxed.",
-    "Self-care isn't optional, it's essential. This place gets it.",
-  ],
-  brunch: [
-    "Weekend brunch sorted. Every dish was incredible 🥞",
-    "The mimosas alone are worth the trip.",
-    "Got here right at opening — no line, perfect timing.",
   ],
   nightlife: [
     "The energy in here tonight is unreal 🎶",
-    "Best live music venue in RVA, no debate.",
     "Spontaneous night out = best night out.",
-  ],
-  desserts: [
-    "I don't even have a sweet tooth but WOW 🍰",
-    "This place is dangerously good. Going back tomorrow.",
-    "The perfect ending to a perfect day.",
   ],
   default: [
     "YouPick brought me here and I'm not mad about it ✨",
     "Letting fate decide was the best decision I made today.",
-    "This app really gets me. Another perfect pick 🎯",
     "Trusted the spin and it delivered. Again.",
   ],
 };
 
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function getCaption(category: string): string {
-  const pool = CAPTIONS[category] || CAPTIONS.default;
-  if (Math.random() < 0.3) {
-    return pickRandom(pool) + " " + pickRandom(CAPTIONS.default);
-  }
+function getNearbyCaption(category: string): string {
+  const pool = NEARBY_CAPTIONS[category] || NEARBY_CAPTIONS.default;
   return pickRandom(pool);
 }
 
@@ -101,81 +95,133 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get active businesses
-    const { data: businesses, error: bizErr } = await supabase
-      .from("businesses")
-      .select("name, category, neighborhood, latitude, longitude, city, state")
-      .eq("active", true);
+    // ── 1. Get all active cities (popular + recently selected) ──
+    const { data: cities, error: citiesErr } = await supabase
+      .from("cities")
+      .select("*")
+      .eq("is_popular", true);
 
-    if (bizErr || !businesses || businesses.length === 0) {
-      return new Response(JSON.stringify({ error: "No businesses found" }), {
+    if (citiesErr || !cities || cities.length === 0) {
+      return new Response(JSON.stringify({ error: "No active cities found" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Generate 5-8 posts with staggered timestamps
-    const numPosts = 5 + Math.floor(Math.random() * 4);
-    const posts = [];
+    let totalGenerated = 0;
 
-    const usedBusinesses = new Set<string>();
-    const usedHandles = new Set<string>();
-
-    for (let i = 0; i < numPosts; i++) {
-      // Pick unique business
-      let biz;
-      let attempts = 0;
-      do {
-        biz = pickRandom(businesses);
-        attempts++;
-      } while (usedBusinesses.has(biz.name) && attempts < 20);
-      usedBusinesses.add(biz.name);
-
-      // Pick unique bot handle
-      let handle;
-      do {
-        handle = pickRandom(BOT_HANDLES);
-      } while (usedHandles.has(handle) && usedHandles.size < BOT_HANDLES.length);
-      usedHandles.add(handle);
-
-      const caption = getCaption(biz.category);
-      const hoursAgo = i * 3 + Math.floor(Math.random() * 3);
+    for (const city of cities) {
+      const cityLabel = `${city.name}, ${city.state || ""}`.trim();
+      const botName = makeBotName(city.name);
       const avatarFile = pickRandom(PRESET_AVATARS);
       const avatarUrl = `${supabaseUrl}/storage/v1/object/public/avatars/presets/${avatarFile}`;
 
+      // ── 2. Check how many non-expired posts exist today ──
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { count: existingCount } = await supabase
+        .from("feed_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("city_id", city.id)
+        .eq("is_bot", true)
+        .gte("created_at", todayStart.toISOString());
+
+      // Skip if already has 10+ posts today
+      if ((existingCount || 0) >= 10) continue;
+
+      const posts: any[] = [];
+
+      // ── 3. Daily prompt (1 per city) ──
+      const promptTitle = pickRandom(DAILY_PROMPT_TITLES).replace("{city}", city.name);
+      const promptCaption = pickRandom(DAILY_PROMPT_CAPTIONS);
+
       posts.push({
-        post_type: "spin_result",
-        title: `@${handle} landed on ${biz.name} 🎯`,
-        body: caption,
-        result_name: biz.name,
-        result_category: biz.category,
-        lat: biz.latitude,
-        lng: biz.longitude,
-        city: biz.city || "Richmond",
-        region: biz.state || "VA",
+        post_type: "bot",
+        post_subtype: "daily_prompt",
+        title: promptTitle,
+        body: promptCaption,
+        result_name: city.name,
+        result_category: null,
+        lat: city.lat,
+        lng: city.lng,
+        city: city.name,
+        city_id: city.id,
+        region: city.state,
         is_anonymous: false,
         is_bot: true,
-        bot_display_name: `@${handle}`,
+        bot_display_name: botName,
         bot_avatar_url: avatarUrl,
         visibility: "public",
-        created_at: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
+        created_at: new Date().toISOString(),
+        expires_at: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        metadata: { type: "daily_prompt" },
       });
-    }
 
-    const { error: insertErr } = await supabase
-      .from("feed_posts")
-      .insert(posts);
+      // ── 4. Nearby activity posts (2-5 from businesses) ──
+      const { data: businesses } = await supabase
+        .from("businesses")
+        .select("name, category, neighborhood, latitude, longitude, city, state, description")
+        .eq("active", true)
+        .eq("city", city.name);
 
-    if (insertErr) {
-      console.error("Insert error:", insertErr);
-      return new Response(JSON.stringify({ error: insertErr.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (businesses && businesses.length > 0) {
+        // Get existing place names posted today to avoid duplicates
+        const { data: todayPosts } = await supabase
+          .from("feed_posts")
+          .select("result_name")
+          .eq("city_id", city.id)
+          .eq("is_bot", true)
+          .gte("created_at", todayStart.toISOString());
+
+        const usedNames = new Set((todayPosts || []).map((p: any) => p.result_name));
+
+        const available = businesses.filter((b: any) => !usedNames.has(b.name));
+        const shuffled = available.sort(() => Math.random() - 0.5);
+        const nearbyCount = Math.min(2 + Math.floor(Math.random() * 4), shuffled.length);
+
+        for (let i = 0; i < nearbyCount; i++) {
+          const biz = shuffled[i];
+          const caption = getNearbyCaption(biz.category);
+          const hoursAgo = i * 2 + Math.floor(Math.random() * 2);
+
+          posts.push({
+            post_type: "bot",
+            post_subtype: "nearby_activity",
+            title: `${botName} spotted ${biz.name} 📍`,
+            body: caption,
+            result_name: biz.name,
+            result_category: biz.category,
+            lat: biz.latitude,
+            lng: biz.longitude,
+            city: city.name,
+            city_id: city.id,
+            region: city.state || biz.state,
+            is_anonymous: false,
+            is_bot: true,
+            bot_display_name: botName,
+            bot_avatar_url: avatarUrl,
+            visibility: "public",
+            created_at: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
+            expires_at: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+            metadata: { type: "nearby_activity", category: biz.category, neighborhood: biz.neighborhood },
+          });
+        }
+      }
+
+      // ── 5. Insert all posts for this city ──
+      if (posts.length > 0) {
+        const { error: insertErr } = await supabase.from("feed_posts").insert(posts);
+        if (insertErr) {
+          console.error(`Insert error for ${cityLabel}:`, insertErr);
+        } else {
+          totalGenerated += posts.length;
+        }
+      }
     }
 
     return new Response(
-      JSON.stringify({ ok: true, generated: posts.length }),
+      JSON.stringify({ ok: true, generated: totalGenerated, cities: cities.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

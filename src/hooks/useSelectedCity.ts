@@ -1,22 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
 export interface CitySelection {
-  name: string;       // e.g. "Richmond"
-  state?: string;     // e.g. "VA"
-  label: string;      // e.g. "Richmond, VA"
+  id: string;
+  name: string;
+  state?: string;
+  label: string;
   latitude?: number;
   longitude?: number;
 }
 
-export const POPULAR_CITIES: CitySelection[] = [
-  { name: 'Richmond', state: 'VA', label: 'Richmond, VA', latitude: 37.5407, longitude: -77.4360 },
-  { name: 'Norfolk', state: 'VA', label: 'Norfolk, VA', latitude: 36.8508, longitude: -76.2859 },
-  { name: 'Washington', state: 'DC', label: 'Washington, DC', latitude: 38.9072, longitude: -77.0369 },
-  { name: 'New York', state: 'NY', label: 'New York, NY', latitude: 40.7128, longitude: -74.0060 },
-  { name: 'Austin', state: 'TX', label: 'Austin, TX', latitude: 30.2672, longitude: -97.7431 },
-  { name: 'Virginia Beach', state: 'VA', label: 'Virginia Beach, VA', latitude: 36.8529, longitude: -75.9780 },
-  { name: 'Charlottesville', state: 'VA', label: 'Charlottesville, VA', latitude: 38.0293, longitude: -78.4767 },
-];
+export interface CityRecord {
+  id: string;
+  name: string;
+  state: string | null;
+  country: string;
+  lat: number;
+  lng: number;
+  is_popular: boolean;
+  timezone: string | null;
+}
 
 const STORAGE_KEY = 'youpick_selected_city';
 const SAVED_CITIES_KEY = 'youpick_saved_cities';
@@ -31,15 +35,57 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export function useSelectedCity() {
+  const { user } = useAuth();
   const [selectedCity, setSelectedCityState] = useState<CitySelection | null>(() =>
     loadFromStorage<CitySelection | null>(STORAGE_KEY, null)
   );
   const [savedCities, setSavedCitiesState] = useState<CitySelection[]>(() =>
     loadFromStorage<CitySelection[]>(SAVED_CITIES_KEY, [])
   );
+  const [allCities, setAllCities] = useState<CityRecord[]>([]);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  // Persist selected city
+  // Fetch cities from database
+  useEffect(() => {
+    supabase
+      .from('cities' as any)
+      .select('*')
+      .order('is_popular', { ascending: false })
+      .order('name')
+      .then(({ data }) => {
+        if (data) setAllCities(data as any as CityRecord[]);
+      });
+  }, []);
+
+  // Load from profile for logged-in users
+  useEffect(() => {
+    if (!user || selectedCity) return;
+    supabase
+      .from('profiles' as any)
+      .select('selected_city_id')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data && (data as any).selected_city_id) {
+          const cityId = (data as any).selected_city_id;
+          const city = allCities.find(c => c.id === cityId);
+          if (city) {
+            const sel: CitySelection = {
+              id: city.id,
+              name: city.name,
+              state: city.state || undefined,
+              label: city.state ? `${city.name}, ${city.state}` : city.name,
+              latitude: city.lat,
+              longitude: city.lng,
+            };
+            setSelectedCityState(sel);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(sel));
+          }
+        }
+      });
+  }, [user, allCities, selectedCity]);
+
+  // Persist selected city to localStorage
   useEffect(() => {
     if (selectedCity) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedCity));
@@ -53,20 +99,34 @@ export function useSelectedCity() {
     localStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(savedCities));
   }, [savedCities]);
 
-  const selectCity = useCallback((city: CitySelection) => {
+  const selectCity = useCallback(async (city: CitySelection) => {
     setSelectedCityState(city);
-    // Auto-save to saved cities (deduplicate)
+    // Auto-save to recent cities
     setSavedCitiesState(prev => {
-      if (prev.some(c => c.label === city.label)) return prev;
+      if (prev.some(c => c.id === city.id)) return prev;
       return [city, ...prev].slice(0, 10);
     });
     setIsPickerOpen(false);
-  }, []);
 
-  const clearCity = useCallback(() => {
+    // Persist to profile for logged-in users
+    if (user && city.id) {
+      await supabase
+        .from('profiles' as any)
+        .update({ selected_city_id: city.id } as any)
+        .eq('id', user.id);
+    }
+  }, [user]);
+
+  const clearCity = useCallback(async () => {
     setSelectedCityState(null);
     setIsPickerOpen(false);
-  }, []);
+    if (user) {
+      await supabase
+        .from('profiles' as any)
+        .update({ selected_city_id: null } as any)
+        .eq('id', user.id);
+    }
+  }, [user]);
 
   const removeSavedCity = useCallback((label: string) => {
     setSavedCitiesState(prev => prev.filter(c => c.label !== label));
@@ -75,9 +135,21 @@ export function useSelectedCity() {
   const openPicker = useCallback(() => setIsPickerOpen(true), []);
   const closePicker = useCallback(() => setIsPickerOpen(false), []);
 
+  // Helper: get popular cities from DB
+  const popularCities = allCities.filter(c => c.is_popular).map(c => ({
+    id: c.id,
+    name: c.name,
+    state: c.state || undefined,
+    label: c.state ? `${c.name}, ${c.state}` : c.name,
+    latitude: c.lat,
+    longitude: c.lng,
+  }));
+
   return {
     selectedCity,
     savedCities,
+    allCities,
+    popularCities,
     isPickerOpen,
     selectCity,
     clearCity,

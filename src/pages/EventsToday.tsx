@@ -167,7 +167,7 @@ export default function EventsToday() {
   const { isPremium } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
-  const { selectedCity, savedCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
+  const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<Timeframe>('today');
@@ -282,6 +282,8 @@ export default function EventsToday() {
         onSelectCity={selectCity}
         onUseCurrentLocation={handleUseCurrentLocation}
         savedCities={savedCities}
+        popularCities={popularCities}
+        allCities={allCities}
         onRemoveSaved={removeSavedCity}
       />
 

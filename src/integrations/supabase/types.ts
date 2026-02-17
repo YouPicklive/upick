@@ -83,18 +83,58 @@ export type Database = {
         }
         Relationships: []
       }
+      cities: {
+        Row: {
+          country: string
+          created_at: string
+          id: string
+          is_popular: boolean
+          lat: number
+          lng: number
+          name: string
+          state: string | null
+          timezone: string | null
+        }
+        Insert: {
+          country?: string
+          created_at?: string
+          id?: string
+          is_popular?: boolean
+          lat: number
+          lng: number
+          name: string
+          state?: string | null
+          timezone?: string | null
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          id?: string
+          is_popular?: boolean
+          lat?: number
+          lng?: number
+          name?: string
+          state?: string | null
+          timezone?: string | null
+        }
+        Relationships: []
+      }
       feed_posts: {
         Row: {
           body: string | null
           bot_avatar_url: string | null
           bot_display_name: string | null
           city: string | null
+          city_id: string | null
           created_at: string
+          expires_at: string | null
           id: string
           is_anonymous: boolean
           is_bot: boolean
           lat: number | null
           lng: number | null
+          metadata: Json | null
+          post_subtype: string | null
           post_type: string
           region: string | null
           result_address: string | null
@@ -110,12 +150,16 @@ export type Database = {
           bot_avatar_url?: string | null
           bot_display_name?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           is_anonymous?: boolean
           is_bot?: boolean
           lat?: number | null
           lng?: number | null
+          metadata?: Json | null
+          post_subtype?: string | null
           post_type: string
           region?: string | null
           result_address?: string | null
@@ -131,12 +175,16 @@ export type Database = {
           bot_avatar_url?: string | null
           bot_display_name?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           is_anonymous?: boolean
           is_bot?: boolean
           lat?: number | null
           lng?: number | null
+          metadata?: Json | null
+          post_subtype?: string | null
           post_type?: string
           region?: string | null
           result_address?: string | null
@@ -147,7 +195,15 @@ export type Database = {
           user_id?: string | null
           visibility?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feed_posts_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fortunes: {
         Row: {
@@ -327,6 +383,7 @@ export type Database = {
           email: string
           id: string
           region: string | null
+          selected_city_id: string | null
           updated_at: string
           username: string | null
         }
@@ -340,6 +397,7 @@ export type Database = {
           email: string
           id: string
           region?: string | null
+          selected_city_id?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -353,10 +411,19 @@ export type Database = {
           email?: string
           id?: string
           region?: string | null
+          selected_city_id?: string | null
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_selected_city_id_fkey"
+            columns: ["selected_city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_activities: {
         Row: {
