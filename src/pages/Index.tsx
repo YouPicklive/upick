@@ -9,6 +9,7 @@ import { usePlacesSearch } from '@/hooks/usePlacesSearch';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedFortunes } from '@/hooks/useSavedFortunes';
 import { useAutoPost } from '@/hooks/useAutoPost';
+import { useSelectedCity } from '@/hooks/useSelectedCity';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
@@ -61,7 +62,15 @@ const Index = () => {
   const [findingSpots, setFindingSpots] = useState(false);
  
   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
+  const { selectedCity } = useSelectedCity();
 
+  // Derive effective coordinates: selectedCity > GPS > Richmond fallback
+  const getSearchCoords = useCallback(() => {
+    if (selectedCity?.latitude && selectedCity?.longitude) {
+      return { latitude: selectedCity.latitude, longitude: selectedCity.longitude };
+    }
+    return coordinates || { latitude: 37.5407, longitude: -77.4360 };
+  }, [selectedCity, coordinates]);
   // Handle checkout success/cancelled query params
   useEffect(() => {
     const packPurchase = searchParams.get('pack_purchase');
@@ -117,8 +126,8 @@ const Index = () => {
       setVibeInput({ selectedVibe: 'explore' });
     }
 
-    // Determine coordinates: use real location or Richmond fallback
-    const searchCoords = coordinates || { latitude: 37.5407, longitude: -77.4360 };
+    // Determine coordinates: selectedCity > GPS > Richmond fallback
+    const searchCoords = getSearchCoords();
 
     setFindingSpots(true);
     try {
@@ -134,7 +143,7 @@ const Index = () => {
 
     // Fallback to sample spots
     startGame();
-  }, [isAuthenticated, useSpin, state.vibeInput, coordinates, searchPlaces, startGame, setVibeInput]);
+  }, [isAuthenticated, useSpin, state.vibeInput, getSearchCoords, searchPlaces, startGame, setVibeInput]);
 
   const handleUpgrade = useCallback(() => {
     navigate('/membership');
@@ -155,7 +164,7 @@ const Index = () => {
     toast.info('Got it — finding something better...', { duration: 2000 });
     
     // Re-spin with the same settings
-    const searchCoords = coordinates || { latitude: 37.5407, longitude: -77.4360 };
+    const searchCoords = getSearchCoords();
     setFindingSpots(true);
     try {
       const realSpots = await searchPlaces(searchCoords, state.vibeInput);
@@ -168,7 +177,7 @@ const Index = () => {
       setFindingSpots(false);
     }
     startGame();
-  }, [coordinates, state.vibeInput, searchPlaces, startGame, dislikeSpot]);
+  }, [getSearchCoords, state.vibeInput, searchPlaces, startGame, dislikeSpot]);
 
   // --- All hooks above, conditional returns below ---
 

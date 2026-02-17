@@ -33,16 +33,12 @@ const INTENTS: { id: VibeIntent; emoji: string; label: string; plusOnly?: boolea
 ];
 
 const FILTERS: { id: VibeFilter; label: string; group: string }[] = [
-  { id: 'cheap', label: '💵 Budget', group: 'budget' },
+  { id: 'cheap', label: '🆓 Free', group: 'budget' },
   { id: 'mid', label: '💸 Mid', group: 'budget' },
   { id: 'treat', label: '💎 Splurge', group: 'budget' },
-  { id: 'indoor', label: '🏠 Indoor', group: 'location' },
-  { id: 'outdoor', label: '🌳 Outdoor', group: 'location' },
-  { id: 'near-me', label: '📍 Near Me', group: 'distance' },
-  { id: 'any-distance', label: '🌍 Any Distance', group: 'distance' },
 ];
 
-const MAX_FILTERS = 3;
+const MAX_FILTERS = 2;
 
 function RandomnessMeter({ level }: { level: RandomnessLevel }) {
   const config = {
@@ -212,8 +208,8 @@ export function VibeScreen({
         {step === 1 && (
           <div className="animate-fade-in">
             <div className="mb-6">
-              <h1 className="font-display text-2xl font-bold mb-1">Any preferences?</h1>
-              <p className="text-muted-foreground text-sm">Optional — pick up to 3 or skip for more randomness</p>
+              <h1 className="font-display text-2xl font-bold mb-1">Budget?</h1>
+              <p className="text-muted-foreground text-sm">Optional — pick one or skip for full randomness</p>
             </div>
 
             <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
