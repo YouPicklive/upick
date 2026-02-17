@@ -5,10 +5,12 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedActivities } from '@/hooks/useSavedActivities';
+import { useSelectedCity } from '@/hooks/useSelectedCity';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck, ChevronDown } from 'lucide-react';
+import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CityLabel } from '@/components/CityLabel';
+import { CityPickerModal } from '@/components/CityPickerModal';
 import { useNavigate, Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { SharePostModal } from '@/components/game/SharePostModal';
@@ -187,24 +189,19 @@ function SocialShareFeedCard({ share }: { share: SocialShareCard }) {
   );
 }
 
-const CITY_OPTIONS = [
-  { value: 'all', label: 'All Cities' },
-  { value: 'Richmond', label: 'Richmond, VA' },
-  { value: 'Norfolk', label: 'Norfolk, VA' },
-];
-
 export default function Feed() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { isPremium } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
-  const [cityFilter, setCityFilter] = useState<string>('all');
+  const { selectedCity, savedCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
+
   const { posts, loading, toggleLike } = useFeed({
-    latitude: cityFilter === 'all' ? coordinates?.latitude : undefined,
-    longitude: cityFilter === 'all' ? coordinates?.longitude : undefined,
-    radiusMiles: cityFilter === 'all' ? 25 : undefined,
-    city: cityFilter !== 'all' ? cityFilter : undefined,
+    latitude: selectedCity ? selectedCity.latitude : coordinates?.latitude,
+    longitude: selectedCity ? selectedCity.longitude : coordinates?.longitude,
+    radiusMiles: selectedCity ? undefined : 25,
+    city: selectedCity ? selectedCity.name : undefined,
   });
   const [shareOpen, setShareOpen] = useState(false);
   const [socialShares, setSocialShares] = useState<SocialShareCard[]>([]);
@@ -270,6 +267,12 @@ export default function Feed() {
     });
   };
 
+  const handleUseCurrentLocation = () => {
+    clearCity();
+  };
+
+  const cityDisplayLabel = selectedCity ? selectedCity.label : (coordinates ? 'Near You' : 'All Cities');
+
   const mergedFeed = [
     ...posts.map(p => ({ type: 'post' as const, data: p, created_at: p.created_at })),
     ...socialShares.map(s => ({ type: 'share' as const, data: s, created_at: s.created_at })),
@@ -279,14 +282,22 @@ export default function Feed() {
     <div className="min-h-screen bg-background">
       <GlobalHeader />
       <SharePostModal open={shareOpen} onClose={() => { setShareOpen(false); fetchSocialShares(); }} />
+      <CityPickerModal
+        open={isPickerOpen}
+        onClose={closePicker}
+        onSelectCity={selectCity}
+        onUseCurrentLocation={handleUseCurrentLocation}
+        savedCities={savedCities}
+        onRemoveSaved={removeSavedCity}
+      />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-display text-xl font-bold">Community Activity</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {cityFilter !== 'all'
-                ? `Showing activity in ${cityFilter}`
+              {selectedCity
+                ? `Showing activity in ${selectedCity.label}`
                 : coordinates
                   ? 'Showing activity within 25 miles'
                   : 'Showing all recent activity'}
@@ -300,17 +311,7 @@ export default function Feed() {
         </div>
 
         <div className="mb-5">
-          <Select value={cityFilter} onValueChange={setCityFilter}>
-            <SelectTrigger className="w-[180px] bg-card border-border/50">
-              <MapPin className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-              <SelectValue placeholder="All Cities" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border-border z-50">
-              {CITY_OPTIONS.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CityLabel label={cityDisplayLabel} onClick={openPicker} />
         </div>
 
         {loading ? (

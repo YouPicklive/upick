@@ -4,12 +4,15 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedActivities } from '@/hooks/useSavedActivities';
+import { useSelectedCity } from '@/hooks/useSelectedCity';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Calendar, Clock, MapPin, Loader2, ExternalLink, RefreshCw, Bookmark, BookmarkCheck, Star,
   Music, Trophy, Palette, Drama, UtensilsCrossed, Users, Heart, ShoppingBag, Sparkles, PartyPopper,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CityLabel } from '@/components/CityLabel';
+import { CityPickerModal } from '@/components/CityPickerModal';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -88,15 +91,8 @@ function EventCard({ event, isPremium, isAuthenticated, isSaved, onSave, onUnsav
       toast('Sign in to save events', { description: 'Create an account to start saving.' });
       return;
     }
-    if (!isPremium) {
-      onUpgrade();
-      return;
-    }
-    if (isSaved) {
-      onUnsave();
-    } else {
-      onSave();
-    }
+    if (!isPremium) { onUpgrade(); return; }
+    if (isSaved) onUnsave(); else onSave();
   };
 
   return (
@@ -171,15 +167,20 @@ export default function EventsToday() {
   const { isPremium } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
+  const { selectedCity, savedCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<Timeframe>('today');
   const [filterType, setFilterType] = useState<string | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setInterval>>();
 
+  // Derive the city and coordinates to use for search
+  const effectiveCity = selectedCity ? `${selectedCity.name}, ${selectedCity.state || ''}`.trim() : 'Richmond, VA';
+  const effectiveLat = selectedCity?.latitude ?? coordinates?.latitude;
+  const effectiveLng = selectedCity?.longitude ?? coordinates?.longitude;
+
   const fetchEvents = useCallback(async () => {
-    const city = 'Richmond, VA';
-    const cacheKey = `${timeframe}|${coordinates?.latitude?.toFixed(2)}|${coordinates?.longitude?.toFixed(2)}`;
+    const cacheKey = `${timeframe}|${effectiveCity}|${effectiveLat?.toFixed(2)}|${effectiveLng?.toFixed(2)}`;
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       setEvents(cached.events);
@@ -192,10 +193,10 @@ export default function EventsToday() {
       const { data, error } = await supabase.functions.invoke('search-events', {
         body: {
           timeframe,
-          city,
+          city: effectiveCity,
           mode: 'discover',
-          latitude: coordinates?.latitude,
-          longitude: coordinates?.longitude,
+          latitude: effectiveLat,
+          longitude: effectiveLng,
           radiusMiles: 25,
         },
       });
@@ -207,10 +208,10 @@ export default function EventsToday() {
 
       let processed: LocalEvent[] = data.events;
 
-      if (coordinates) {
+      if (effectiveLat && effectiveLng) {
         processed = processed.map((e: LocalEvent) => {
           if (e.latitude && e.longitude) {
-            return { ...e, distance: haversine(coordinates.latitude, coordinates.longitude, e.latitude, e.longitude) };
+            return { ...e, distance: haversine(effectiveLat, effectiveLng, e.latitude, e.longitude) };
           }
           return e;
         });
@@ -225,7 +226,7 @@ export default function EventsToday() {
     } finally {
       setLoading(false);
     }
-  }, [timeframe, coordinates?.latitude, coordinates?.longitude]);
+  }, [timeframe, effectiveCity, effectiveLat, effectiveLng]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -263,12 +264,26 @@ export default function EventsToday() {
     });
   };
 
+  const handleUseCurrentLocation = () => {
+    clearCity();
+  };
+
+  const cityDisplayLabel = selectedCity ? selectedCity.label : (coordinates ? 'Near You' : 'Richmond, VA');
+
   const availableTypes = [...new Set(events.map(e => e.type).filter(Boolean))];
   const displayed = filterType ? events.filter(e => e.type === filterType) : events;
 
   return (
     <div className="min-h-screen bg-background">
       <GlobalHeader />
+      <CityPickerModal
+        open={isPickerOpen}
+        onClose={closePicker}
+        onSelectCity={selectCity}
+        onUseCurrentLocation={handleUseCurrentLocation}
+        savedCities={savedCities}
+        onRemoveSaved={removeSavedCity}
+      />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
@@ -278,7 +293,7 @@ export default function EventsToday() {
               Events Near You
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {coordinates ? 'Within 25 miles' : 'Richmond, VA area'}
+              {selectedCity ? selectedCity.label : coordinates ? 'Within 25 miles' : 'Richmond, VA area'}
             </p>
           </div>
           <Button
@@ -290,6 +305,11 @@ export default function EventsToday() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
+        </div>
+
+        {/* City selector */}
+        <div className="mb-4">
+          <CityLabel label={cityDisplayLabel} onClick={openPicker} />
         </div>
 
         {/* Timeframe pills */}
