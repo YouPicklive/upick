@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     // Get active businesses
     const { data: businesses, error: bizErr } = await supabase
       .from("businesses")
-      .select("name, category, neighborhood, latitude, longitude")
+      .select("name, category, neighborhood, latitude, longitude, city, state")
       .eq("active", true);
 
     if (bizErr || !businesses || businesses.length === 0) {
@@ -154,8 +154,8 @@ Deno.serve(async (req) => {
         result_category: biz.category,
         lat: biz.latitude,
         lng: biz.longitude,
-        city: "Richmond",
-        region: "VA",
+        city: biz.city || "Richmond",
+        region: biz.state || "VA",
         is_anonymous: false,
         is_bot: true,
         bot_display_name: `@${handle}`,
