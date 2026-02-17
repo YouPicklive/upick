@@ -9,13 +9,16 @@ interface ReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   placeName: string;
+  initialRating?: number;
+  initialContent?: string;
+  initialNote?: string;
   onSubmit: (data: { rating: number; content: string | null; note: string | null; is_public: boolean }) => Promise<boolean>;
 }
 
-export function ReviewModal({ open, onOpenChange, placeName, onSubmit }: ReviewModalProps) {
-  const [rating, setRating] = useState(5);
-  const [content, setContent] = useState('');
-  const [note, setNote] = useState('');
+export function ReviewModal({ open, onOpenChange, placeName, initialRating, initialContent, initialNote, onSubmit }: ReviewModalProps) {
+  const [rating, setRating] = useState(initialRating ?? 5);
+  const [content, setContent] = useState(initialContent ?? '');
+  const [note, setNote] = useState(initialNote ?? '');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {

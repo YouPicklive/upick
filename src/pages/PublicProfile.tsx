@@ -4,9 +4,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSavedActivities, SavedActivity } from '@/hooks/useSavedActivities';
 import { useSavedSpins, SavedSpin } from '@/hooks/useSavedSpins';
 import { usePlaceReviews, PlaceReview } from '@/hooks/usePlaceReviews';
+import { ReviewModal } from '@/components/game/ReviewModal';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { Button } from '@/components/ui/button';
-import { User, Settings, Loader2, Sparkles, MapPin, Bookmark, Calendar, ExternalLink, Clock, Heart, Star, MessageSquare, Trash2 } from 'lucide-react';
+import { User, Settings, Loader2, Sparkles, MapPin, Bookmark, Calendar, ExternalLink, Clock, Heart, Star, MessageSquare, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -75,8 +76,15 @@ export default function PublicProfile() {
 
   // Fetch saved activities for the profile user
   const { savedActivities, loading: savedLoading } = useSavedActivities(profile?.id);
-  const { savedSpins, loading: spinsLoading, deleteSpin } = useSavedSpins(profile?.id);
-  const { reviews, loading: reviewsLoading, deleteReview } = usePlaceReviews(profile?.id);
+  const { savedSpins, loading: spinsLoading, deleteSpin, updateNote } = useSavedSpins(profile?.id);
+  const { reviews, loading: reviewsLoading, deleteReview, updateReview } = usePlaceReviews(profile?.id);
+
+  // Inline edit state for spin notes
+  const [editingSpinId, setEditingSpinId] = useState<string | null>(null);
+  const [editSpinNote, setEditSpinNote] = useState('');
+
+  // Edit review modal state
+  const [editingReview, setEditingReview] = useState<PlaceReview | null>(null);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -295,10 +303,47 @@ export default function PublicProfile() {
                           {spin.fortune_text && (
                             <p className="text-xs italic text-muted-foreground mt-1.5 line-clamp-2">"{spin.fortune_text}"</p>
                           )}
-                          {spin.note && isOwner && (
-                            <p className="text-xs text-foreground/60 mt-1 flex items-center gap-1">
-                              <MessageSquare className="w-2.5 h-2.5" /> {spin.note}
-                            </p>
+                          {isOwner && editingSpinId === spin.id ? (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={editSpinNote}
+                                onChange={(e) => setEditSpinNote(e.target.value)}
+                                maxLength={200}
+                                placeholder="Add a note…"
+                                className="flex-1 bg-background border border-border/50 rounded-lg px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                autoFocus
+                              />
+                              <button
+                                onClick={async () => {
+                                  await updateNote(spin.id, editSpinNote);
+                                  setEditingSpinId(null);
+                                }}
+                                className="p-1 text-primary hover:text-primary/80"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setEditingSpinId(null)} className="p-1 text-muted-foreground hover:text-foreground">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            spin.note && isOwner && (
+                              <p
+                                className="text-xs text-foreground/60 mt-1 flex items-center gap-1 cursor-pointer hover:text-foreground/80 transition-colors"
+                                onClick={() => { setEditingSpinId(spin.id); setEditSpinNote(spin.note || ''); }}
+                              >
+                                <MessageSquare className="w-2.5 h-2.5" /> {spin.note} <Pencil className="w-2 h-2 ml-0.5 opacity-40" />
+                              </p>
+                            )
+                          )}
+                          {isOwner && !spin.note && editingSpinId !== spin.id && (
+                            <button
+                              onClick={() => { setEditingSpinId(spin.id); setEditSpinNote(''); }}
+                              className="text-[10px] text-muted-foreground/50 mt-1 flex items-center gap-0.5 hover:text-primary transition-colors"
+                            >
+                              <Pencil className="w-2.5 h-2.5" /> Add note
+                            </button>
                           )}
                           <p className="text-[11px] text-muted-foreground mt-1.5">
                             {formatDistanceToNow(new Date(spin.created_at), { addSuffix: true })}
@@ -376,9 +421,17 @@ export default function PublicProfile() {
                           </p>
                         </div>
                         {isOwner && (
-                          <button onClick={() => deleteReview(review.id)} className="shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex flex-col gap-1 shrink-0">
+                            <button
+                              onClick={() => setEditingReview(review)}
+                              className="p-1 text-muted-foreground/40 hover:text-primary transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => deleteReview(review.id)} className="p-1 text-muted-foreground/40 hover:text-destructive transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -387,6 +440,23 @@ export default function PublicProfile() {
               )
             )}
           </div>
+        )}
+
+        {/* Edit Review Modal */}
+        {editingReview && (
+          <ReviewModal
+            open={!!editingReview}
+            onOpenChange={(open) => { if (!open) setEditingReview(null); }}
+            placeName={editingReview.place_name}
+            initialRating={editingReview.rating}
+            initialContent={editingReview.content || ''}
+            initialNote={editingReview.note || ''}
+            onSubmit={async (data) => {
+              const success = await updateReview(editingReview.id, data);
+              if (success) setEditingReview(null);
+              return !!success;
+            }}
+          />
         )}
       </main>
     </div>
