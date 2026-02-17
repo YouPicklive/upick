@@ -8,6 +8,9 @@ import { PackPurchaseModal } from './PackPurchaseModal';
 import appIcon from '@/assets/app-icon.png';
 import wheelCenterIcon from '@/assets/wheel-center-icon.png';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { CityLabel } from '@/components/CityLabel';
+import { CityPickerModal } from '@/components/CityPickerModal';
+import { useSelectedCity } from '@/hooks/useSelectedCity';
 
 const VIBES = [
 { id: 'reset', name: 'Reset', subtitle: 'Ground, breathe, recalibrate.', icon: '🌿' },
@@ -32,6 +35,7 @@ interface LandingScreenProps {
 export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'free', onFortunePackChange }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
+  const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
   const [showFloatingCTA, setShowFloatingCTA] = useState(false);
@@ -74,10 +78,29 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
     <div className="min-h-screen bg-background flex flex-col">
       <GlobalHeader />
 
+      <CityPickerModal
+        open={isPickerOpen}
+        onClose={closePicker}
+        onSelectCity={selectCity}
+        onUseCurrentLocation={clearCity}
+        savedCities={savedCities}
+        popularCities={popularCities}
+        allCities={allCities}
+        onRemoveSaved={removeSavedCity}
+      />
+
       <main className="flex-1 flex flex-col px-6 pb-16">
         <div className="max-w-md mx-auto w-full">
+          {/* Location Label */}
+          <div className="flex justify-center pt-4 pb-2">
+            <CityLabel
+              label={selectedCity ? selectedCity.label : 'Use Current Location'}
+              onClick={openPicker}
+            />
+          </div>
+
           {/* Hero Section */}
-          <div className="text-center animate-slide-up pt-6 pb-8">
+          <div className="text-center animate-slide-up pt-2 pb-8">
             <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-3">
               YOU SET THE VIBE
               <br />

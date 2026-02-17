@@ -229,11 +229,10 @@ export function shouldApplyFreeOutdoorGuardrail(vibe: VibeInput): boolean {
   const isFreePrice = vibe.filters.includes('cheap');
   if (!isFreePrice) return false;
 
-  const isOutdoorFilter = vibe.filters.includes('outdoor');
   const isFreeBeautifulVibe = vibe.selectedVibe === 'free-beautiful';
   const isSurpriseIntent = vibe.intent === 'surprise' || vibe.intent === null;
 
-  return isOutdoorFilter || isFreeBeautifulVibe || isSurpriseIntent;
+  return isFreeBeautifulVibe || isSurpriseIntent;
 }
 
 /**
