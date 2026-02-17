@@ -6,12 +6,26 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const BOT_NAMES = [
-  "Alex", "Mia", "Jordan", "Taylor", "Sam",
-  "Casey", "Riley", "Drew", "Jamie", "Morgan",
-  "Ava", "Liam", "Zoe", "Kai", "Nina",
-  "Eli", "Luna", "Ren", "Sage", "Ivy",
+// Username-style bot handles (not real names)
+const BOT_HANDLES = [
+  "vibes.rva", "wanderlust_22", "rva.explorer", "sunset.chaser",
+  "localfoodie_", "urban.nomad", "chill.seeker", "nightowl.rva",
+  "coffeewanderer", "trailmix.va", "brunchclub_", "hidden.gems.rva",
+  "spontaneous.one", "good.eats.only", "river.city.life",
+  "the.vibe.finder", "rva.adventures", "soul.food.lover",
+  "weekend.warrior_", "zen.explorer",
 ];
+
+// Map handles to avatar filenames (reuse existing avatar images)
+const AVATAR_MAP: Record<string, string> = {
+  "vibes.rva": "alex", "wanderlust_22": "mia", "rva.explorer": "jordan",
+  "sunset.chaser": "taylor", "localfoodie_": "sam", "urban.nomad": "casey",
+  "chill.seeker": "riley", "nightowl.rva": "drew", "coffeewanderer": "jamie",
+  "trailmix.va": "morgan", "brunchclub_": "ava", "hidden.gems.rva": "liam",
+  "spontaneous.one": "zoe", "good.eats.only": "kai", "river.city.life": "nina",
+  "the.vibe.finder": "eli", "rva.adventures": "luna", "soul.food.lover": "ren",
+  "weekend.warrior_": "sage", "zen.explorer": "ivy",
+};
 
 const CAPTIONS: Record<string, string[]> = {
   restaurant: [
@@ -74,7 +88,6 @@ function pickRandom<T>(arr: T[]): T {
 
 function getCaption(category: string): string {
   const pool = CAPTIONS[category] || CAPTIONS.default;
-  // 30% chance to also append a default caption flavor
   if (Math.random() < 0.3) {
     return pickRandom(pool) + " " + pickRandom(CAPTIONS.default);
   }
@@ -109,7 +122,7 @@ Deno.serve(async (req) => {
     const posts = [];
 
     const usedBusinesses = new Set<string>();
-    const usedNames = new Set<string>();
+    const usedHandles = new Set<string>();
 
     for (let i = 0; i < numPosts; i++) {
       // Pick unique business
@@ -121,21 +134,21 @@ Deno.serve(async (req) => {
       } while (usedBusinesses.has(biz.name) && attempts < 20);
       usedBusinesses.add(biz.name);
 
-      // Pick unique bot name
-      let botName;
+      // Pick unique bot handle
+      let handle;
       do {
-        botName = pickRandom(BOT_NAMES);
-      } while (usedNames.has(botName) && usedNames.size < BOT_NAMES.length);
-      usedNames.add(botName);
+        handle = pickRandom(BOT_HANDLES);
+      } while (usedHandles.has(handle) && usedHandles.size < BOT_HANDLES.length);
+      usedHandles.add(handle);
 
       const caption = getCaption(biz.category);
-      const hoursAgo = i * 4 + Math.floor(Math.random() * 3);
-
-      const avatarUrl = `${supabaseUrl}/storage/v1/object/public/bot-avatars/${botName.toLowerCase()}.jpg`;
+      const hoursAgo = i * 3 + Math.floor(Math.random() * 3);
+      const avatarFile = AVATAR_MAP[handle] || "alex";
+      const avatarUrl = `${supabaseUrl}/storage/v1/object/public/bot-avatars/${avatarFile}.jpg`;
 
       posts.push({
         post_type: "spin_result",
-        title: `${botName} landed on ${biz.name} 🎯`,
+        title: `@${handle} landed on ${biz.name} 🎯`,
         body: caption,
         result_name: biz.name,
         result_category: biz.category,
@@ -145,7 +158,7 @@ Deno.serve(async (req) => {
         region: "VA",
         is_anonymous: false,
         is_bot: true,
-        bot_display_name: botName,
+        bot_display_name: `@${handle}`,
         bot_avatar_url: avatarUrl,
         visibility: "public",
         created_at: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
