@@ -15,6 +15,7 @@ import SavedFortunes from "./pages/SavedFortunes";
 import Feed from "./pages/Feed";
 import EventsToday from "./pages/EventsToday";
 import AdminModeration from "./pages/AdminModeration";
+import BotProfile from "./pages/BotProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/feed" element={<Feed />} />
           <Route path="/events-today" element={<EventsToday />} />
           <Route path="/admin/moderation" element={<AdminModeration />} />
+          <Route path="/bot/:handle" element={<BotProfile />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
