@@ -16,14 +16,33 @@ import { formatDistanceToNow } from 'date-fns';
 import { SharePostModal } from '@/components/game/SharePostModal';
 import { toast } from 'sonner';
 
-function PostTypeLabel({ type }: { type: string }) {
+function PostTypeLabel({ type, isBot, subtype }: { type: string; isBot?: boolean; subtype?: string | null }) {
   const labels: Record<string, { text: string; emoji: string }> = {
     spin_result: { text: 'spun fate', emoji: '🎡' },
     save: { text: 'saved a spot', emoji: '📌' },
     review: { text: 'shared a review', emoji: '✍️' },
-    bot: { text: 'discovered', emoji: '🤖' },
+    bot: { text: 'discovered', emoji: '✨' },
     business_event: { text: 'posted an event', emoji: '📅' },
   };
+
+  // Bot subtype labels
+  if (isBot && subtype) {
+    const subtypeLabels: Record<string, { text: string; emoji: string }> = {
+      daily_prompt: { text: 'daily vibe', emoji: '🌅' },
+      nearby_activity: { text: 'spotted nearby', emoji: '📍' },
+      event: { text: 'event alert', emoji: '🎪' },
+    };
+    const sub = subtypeLabels[subtype];
+    if (sub) {
+      return (
+        <span className="text-xs text-muted-foreground">
+          {sub.emoji} {sub.text}
+          <span className="ml-1.5 text-[10px] bg-secondary px-1.5 py-0.5 rounded-full">Auto-curated</span>
+        </span>
+      );
+    }
+  }
+
   const label = labels[type] || { text: type, emoji: '📝' };
   return (
     <span className="text-xs text-muted-foreground">
@@ -80,7 +99,7 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
             ) : (
               <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
             )}
-            <PostTypeLabel type={post.post_type} />
+            <PostTypeLabel type={post.post_type} isBot={post.is_bot} subtype={post.post_subtype} />
           </div>
           <p className="text-[11px] text-muted-foreground">{timeAgo}</p>
         </div>
@@ -195,13 +214,16 @@ export default function Feed() {
   const { isPremium } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
-  const { selectedCity, savedCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
+  const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
+  const [feedTab, setFeedTab] = useState<'today' | 'trending' | 'new'>('new');
 
   const { posts, loading, toggleLike } = useFeed({
     latitude: selectedCity ? selectedCity.latitude : coordinates?.latitude,
     longitude: selectedCity ? selectedCity.longitude : coordinates?.longitude,
     radiusMiles: selectedCity ? undefined : 25,
+    cityId: selectedCity?.id || undefined,
     city: selectedCity ? selectedCity.name : undefined,
+    tab: feedTab,
   });
   const [shareOpen, setShareOpen] = useState(false);
   const [socialShares, setSocialShares] = useState<SocialShareCard[]>([]);
@@ -288,6 +310,8 @@ export default function Feed() {
         onSelectCity={selectCity}
         onUseCurrentLocation={handleUseCurrentLocation}
         savedCities={savedCities}
+        popularCities={popularCities}
+        allCities={allCities}
         onRemoveSaved={removeSavedCity}
       />
 
@@ -310,8 +334,29 @@ export default function Feed() {
           )}
         </div>
 
-        <div className="mb-5">
+        <div className="flex items-center gap-3 mb-5">
           <CityLabel label={cityDisplayLabel} onClick={openPicker} />
+        </div>
+
+        {/* Feed tabs */}
+        <div className="flex gap-2 mb-5">
+          {([
+            { key: 'today' as const, label: 'Today' },
+            { key: 'trending' as const, label: 'Trending' },
+            { key: 'new' as const, label: 'New' },
+          ]).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFeedTab(tab.key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                feedTab === tab.key
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-secondary text-muted-foreground border-border hover:border-primary/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {loading ? (

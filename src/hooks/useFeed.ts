@@ -6,6 +6,7 @@ export interface FeedPost {
   id: string;
   user_id: string | null;
   post_type: string;
+  post_subtype: string | null;
   title: string;
   body: string | null;
   result_place_id: string | null;
@@ -15,13 +16,16 @@ export interface FeedPost {
   lat: number | null;
   lng: number | null;
   city: string | null;
+  city_id: string | null;
   region: string | null;
   is_anonymous: boolean;
   is_bot: boolean;
   visibility: string;
   created_at: string;
+  expires_at: string | null;
   bot_display_name: string | null;
   bot_avatar_url: string | null;
+  metadata: Record<string, any> | null;
   // Joined from profiles
   username: string | null;
   display_name: string | null;
@@ -30,12 +34,16 @@ export interface FeedPost {
   liked_by_me: boolean;
 }
 
+export type FeedTab = 'today' | 'trending' | 'new';
+
 interface UseFeedOptions {
+  cityId?: string | null;
   city?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   radiusMiles?: number;
   postType?: string;
+  tab?: FeedTab;
 }
 
 export function useFeed(options: UseFeedOptions = {}) {
@@ -56,9 +64,27 @@ export function useFeed(options: UseFeedOptions = {}) {
       if (options.postType) {
         query = query.eq('post_type', options.postType);
       }
-      if (options.city) {
+
+      // Filter by city_id (preferred) or city name
+      if (options.cityId) {
+        query = query.eq('city_id', options.cityId);
+      } else if (options.city) {
         query = query.eq('city', options.city);
       }
+
+      // Tab-specific filters
+      if (options.tab === 'today') {
+        const now = new Date();
+        const dayStart = new Date(now);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+        // Show events starting today + daily prompts
+        query = query.gte('created_at', dayStart.toISOString());
+      }
+
+      // Filter out expired posts
+      const now = new Date().toISOString();
+      query = query.or(`expires_at.is.null,expires_at.gt.${now}`);
 
       const { data: postsData, error } = await query;
       if (error || !postsData) {
@@ -79,7 +105,7 @@ export function useFeed(options: UseFeedOptions = {}) {
         profileMap = new Map((profiles as any[] || []).map((p: any) => [p.id, p]));
       }
 
-      // Get like counts from post_likes (reusing existing table)
+      // Get like counts from post_likes
       const postIds = (postsData as any[]).map((p: any) => p.id);
       const { data: likes } = await supabase
         .from('post_likes' as any)
@@ -93,9 +119,9 @@ export function useFeed(options: UseFeedOptions = {}) {
         if (user && l.user_id === user.id) myLikes.add(l.post_id);
       });
 
-      // Filter by radius if coordinates provided
+      // Filter by radius if coordinates provided (and no city filter)
       let filtered = postsData as any[];
-      if (options.latitude && options.longitude && options.radiusMiles) {
+      if (!options.cityId && !options.city && options.latitude && options.longitude && options.radiusMiles) {
         filtered = filtered.filter((p: any) => {
           if (!p.lat || !p.lng) return true;
           const dist = haversine(options.latitude!, options.longitude!, p.lat, p.lng);
@@ -103,10 +129,14 @@ export function useFeed(options: UseFeedOptions = {}) {
         });
       }
 
-      const enriched: FeedPost[] = filtered.map((p: any) => {
+      let enriched: FeedPost[] = filtered.map((p: any) => {
         const profile = p.user_id ? profileMap.get(p.user_id) : null;
         return {
           ...p,
+          post_subtype: p.post_subtype || null,
+          city_id: p.city_id || null,
+          expires_at: p.expires_at || null,
+          metadata: p.metadata || null,
           bot_display_name: p.bot_display_name || null,
           bot_avatar_url: p.bot_avatar_url || null,
           username: profile?.username || null,
@@ -117,13 +147,18 @@ export function useFeed(options: UseFeedOptions = {}) {
         };
       });
 
+      // Tab-specific sorting
+      if (options.tab === 'trending') {
+        enriched.sort((a, b) => b.like_count - a.like_count || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+
       setPosts(enriched);
     } catch (err) {
       console.error('Feed fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, [options.city, options.postType, options.latitude, options.longitude, options.radiusMiles, user?.id]);
+  }, [options.cityId, options.city, options.postType, options.tab, options.latitude, options.longitude, options.radiusMiles, user?.id]);
 
   useEffect(() => {
     fetchPosts();
