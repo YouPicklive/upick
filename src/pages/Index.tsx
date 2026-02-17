@@ -218,6 +218,9 @@ const Index = () => {
           ownedPacks={ownedPacks}
           fortunePack={state.preferences.fortunePack}
           onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
+          activeFilters={state.vibeInput.filters}
+          onClearFilter={(filter) => setVibeInput({ filters: state.vibeInput.filters.filter(f => f !== filter) })}
+          onOpenPreferences={() => { setMode('vibe'); setVibeStep(1); }}
         />
         {showSpinLimit && (
           <SpinLimitModal
