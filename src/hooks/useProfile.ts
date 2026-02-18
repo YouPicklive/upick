@@ -92,7 +92,7 @@ export function usePublicProfile(username: string | undefined) {
     const fetch = async () => {
       setLoading(true);
       const { data } = await supabase
-        .from('profiles' as any)
+        .from('profiles_public')
         .select('*')
         .eq('username', username)
         .maybeSingle();
