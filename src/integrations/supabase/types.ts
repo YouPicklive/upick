@@ -376,42 +376,51 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          bot_slug: string | null
           city: string | null
           created_at: string
           default_post_privacy: string
           display_name: string | null
           email: string
           id: string
+          is_bot: boolean
           region: string | null
           selected_city_id: string | null
+          timezone: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          bot_slug?: string | null
           city?: string | null
           created_at?: string
           default_post_privacy?: string
           display_name?: string | null
           email: string
           id: string
+          is_bot?: boolean
           region?: string | null
           selected_city_id?: string | null
+          timezone?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          bot_slug?: string | null
           city?: string | null
           created_at?: string
           default_post_privacy?: string
           display_name?: string | null
           email?: string
           id?: string
+          is_bot?: boolean
           region?: string | null
           selected_city_id?: string | null
+          timezone?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -769,6 +778,39 @@ export type Database = {
       }
     }
     Views: {
+      bot_profiles_public: {
+        Row: {
+          avatar_url: string | null
+          bot_slug: string | null
+          city: string | null
+          display_name: string | null
+          id: string | null
+          is_bot: boolean | null
+          region: string | null
+          timezone: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bot_slug?: string | null
+          city?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_bot?: boolean | null
+          region?: string | null
+          timezone?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bot_slug?: string | null
+          city?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_bot?: boolean | null
+          region?: string | null
+          timezone?: string | null
+        }
+        Relationships: []
+      }
       place_reviews_public: {
         Row: {
           content: string | null
