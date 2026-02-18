@@ -1,8 +1,7 @@
 import { X, MapPin } from 'lucide-react';
 import { VibeFilter } from '@/types/game';
 
-const BUDGET_LABELS: Record<VibeFilter, string> = {
-  cheap: '🆓 Free',
+const BUDGET_LABELS: Partial<Record<VibeFilter, string>> = {
   mid: '💸 Mid',
   treat: '💎 Splurge',
 };
@@ -33,8 +32,8 @@ export function ActiveFilterChips({
         {cityLabel}
       </button>
 
-      {/* Budget chips — only when selected */}
-      {budgetFilters.map((filter) => (
+      {/* Budget chips — only when selected, exclude 'cheap' (implicit from vibe) */}
+      {budgetFilters.filter(f => f in BUDGET_LABELS).map((filter) => (
         <button
           key={filter}
           onClick={onBudgetTap}

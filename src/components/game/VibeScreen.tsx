@@ -33,7 +33,6 @@ const INTENTS: { id: VibeIntent; emoji: string; label: string; plusOnly?: boolea
 ];
 
 const FILTERS: { id: VibeFilter; label: string; group: string }[] = [
-  { id: 'cheap', label: '🆓 Free', group: 'budget' },
   { id: 'mid', label: '💸 Mid', group: 'budget' },
   { id: 'treat', label: '💎 Splurge', group: 'budget' },
 ];
