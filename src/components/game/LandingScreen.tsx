@@ -44,8 +44,17 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 
   const handleCitySelect = (city: any) => {
     selectCity(city);
-    toast(`Now exploring ${city.label}.`, { duration: 2500 });
+    toast(`Now exploring ${city.label || city.name}.`, { duration: 2500 });
   };
+
+  // Auto-open picker on first launch if no city selected
+  useEffect(() => {
+    if (!selectedCity && !isPickerOpen) {
+      // Small delay so modal doesn't flash before page renders
+      const timer = setTimeout(() => openPicker(), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedCity, isPickerOpen, openPicker]);
 
   const handleClearBudget = (filter: VibeFilter) => {
     onClearFilter?.(filter);

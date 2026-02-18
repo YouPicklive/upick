@@ -23,3 +23,12 @@ verify_jwt = false
 
 [functions.post-spin-to-feed]
 verify_jwt = false
+
+[functions.places-autocomplete]
+verify_jwt = false
+
+[functions.place-details]
+verify_jwt = false
+
+[functions.get-cities-in-region]
+verify_jwt = false
