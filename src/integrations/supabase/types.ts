@@ -769,7 +769,56 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          created_at: string | null
+          default_post_privacy: string | null
+          display_name: string | null
+          id: string | null
+          region: string | null
+          selected_city_id: string | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          default_post_privacy?: string | null
+          display_name?: string | null
+          id?: string | null
+          region?: string | null
+          selected_city_id?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          default_post_privacy?: string | null
+          display_name?: string | null
+          id?: string | null
+          region?: string | null
+          selected_city_id?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_selected_city_id_fkey"
+            columns: ["selected_city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       check_and_consume_spin: { Args: { p_user_id: string }; Returns: Json }
