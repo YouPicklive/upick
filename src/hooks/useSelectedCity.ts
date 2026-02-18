@@ -3,12 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
 export interface CitySelection {
-  id: string;
+  id?: string;
   name: string;
   state?: string;
   label: string;
   latitude?: number;
   longitude?: number;
+  placeId?: string;
+  country?: string;
+  countryCode?: string;
+  stateRegion?: string;
+  stateRegionShort?: string;
 }
 
 export interface CityRecord {
@@ -45,7 +50,7 @@ export function useSelectedCity() {
   const [allCities, setAllCities] = useState<CityRecord[]>([]);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  // Fetch cities from database
+  // Fetch curated cities from database (for popular cities / fallback)
   useEffect(() => {
     supabase
       .from('cities' as any)
@@ -103,7 +108,8 @@ export function useSelectedCity() {
     setSelectedCityState(city);
     // Auto-save to recent cities
     setSavedCitiesState(prev => {
-      if (prev.some(c => c.id === city.id)) return prev;
+      const key = city.placeId || city.id || city.label;
+      if (prev.some(c => (c.placeId || c.id || c.label) === key)) return prev;
       return [city, ...prev].slice(0, 10);
     });
     setIsPickerOpen(false);

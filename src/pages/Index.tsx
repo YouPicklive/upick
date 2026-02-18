@@ -92,6 +92,11 @@ const Index = () => {
   }, [searchParams, setSearchParams]);
 
   const handleSoloStart = useCallback((selectedVibe?: string) => {
+    // Enforce location selection before spinning
+    if (!selectedCity) {
+      toast.info('Pick a location first to start spinning!', { duration: 3000 });
+      return;
+    }
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
@@ -105,7 +110,7 @@ const Index = () => {
     }
     setPlayerCount(1);
     setMode('vibe');
-  }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode, setVibeInput]);
+  }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode, setVibeInput, selectedCity]);
 
   const handleVibeComplete = useCallback(async () => {
     // Server-enforced spin gating for authenticated users
