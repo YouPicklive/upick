@@ -1,131 +1,153 @@
 
 
-# YouPick.live Stabilization + Cross-Platform Uniformity
+# Native Android Wrapper for YouPick
 
 ## Overview
 
-This plan addresses six areas of improvement: routing, state management, data contracts, performance, design system, and bot pages. No features, pages, or data will be removed -- only refactored, consolidated, and hardened.
+This plan adds a Capacitor-based Android wrapper that loads the production YouPick website (https://youpick.live) in a native WebView. No existing app code, pages, or database schema will be changed.
 
 ---
 
-## 1. Routing + Page Consolidation
+## What You'll Get
 
-**Current state:** Routes are clean with no duplicates. One issue exists: `useAutoPost` hardcodes `city: 'Richmond'` and `region: 'VA'` instead of using the selected city.
-
-**Changes:**
-- Create `src/lib/routes.ts` with a canonical route map constant so all navigation references use a single source of truth
-- Fix `useAutoPost.ts` to pull city/region from the user's selected city instead of hardcoding Richmond
-- Ensure all `navigate()` calls reference the route map constants
-
----
-
-## 2. Single Source of Truth (State)
-
-**Current state:** Auth, profile, city, entitlements, and freemium state are each in separate hooks, each independently calling `useAuth()` internally. Every page that uses `useFreemium` also triggers `useUserEntitlements` which triggers `useAuth` -- causing repeated auth listener setups and multiple identical queries.
-
-**Changes:**
-- Create `src/contexts/AppContext.tsx` -- a single React context provider that wraps the app and holds:
-  - Auth session (from one `useAuth` call)
-  - User profile (from one `useProfile` call)
-  - Selected city (from one `useSelectedCity` call)
-  - User entitlements (from one `useUserEntitlements` call)
-- Expose via `useAppContext()` hook
-- Refactor `useFreemium` to consume `useAppContext()` instead of independently calling `useAuth()` and `useUserEntitlements()`
-- Refactor all pages (Index, Feed, Settings, EventsToday, PublicProfile, BotProfile) to use `useAppContext()` instead of calling multiple hooks independently
-- This eliminates duplicate auth listeners and repeated Supabase queries on every page mount
+- A native Android app shell that opens your live website
+- Your existing app icon adapted for Android's adaptive icon format
+- Deep link support so shared links open inside the app
+- Location permission configured for the discovery features
+- Build instructions for generating a test APK and a Play Store bundle (AAB)
+- A short Play Console upload checklist
 
 ---
 
-## 3. Data Contracts + Filter Logic
+## Technical Details
 
-**Current state:** Types exist but are scattered. The `Spot` interface in `game.ts` is used as the universal type. `FeedPost` is defined in `useFeed.ts`. No shared filter-building utility exists -- filter logic is duplicated across `useGameState`, `usePlacesSearch`, and `useAutoPost`.
+### 1. Install Capacitor Dependencies
 
-**Changes:**
-- Create `src/types/index.ts` that re-exports and formalizes:
-  - `PlaceResult` (renamed from `Spot` for clarity, keeping backward compat alias)
-  - `SpinResult` (the result of a spin action)
-  - `FeedPost` (moved from hook to shared types)
-  - `UserProfile` (moved from `useProfile`)
-  - `BotProfile` (formalized from inline interface in BotProfile.tsx)
-  - `SavedSpin`, `SavedActivity` (moved from hooks to shared types)
-- Create `src/lib/build-filter-payload.ts`:
-  - Single function `buildFilterPayload(vibeInput, selectedCity, coordinates)` that constructs the search params used by `search-places` edge function
-  - Used by Index.tsx (spin), Feed filtering, and any future filter-dependent features
-- Add defensive fallbacks in all list renders: empty array checks, optional chaining, and graceful "nothing found" UI states (already partially done, will audit and fill gaps)
+Add to `package.json`:
+- `@capacitor/core`
+- `@capacitor/cli` (dev dependency)
+- `@capacitor/android`
+- `@capacitor/geolocation` (for native location permission handling)
+
+### 2. Create `capacitor.config.ts`
+
+```text
+appId:      live.youpick.app
+appName:    YouPick
+webDir:     dist
+
+server.url:         https://youpick.live
+server.cleartext:   true
+
+plugins.SplashScreen:
+  launchAutoHide: true
+  backgroundColor: #F7F1E8
+```
+
+The `server.url` points to the live production site so the Android app is purely a wrapper -- no local build is loaded at runtime.
+
+### 3. Android Project Generation
+
+Running `npx cap add android` creates the `/android` folder. After that, the following files are customized:
+
+#### a. App Icons (Adaptive Icons)
+
+Use the existing `public/app-icon-512.png` and `public/app-icon-1024.png` to generate Android adaptive icon resources:
+- `android/app/src/main/res/mipmap-*/ic_launcher.png` (multiple densities)
+- Foreground layer: the gold wheel/chopsticks mark
+- Background layer: solid `#C96A2B` (burnt orange brand color)
+
+Provide a script or instructions to use Android Studio's Image Asset Studio for final icon generation from the existing 1024px asset.
+
+#### b. Splash Screen
+
+Configure a simple splash using the brand background color (`#F7F1E8`) with the app icon centered. Uses Capacitor's built-in splash screen plugin.
+
+### 4. Deep Links (Intent Filters)
+
+Add to `android/app/src/main/AndroidManifest.xml`:
+
+```text
+<intent-filter android:autoVerify="true">
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="https" android:host="youpick.live" />
+</intent-filter>
+```
+
+This ensures any `https://youpick.live/*` link can open inside the app.
+
+A Digital Asset Links file (`assetlinks.json`) will need to be hosted at `https://youpick.live/.well-known/assetlinks.json` for verified deep links. Instructions will be provided for that step (it's a static JSON file placed in the `public/` folder).
+
+### 5. Permissions
+
+Only the permissions actually used by the app:
+- `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` -- used by the geolocation/discovery features
+- `INTERNET` -- required for the WebView (default)
+
+No camera permissions needed (the app uses `navigator.share` for image sharing, not camera capture).
+
+### 6. Auth / Session Persistence
+
+Capacitor's WebView uses a persistent `WebView` with cookies and localStorage enabled by default. No special configuration is needed -- login sessions survive app restarts.
+
+### 7. Digital Asset Links File
+
+Create `public/.well-known/assetlinks.json` so Android can verify deep links. This file maps the `live.youpick.app` package to the `youpick.live` domain. The SHA-256 fingerprint will need to be filled in after you generate your signing key.
+
+### 8. Build Instructions (added to README or separate doc)
+
+```text
+Step-by-step:
+1. Export to GitHub, clone locally
+2. npm install
+3. npm run build
+4. npx cap add android
+5. npx cap sync android
+6. Open in Android Studio: npx cap open android
+
+Debug APK:
+  Android Studio -> Build -> Build Bundle(s)/APK(s) -> Build APK(s)
+
+Release AAB:
+  Android Studio -> Build -> Generate Signed Bundle/APK
+  Select Android App Bundle (AAB)
+  Use your upload keystore
+```
+
+### 9. Play Console Upload Checklist
+
+A markdown checklist will be added covering:
+- Create app listing in Play Console
+- Upload AAB to internal testing track
+- Fill in store listing (screenshots, description, privacy policy URL)
+- Set content rating questionnaire
+- Set target audience and pricing (free)
+- Add the signing key SHA-256 to `assetlinks.json`
+- Submit for review
 
 ---
 
-## 4. Performance Pass
+## Files Created / Modified
 
-**Current state:** Several performance issues identified:
-- `useUserEntitlements` polls `check-subscription` every 60 seconds for ALL authenticated users (even free tier)
-- `useFeed` fetches profiles by querying `profiles` table with `.in()` -- but RLS only allows users to read their OWN profile, so this query returns empty for other users' posts
-- Feed social shares fetch runs on every mount without caching
-- No pagination on Feed (limit 50 hardcoded) or PublicProfile posts (limit 30)
+| File | Action |
+|------|--------|
+| `capacitor.config.ts` | Create -- Capacitor configuration |
+| `public/.well-known/assetlinks.json` | Create -- Deep link verification |
+| `docs/android-build.md` | Create -- Build instructions + Play Console checklist |
+| `package.json` | Modify -- Add Capacitor dependencies + sync script |
 
-**Changes:**
-- Fix `useFeed.ts`: Change profile enrichment to query `profiles_public` view instead of `profiles` table (fixes the RLS issue where other users' display names/avatars show as null)
-- Reduce subscription polling in `useUserEntitlements`: only poll every 60s for Plus/Premium users; free tier users check once on mount
-- Add React Query caching for profile and entitlements data (the project already has `@tanstack/react-query` installed but isn't using it for these queries)
-- Add skeleton loading states using the existing `Skeleton` component to Feed, EventsToday, and PublicProfile pages
-- Add cursor-based pagination to Feed (load more button or infinite scroll) using `created_at` cursor
-- Memoize expensive filter computations in `useGameState` with `useMemo`
+No existing pages, components, hooks, database tables, or edge functions are modified.
 
 ---
 
-## 5. UI Design System (Uniform Across Platforms)
+## After Approval
 
-**Current state:** The app has a cohesive visual language but components are defined inline in pages rather than as reusable primitives. Cards, feed items, and loaders are duplicated across Feed, PublicProfile, and BotProfile.
-
-**Changes:**
-- Extract shared components into `src/components/shared/`:
-  - `PlaceCard.tsx` -- used in Feed, BotProfile, PublicProfile for place/result display
-  - `FeedItem.tsx` -- extracted from Feed.tsx's inline `FeedCard`
-  - `EmptyState.tsx` -- standardized empty state with icon, title, description, optional CTA
-  - `PageLoader.tsx` -- full-page centered spinner with optional message
-  - `LoadingSkeleton.tsx` -- configurable skeleton rows for lists
-- Standardize layout wrapper: Create `PageContainer.tsx` component with consistent max-width, padding, safe-area insets (using `env(safe-area-inset-*)` CSS), and background
-- Add safe-area CSS to `index.css`:
-  - `padding-top: env(safe-area-inset-top)` on the sticky header
-  - `padding-bottom: env(safe-area-inset-bottom)` on floating CTAs and bottom content
-- Ensure all interactive elements have minimum 44x44px touch targets (audit buttons, chips, and tab items)
-- Standardize the card component pattern: same border radius, padding, shadow, and hover state everywhere
-
----
-
-## 6. Bot Pages + Avatars
-
-**Current state:** Bot profiles work but have a simpler card layout than user profiles. Avatar URLs come from feed_posts.bot_avatar_url which references the `avatars` storage bucket.
-
-**Changes:**
-- Align BotProfile card layout with the same `PlaceCard` / `FeedItem` components used in the main feed
-- Add the "Auto-curated" badge and subtype icons (already in Feed) to BotProfile post cards for consistency
-- Ensure bot avatar images use the same avatar component and fallback logic as user profiles
-- Add a subtle "Explorer Bot" badge to the bot profile header matching the existing `YouPick Explorer` label style
-
----
-
-## Technical Implementation Order
-
-1. Create `src/lib/routes.ts` and `src/types/index.ts` (foundational, no behavior change)
-2. Create `src/contexts/AppContext.tsx` and `useAppContext` hook
-3. Create `src/lib/build-filter-payload.ts`
-4. Create shared components (`PlaceCard`, `FeedItem`, `EmptyState`, `PageLoader`, `PageContainer`)
-5. Fix `useFeed.ts` to use `profiles_public` view
-6. Refactor pages to use `AppContext`, shared components, and route constants
-7. Fix `useAutoPost` hardcoded city
-8. Add performance improvements (polling reduction, React Query caching, pagination)
-9. Add safe-area CSS and touch target audit
-10. Align BotProfile with shared components
-
----
-
-## What Will NOT Change
-
-- No features, pages, routes, categories, or flows removed
-- No database tables or columns deleted
-- No subscription/entitlement logic changed
-- No fortune packs, vibes, or filter options removed
-- Bot system, feed, events, and social sharing all preserved
-- All existing RLS policies remain intact
+Once you approve, I will:
+1. Add the Capacitor dependencies to `package.json`
+2. Create `capacitor.config.ts` with the production URL configuration
+3. Create the deep link verification file
+4. Create the build documentation with step-by-step instructions and Play Console checklist
+5. You will then need to run the commands locally (export to GitHub, `npm install`, `npx cap add android`, etc.) since the Android project folder is generated by the Capacitor CLI on your machine
 
