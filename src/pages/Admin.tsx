@@ -4,6 +4,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Trash2 } from 'lucide-react';
+import { z } from 'zod';
+
+const BusinessRowSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200, 'Name too long (max 200)'),
+  category: z.string().trim().max(50, 'Category too long').default('activity'),
+  description: z.string().trim().max(1000, 'Description too long (max 1000)').nullable(),
+  neighborhood: z.string().trim().max(100).nullable(),
+  city: z.string().trim().max(100).default('Richmond'),
+  state: z.string().trim().max(50).default('VA'),
+  price_level: z.enum(['$', '$$', '$$$', '$$$$']).nullable(),
+  rating: z.number().min(0, 'Rating min 0').max(5, 'Rating max 5').nullable(),
+  energy: z.string().trim().max(50).default('moderate'),
+  tags: z.array(z.string().trim().max(50)).max(20, 'Max 20 tags'),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+  photo_url: z.string().trim().url('Invalid photo URL').max(2000).nullable(),
+  is_outdoor: z.boolean(),
+  smoking_friendly: z.boolean(),
+  active: z.literal(true),
+});
 
 interface ParsedRow {
   name: string;
@@ -145,42 +165,62 @@ export default function Admin() {
 
       const importResult: ImportResult = { total: rows.length, inserted: 0, skipped: 0, errors: [] };
 
-      // Batch insert in chunks of 50
-      const BATCH = 50;
-      for (let i = 0; i < rows.length; i += BATCH) {
-        const batch = rows.slice(i, i + BATCH);
-        const records = batch
-          .filter((r) => r.name?.trim())
-          .map((r) => ({
-            name: r.name.trim(),
-            category: r.category?.trim() || 'activity',
-            description: r.description?.trim() || null,
-            neighborhood: r.neighborhood?.trim() || null,
-            city: r.city?.trim() || 'Richmond',
-            state: r.state?.trim() || 'VA',
-            price_level: r.price_level?.trim() || null,
-            rating: r.rating ? parseFloat(r.rating) || null : null,
-            energy: r.energy?.trim() || 'moderate',
-            tags: r.tags ? r.tags.split(';').map((t: string) => t.trim()).filter(Boolean) : [],
-            latitude: r.latitude ? parseFloat(r.latitude) || null : null,
-            longitude: r.longitude ? parseFloat(r.longitude) || null : null,
-            photo_url: r.photo_url?.trim() || null,
-            is_outdoor: toBool(r.is_outdoor),
-            smoking_friendly: toBool(r.smoking_friendly),
-            active: true,
-          }));
-
-        if (records.length === 0) {
-          importResult.skipped += batch.length;
+      // Validate and collect valid records
+      const validRecords: z.infer<typeof BusinessRowSchema>[] = [];
+      for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+        const r = rows[rowIdx];
+        if (!r.name?.trim()) {
+          importResult.skipped++;
+          importResult.errors.push(`Row ${rowIdx + 2}: Missing name, skipped`);
           continue;
         }
 
-        const { error, data } = await supabase.from('businesses').insert(records).select('id');
+        const raw = {
+          name: r.name,
+          category: r.category?.trim() || 'activity',
+          description: r.description?.trim() || null,
+          neighborhood: r.neighborhood?.trim() || null,
+          city: r.city?.trim() || 'Richmond',
+          state: r.state?.trim() || 'VA',
+          price_level: r.price_level?.trim() || null,
+          rating: r.rating ? parseFloat(r.rating) : null,
+          energy: r.energy?.trim() || 'moderate',
+          tags: r.tags ? r.tags.split(';').map((t: string) => t.trim()).filter(Boolean) : [],
+          latitude: r.latitude ? parseFloat(r.latitude) : null,
+          longitude: r.longitude ? parseFloat(r.longitude) : null,
+          photo_url: r.photo_url?.trim() || null,
+          is_outdoor: toBool(r.is_outdoor),
+          smoking_friendly: toBool(r.smoking_friendly),
+          active: true as const,
+        };
+
+        // Handle NaN from parseFloat
+        if (raw.rating !== null && isNaN(raw.rating)) raw.rating = null;
+        if (raw.latitude !== null && isNaN(raw.latitude)) raw.latitude = null;
+        if (raw.longitude !== null && isNaN(raw.longitude)) raw.longitude = null;
+
+        const parsed = BusinessRowSchema.safeParse(raw);
+        if (!parsed.success) {
+          importResult.skipped++;
+          const issues = parsed.error.issues.map((e) => e.message).join('; ');
+          importResult.errors.push(`Row ${rowIdx + 2}: ${issues}`);
+          continue;
+        }
+
+        validRecords.push(parsed.data);
+      }
+
+      // Batch insert validated records in chunks of 50
+      const BATCH = 50;
+      for (let i = 0; i < validRecords.length; i += BATCH) {
+        const batch = validRecords.slice(i, i + BATCH);
+
+        const { error, data } = await supabase.from('businesses').insert(batch as any).select('id');
         if (error) {
           importResult.errors.push(`Batch ${Math.floor(i / BATCH) + 1}: ${error.message}`);
-          importResult.skipped += records.length;
+          importResult.skipped += batch.length;
         } else {
-          importResult.inserted += data?.length || records.length;
+          importResult.inserted += data?.length || batch.length;
         }
       }
 
