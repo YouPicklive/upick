@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AppProvider } from "@/contexts/AppContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
@@ -26,24 +27,26 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/u/:username" element={<PublicProfile />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/membership" element={<Membership />} />
-          <Route path="/saved" element={<SavedFortunes />} />
-          <Route path="/feed" element={<Feed />} />
-          <Route path="/events-today" element={<EventsToday />} />
-          <Route path="/admin/moderation" element={<AdminModeration />} />
-          <Route path="/bot/:handle" element={<BotProfile />} />
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/u/:username" element={<PublicProfile />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/membership" element={<Membership />} />
+            <Route path="/saved" element={<SavedFortunes />} />
+            <Route path="/feed" element={<Feed />} />
+            <Route path="/events-today" element={<EventsToday />} />
+            <Route path="/admin/moderation" element={<AdminModeration />} />
+            <Route path="/bot/:handle" element={<BotProfile />} />
+            
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AppProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

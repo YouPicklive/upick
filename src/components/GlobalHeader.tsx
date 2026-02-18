@@ -50,7 +50,7 @@ export function GlobalHeader() {
   ];
 
   return (
-    <header className="px-4 sm:px-6 py-3 flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+    <header className="px-4 sm:px-6 py-3 pt-safe flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
       {/* Logo */}
       <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
         <div className="w-8 h-8 rounded-xl bg-primary overflow-hidden">

@@ -242,7 +242,7 @@ export default function Feed() {
     let profileMap = new Map();
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('id, username, display_name, avatar_url')
         .in('id', userIds);
       profileMap = new Map((profiles || []).map(p => [p.id, p]));
