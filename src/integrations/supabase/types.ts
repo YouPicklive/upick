@@ -769,6 +769,39 @@ export type Database = {
       }
     }
     Views: {
+      place_reviews_public: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string | null
+          is_public: boolean | null
+          place_id: string | null
+          place_name: string | null
+          rating: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          place_id?: string | null
+          place_name?: string | null
+          rating?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          place_id?: string | null
+          place_name?: string | null
+          rating?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null
