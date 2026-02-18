@@ -31,15 +31,55 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
     }));
   }, [allCities]);
 
-  const filteredCities = useMemo(() => {
-    if (!search.trim()) return [];
+  // Map full state names to abbreviations for search
+  const STATE_NAME_MAP: Record<string, string> = useMemo(() => ({
+    'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+    'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+    'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
+    'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+    'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+    'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+    'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+    'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+    'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+    'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+    'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT',
+    'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV',
+    'wisconsin': 'WI', 'wyoming': 'WY', 'district of columbia': 'DC', 'dc': 'DC',
+  }), []);
+
+  const { filteredCities, matchedStateName } = useMemo(() => {
+    if (!search.trim()) return { filteredCities: [], matchedStateName: null };
     const q = search.toLowerCase().trim();
-    return searchableCities.filter(c =>
+
+    // Check if the query matches a full state name
+    const stateAbbr = STATE_NAME_MAP[q] || Object.entries(STATE_NAME_MAP).find(
+      ([name]) => name.startsWith(q) && q.length >= 3
+    )?.[1];
+
+    if (stateAbbr) {
+      // Show all cities in that state
+      const stateCities = searchableCities.filter(c =>
+        c.state?.toUpperCase() === stateAbbr.toUpperCase()
+      );
+      if (stateCities.length > 0) {
+        const fullName = Object.entries(STATE_NAME_MAP).find(([, v]) => v === stateAbbr)?.[0];
+        const displayName = fullName
+          ? fullName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+          : stateAbbr;
+        return { filteredCities: stateCities.slice(0, 15), matchedStateName: displayName };
+      }
+    }
+
+    // Normal city/label/state search
+    const results = searchableCities.filter(c =>
       c.label.toLowerCase().includes(q) ||
       c.name.toLowerCase().includes(q) ||
       (c.state && c.state.toLowerCase().includes(q))
-    ).slice(0, 8);
-  }, [search, searchableCities]);
+    ).slice(0, 10);
+
+    return { filteredCities: results, matchedStateName: null };
+  }, [search, searchableCities, STATE_NAME_MAP]);
 
   const handleCurrentLocation = () => {
     onUseCurrentLocation();
@@ -64,7 +104,7 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search city or ZIP code…"
+            placeholder="Search city or state…"
             className="pl-9 pr-9"
             autoFocus
           />
@@ -84,16 +124,23 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
             {filteredCities.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">No cities found. Try a different search.</p>
             ) : (
-              filteredCities.map(city => (
-                <button
-                  key={city.id}
-                  onClick={() => handleSelect(city)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
-                >
-                  <MapPin className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm font-medium">{city.label}</span>
-                </button>
-              ))
+              <>
+                {matchedStateName && (
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-1 flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3" /> Cities in {matchedStateName}
+                  </p>
+                )}
+                {filteredCities.map(city => (
+                  <button
+                    key={city.id}
+                    onClick={() => handleSelect(city)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                  >
+                    <MapPin className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-sm font-medium">{city.label}</span>
+                  </button>
+                ))}
+              </>
             )}
           </div>
         )}
