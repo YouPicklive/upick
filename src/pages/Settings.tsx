@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { User, Save, Loader2, Check, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AvatarPicker } from '@/components/AvatarPicker';
@@ -29,6 +30,14 @@ export default function Settings() {
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [usernameChecking, setUsernameChecking] = useState(false);
   const [usernameValid, setUsernameValid] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Fetch email from auth user, not profiles table
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -131,7 +140,7 @@ export default function Settings() {
               <User className="w-8 h-8 text-muted-foreground" />
             )}
           </div>
-          <p className="text-sm text-muted-foreground mb-4">{profile?.email}</p>
+          <p className="text-sm text-muted-foreground mb-4">{userEmail}</p>
           <AvatarPicker selected={avatarUrl} onSelect={setAvatarUrl} />
         </div>
 

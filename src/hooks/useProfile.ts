@@ -4,7 +4,6 @@ import { useAuth } from './useAuth';
 
 export interface Profile {
   id: string;
-  email: string;
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;

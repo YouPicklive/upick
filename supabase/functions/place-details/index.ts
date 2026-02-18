@@ -1,10 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const PlaceDetailsSchema = z.object({
+  placeId: z.string().trim().min(1, "placeId required").max(300, "placeId too long").regex(/^[A-Za-z0-9_-]+$/, "Invalid placeId format"),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -20,14 +25,17 @@ serve(async (req) => {
       });
     }
 
-    const { placeId } = await req.json();
+    const rawBody = await req.json();
+    const parsed = PlaceDetailsSchema.safeParse(rawBody);
 
-    if (!placeId || typeof placeId !== "string") {
-      return new Response(JSON.stringify({ error: "placeId required" }), {
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid input" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { placeId } = parsed.data;
 
     const params = new URLSearchParams({
       place_id: placeId,
@@ -53,7 +61,6 @@ serve(async (req) => {
     const result = data.result;
     const components = result.address_components || [];
 
-    // Extract structured location info
     const getComponent = (type: string) =>
       components.find((c: any) => c.types.includes(type));
 
