@@ -164,7 +164,7 @@ const CACHE_TTL = 10 * 60 * 1000;
 export default function EventsToday() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { isPremium } = useUserEntitlements();
+  const { isPremium, isPremiumTier } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
   const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
@@ -285,6 +285,7 @@ export default function EventsToday() {
         popularCities={popularCities}
         allCities={allCities}
         onRemoveSaved={removeSavedCity}
+        isPremiumTier={isPremiumTier}
       />
 
       <main className="max-w-lg mx-auto px-4 py-6">

@@ -148,9 +148,23 @@ export function useUserEntitlements() {
     return () => clearInterval(interval);
   }, [isAuthenticated, user?.id]);
 
+  const upgradeToPlus = useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke('create-checkout', {
+      body: { returnUrl: window.location.origin + '/membership', plan: 'plus' },
+    });
+    if (error) {
+      logger.error('Checkout error:', error);
+      return { success: false, error: error.message };
+    }
+    if (data?.url) {
+      window.location.href = data.url;
+    }
+    return { success: true, message: 'Redirecting to checkout...' };
+  }, []);
+
   const upgradeToPremium = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke('create-checkout', {
-      body: { returnUrl: window.location.origin + '/membership' },
+      body: { returnUrl: window.location.origin + '/membership', plan: 'premium' },
     });
     if (error) {
       logger.error('Checkout error:', error);
@@ -205,18 +219,23 @@ export function useUserEntitlements() {
     }
   }, [user?.id]);
 
+  const tier = entitlements?.tier ?? 'free';
+
   return {
     entitlements,
     loading,
     error,
-    isPremium: entitlements?.plus_active ?? false,
-    tier: entitlements?.tier ?? 'free',
+    isPremium: tier === 'premium' || tier === 'plus' || (entitlements?.plus_active ?? false),
+    isPlus: tier === 'plus' || tier === 'premium' || (entitlements?.plus_active ?? false),
+    isPremiumTier: tier === 'premium',
+    tier,
     unlimitedSpins: entitlements?.unlimited_spins ?? false,
     canSaveFortunes: entitlements?.can_save_fortunes ?? false,
     spinsUsedToday: entitlements?.spins_used_today ?? 0,
     freeSpinLimitPerDay: entitlements?.free_spin_limit_per_day ?? 1,
     ownedPacks: entitlements?.owned_packs ?? [],
     subscriptionEnd,
+    upgradeToPlus,
     upgradeToPremium,
     openCustomerPortal,
     purchasePack,

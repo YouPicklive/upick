@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, User, LogOut, Star, Sparkles, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { PackPurchaseModal } from './PackPurchaseModal';
 import appIcon from '@/assets/app-icon.png';
@@ -40,6 +41,7 @@ interface LandingScreenProps {
 export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'free', onFortunePackChange, activeFilters = [], onClearFilter, onOpenPreferences }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
+  const { isPremiumTier } = useUserEntitlements();
   const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
 
   const handleCitySelect = (city: any) => {
@@ -114,6 +116,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
         popularCities={popularCities}
         allCities={allCities}
         onRemoveSaved={removeSavedCity}
+        isPremiumTier={isPremiumTier}
       />
 
       <main className="flex-1 flex flex-col px-6 pb-16">

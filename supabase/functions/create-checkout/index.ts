@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 const PLUS_PRICE_ID = "price_1SxAyfC3xPeU0PAgoYHXcyEX";
+const PREMIUM_PRICE_ID = "price_1T1yfgC3xPeU0PAgY8vDXKTo";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
@@ -41,10 +42,14 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { returnUrl } = await req.json().catch(() => ({ returnUrl: null }));
+    const { returnUrl, plan } = await req.json().catch(() => ({ returnUrl: null, plan: "plus" }));
     const origin = req.headers.get("origin") || "https://upick.lovable.app";
     const successUrl = (returnUrl || origin) + "?checkout=success";
     const cancelUrl = (returnUrl || origin) + "?checkout=cancel";
+
+    // Choose price based on plan
+    const priceId = plan === "premium" ? PREMIUM_PRICE_ID : PLUS_PRICE_ID;
+    logStep("Plan selected", { plan, priceId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -61,7 +66,6 @@ serve(async (req) => {
       stripeCustomerId = existingCustomer.stripe_customer_id;
       logStep("Existing Stripe customer found", { stripeCustomerId });
     } else {
-      // Check if customer exists in Stripe by email
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
       if (customers.data.length > 0) {
         stripeCustomerId = customers.data[0].id;
@@ -73,7 +77,6 @@ serve(async (req) => {
         stripeCustomerId = customer.id;
       }
 
-      // Store mapping
       await supabaseAdmin.from("stripe_customers").upsert({
         user_id: user.id,
         stripe_customer_id: stripeCustomerId,
@@ -82,10 +85,9 @@ serve(async (req) => {
       logStep("Stripe customer created/linked", { stripeCustomerId });
     }
 
-    // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
-      line_items: [{ price: PLUS_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       allow_promotion_codes: true,
       success_url: successUrl,

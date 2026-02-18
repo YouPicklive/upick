@@ -25,6 +25,11 @@ const PLUS_PRICE_IDS = [
   "price_1Sx9jOC3xPeU0PAgVxH6M4PQ",
 ];
 
+const PREMIUM_PRODUCT_ID = "prod_TzycjdZA50XUgg";
+const PREMIUM_PRICE_IDS = [
+  "price_1T1yfgC3xPeU0PAgY8vDXKTo",
+];
+
 /**
  * Resolve user_id from Stripe event metadata or stripe_customers table.
  */
@@ -34,13 +39,11 @@ async function resolveUserId(
   metadata: Record<string, string> | null,
   customerId: string | null
 ): Promise<string | null> {
-  // 1. Try metadata
   if (metadata?.user_id) {
     logStep("Resolved user_id from metadata", { user_id: metadata.user_id });
     return metadata.user_id;
   }
 
-  // 2. Try stripe_customers table
   if (customerId) {
     const { data } = await supabaseAdmin
       .from("stripe_customers")
@@ -53,7 +56,6 @@ async function resolveUserId(
     }
   }
 
-  // 3. Fallback: look up by email
   if (customerId) {
     try {
       const customer = await stripe.customers.retrieve(customerId);
@@ -62,7 +64,6 @@ async function resolveUserId(
         const user = users?.users?.find((u: any) => u.email === customer.email);
         if (user) {
           logStep("Resolved user_id from email lookup", { user_id: user.id, email: customer.email });
-          // Store mapping for future
           await supabaseAdmin.from("stripe_customers").upsert({
             user_id: user.id,
             stripe_customer_id: customerId,
@@ -79,18 +80,34 @@ async function resolveUserId(
 }
 
 /**
- * Set entitlements to Plus tier
+ * Determine tier from subscription items
  */
-async function activatePlus(supabaseAdmin: any, userId: string) {
+function determineTier(sub: Stripe.Subscription): "premium" | "plus" {
+  for (const item of sub.items.data) {
+    const priceId = item.price.id;
+    const productId = typeof item.price.product === "string"
+      ? item.price.product
+      : item.price.product.id;
+    if (productId === PREMIUM_PRODUCT_ID || PREMIUM_PRICE_IDS.includes(priceId)) {
+      return "premium";
+    }
+  }
+  return "plus";
+}
+
+/**
+ * Set entitlements to given tier
+ */
+async function activateTier(supabaseAdmin: any, userId: string, tier: "plus" | "premium") {
   await supabaseAdmin.from("user_entitlements").upsert({
     user_id: userId,
     plus_active: true,
-    tier: "plus",
+    tier,
     unlimited_spins: true,
     can_save_fortunes: true,
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id" });
-  logStep("Plus activated", { userId });
+  logStep(`${tier} activated`, { userId });
 }
 
 /**
@@ -104,7 +121,7 @@ async function deactivatePlus(supabaseAdmin: any, userId: string) {
     can_save_fortunes: false,
     updated_at: new Date().toISOString(),
   }).eq("user_id", userId);
-  logStep("Plus deactivated", { userId });
+  logStep("Deactivated to free", { userId });
 }
 
 /**
@@ -160,7 +177,6 @@ serve(async (req) => {
     );
 
     switch (event.type) {
-      // ── Checkout completed (packs + subscriptions) ──
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         logStep("Checkout completed", { sessionId: session.id, mode: session.mode });
@@ -175,21 +191,23 @@ serve(async (req) => {
           return new Response("User not found", { status: 404, headers: corsHeaders });
         }
 
-        // Retrieve line items
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
         let isSubscription = session.mode === "subscription";
+        let isPremium = false;
         const packKeys: string[] = [];
 
         for (const item of lineItems.data) {
           const priceId = item.price?.id;
-          if (priceId && PLUS_PRICE_IDS.includes(priceId)) {
+          if (priceId && PREMIUM_PRICE_IDS.includes(priceId)) {
+            isSubscription = true;
+            isPremium = true;
+          } else if (priceId && PLUS_PRICE_IDS.includes(priceId)) {
             isSubscription = true;
           } else if (priceId && PRICE_TO_PACK_MAP[priceId]) {
             packKeys.push(PRICE_TO_PACK_MAP[priceId]);
           }
         }
 
-        // Merge packs
         if (packKeys.length > 0) {
           const { data: current } = await supabaseAdmin
             .from("user_entitlements")
@@ -204,12 +222,11 @@ serve(async (req) => {
         }
 
         if (isSubscription) {
-          await activatePlus(supabaseAdmin, userId);
+          await activateTier(supabaseAdmin, userId, isPremium ? "premium" : "plus");
         }
         break;
       }
 
-      // ── Subscription lifecycle events ──
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
@@ -228,11 +245,11 @@ serve(async (req) => {
         await upsertSubscription(supabaseAdmin, userId, sub);
 
         if (["active", "trialing"].includes(sub.status)) {
-          await activatePlus(supabaseAdmin, userId);
+          const tier = determineTier(sub);
+          await activateTier(supabaseAdmin, userId, tier);
         } else if (["canceled", "unpaid", "incomplete_expired"].includes(sub.status)) {
           await deactivatePlus(supabaseAdmin, userId);
         }
-        // past_due: keep plus for now (grace period)
         break;
       }
 
@@ -247,7 +264,6 @@ serve(async (req) => {
         );
         if (!userId) break;
 
-        // Update subscription record
         await supabaseAdmin.from("stripe_subscriptions")
           .update({ status: "canceled", updated_at: new Date().toISOString() })
           .eq("stripe_subscription_id", sub.id);
