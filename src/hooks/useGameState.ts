@@ -202,15 +202,8 @@ export function useGameState() {
     let filteredSpots: Spot[];
 
     if (externalSpots && externalSpots.length >= 4) {
-      // Filter out session dislikes
-      const cleaned = externalSpots.filter(s => !sessionDislikes.has(s.id));
-      // Blend micro adventures based on budget
-      filteredSpots = blendMicroAdventures(
-        cleaned,
-        state.preferences.budget,
-        state.vibeInput.intent || 'all',
-        state.vibeInput.selectedVibe
-      );
+      // Filter out session dislikes — use only real location-based results
+      filteredSpots = externalSpots.filter(s => !sessionDislikes.has(s.id));
     } else {
       const hasVibeInput = state.vibeInput.intent || state.vibeInput.energy || state.vibeInput.filters.length > 0;
 
@@ -239,11 +232,7 @@ export function useGameState() {
         }
       }
 
-      // Ensure minimum 6 items by injecting micro adventures
-      if (filteredSpots.length < 6) {
-        const micros = getMicroAdventures(state.vibeInput.selectedVibe, 6 - filteredSpots.length);
-        filteredSpots = [...filteredSpots, ...micros];
-      }
+      // Note: no micro-adventure injection — all results should be real places
     }
 
     // ── Free-only guardrail (applies to ALL spot sources) ──
@@ -290,7 +279,7 @@ export function useGameState() {
       currentPlayer: 1,
       winner: null,
     }));
-  }, [state.category, state.preferences, state.vibeInput, filterSpotsByPreferences, filterSpotsByVibe, blendMicroAdventures]);
+  }, [state.category, state.preferences, state.vibeInput, filterSpotsByPreferences, filterSpotsByVibe]);
 
   const vote = useCallback((spotId: string, liked: boolean) => {
     setState((prev) => {
