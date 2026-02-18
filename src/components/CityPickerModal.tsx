@@ -1,10 +1,12 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { MapPin, Navigation, Clock, Star, Search, X, Globe, ChevronRight, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, Clock, Star, Search, X, Globe, ChevronRight, Loader2, Crown, Lock } from 'lucide-react';
 import { CitySelection, CityRecord } from '@/hooks/useSelectedCity';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface CityPickerModalProps {
   open: boolean;
@@ -15,6 +17,13 @@ interface CityPickerModalProps {
   popularCities: CitySelection[];
   allCities: CityRecord[];
   onRemoveSaved?: (label: string) => void;
+  isPremiumTier?: boolean;
+}
+
+// Check if a prediction is a US city based on secondary text
+function isUSPrediction(prediction: { secondaryText: string; types: string[] }): boolean {
+  const sec = prediction.secondaryText.toLowerCase();
+  return sec.includes('usa') || sec.includes('united states') || sec.endsWith(', us');
 }
 
 type PickerMode = 'quick' | 'region';
@@ -35,7 +44,8 @@ interface RegionCity {
   lng: number;
 }
 
-export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocation, savedCities, popularCities, allCities, onRemoveSaved }: CityPickerModalProps) {
+export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocation, savedCities, popularCities, allCities, onRemoveSaved, isPremiumTier = false }: CityPickerModalProps) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<PickerMode>('quick');
   const [search, setSearch] = useState('');
   const [predictions, setPredictions] = useState<AutocompletePrediction[]>([]);
@@ -121,6 +131,19 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
 
   // Resolve place details when a prediction is selected
   const resolveAndSelect = useCallback(async (prediction: AutocompletePrediction) => {
+    // Gate non-US selections behind Premium
+    if (!isPremiumTier && !isUSPrediction(prediction)) {
+      toast('🌍 International search is a Premium feature', {
+        description: 'Upgrade to Premium ($10.99/mo) to search cities worldwide.',
+        action: {
+          label: 'Upgrade',
+          onClick: () => navigate('/membership'),
+        },
+        duration: 5000,
+      });
+      return;
+    }
+
     setIsResolvingPlace(true);
     try {
       const { data, error } = await supabase.functions.invoke('place-details', {
@@ -151,7 +174,7 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
     } finally {
       setIsResolvingPlace(false);
     }
-  }, [onSelectCity]);
+  }, [onSelectCity, isPremiumTier, navigate]);
 
   // ── Region Mode: Country Autocomplete ──
   const searchCountries = useCallback(async (query: string) => {
@@ -419,21 +442,32 @@ export function CityPickerModal({ open, onClose, onSelectCity, onUseCurrentLocat
             {/* Google Autocomplete Results */}
             {!isSearching && predictions.length > 0 && (
               <div className="space-y-1">
-                {predictions.map(p => (
-                  <button
-                    key={p.placeId}
-                    onClick={() => resolveAndSelect(p)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
-                  >
-                    <Globe className="w-4 h-4 text-primary shrink-0" />
-                    <div className="min-w-0">
-                      <span className="text-sm font-medium block truncate">{p.mainText}</span>
-                      {p.secondaryText && (
-                        <span className="text-xs text-muted-foreground block truncate">{p.secondaryText}</span>
+                {predictions.map(p => {
+                  const isUS = isUSPrediction(p);
+                  const locked = !isPremiumTier && !isUS;
+                  return (
+                    <button
+                      key={p.placeId}
+                      onClick={() => resolveAndSelect(p)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left ${locked ? 'opacity-70' : ''}`}
+                    >
+                      {locked ? (
+                        <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <Globe className="w-4 h-4 text-primary shrink-0" />
                       )}
-                    </div>
-                  </button>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <span className="text-sm font-medium block truncate">{p.mainText}</span>
+                        {p.secondaryText && (
+                          <span className="text-xs text-muted-foreground block truncate">{p.secondaryText}</span>
+                        )}
+                      </div>
+                      {locked && (
+                        <span className="text-[10px] text-accent font-semibold shrink-0">Premium</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
 

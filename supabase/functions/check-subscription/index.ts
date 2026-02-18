@@ -14,6 +14,11 @@ const PLUS_PRICE_IDS = [
   "price_1Sx9jOC3xPeU0PAgVxH6M4PQ",
 ];
 
+const PREMIUM_PRODUCT_ID = "prod_TzycjdZA50XUgg";
+const PREMIUM_PRICE_IDS = [
+  "price_1T1yfgC3xPeU0PAgY8vDXKTo",
+];
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
@@ -73,7 +78,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         subscribed: isManuallyActivated,
         subscription_end: null,
-        tier: isManuallyActivated ? "plus" : (entitlements?.tier || "free"),
+        tier: isManuallyActivated ? (entitlements?.tier || "plus") : (entitlements?.tier || "free"),
         unlimited_spins: isManuallyActivated ? true : (entitlements?.unlimited_spins || false),
         can_save_fortunes: isManuallyActivated ? true : (entitlements?.can_save_fortunes || false),
         spins_used_today: entitlements?.spins_used_today || 0,
@@ -100,6 +105,7 @@ serve(async (req) => {
     });
 
     let hasActivePlus = false;
+    let hasActivePremium = false;
     let subscriptionEnd: string | null = null;
 
     for (const sub of subscriptions.data) {
@@ -109,22 +115,27 @@ serve(async (req) => {
           ? item.price.product
           : item.price.product.id;
 
-        if (productId === PLUS_PRODUCT_ID || PLUS_PRICE_IDS.includes(priceId)) {
-          hasActivePlus = true;
+        if (productId === PREMIUM_PRODUCT_ID || PREMIUM_PRICE_IDS.includes(priceId)) {
+          hasActivePremium = true;
           subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-          break;
+        } else if (productId === PLUS_PRODUCT_ID || PLUS_PRICE_IDS.includes(priceId)) {
+          hasActivePlus = true;
+          if (!subscriptionEnd) {
+            subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+          }
         }
       }
-      if (hasActivePlus) break;
     }
 
-    const finalPlusStatus = hasActivePlus || isManuallyActivated;
+    // Premium includes all Plus features
+    const effectiveTier = hasActivePremium ? "premium" : (hasActivePlus ? "plus" : "free");
+    const finalActive = hasActivePremium || hasActivePlus || isManuallyActivated;
 
-    if (hasActivePlus) {
+    if (hasActivePremium || hasActivePlus) {
       await supabaseAdmin.from("user_entitlements").upsert({
         user_id: user.id,
         plus_active: true,
-        tier: "plus",
+        tier: effectiveTier,
         unlimited_spins: true,
         can_save_fortunes: true,
         updated_at: new Date().toISOString(),
@@ -147,7 +158,7 @@ serve(async (req) => {
       .single();
 
     return new Response(JSON.stringify({
-      subscribed: finalPlusStatus,
+      subscribed: finalActive,
       subscription_end: subscriptionEnd,
       tier: refreshed?.tier || "free",
       unlimited_spins: refreshed?.unlimited_spins || false,
