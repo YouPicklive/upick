@@ -381,7 +381,6 @@ export type Database = {
           created_at: string
           default_post_privacy: string
           display_name: string | null
-          email: string
           id: string
           is_bot: boolean
           region: string | null
@@ -398,7 +397,6 @@ export type Database = {
           created_at?: string
           default_post_privacy?: string
           display_name?: string | null
-          email: string
           id: string
           is_bot?: boolean
           region?: string | null
@@ -415,7 +413,6 @@ export type Database = {
           created_at?: string
           default_post_privacy?: string
           display_name?: string | null
-          email?: string
           id?: string
           is_bot?: boolean
           region?: string | null

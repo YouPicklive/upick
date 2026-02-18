@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const AutocompleteSchema = z.object({
+  query: z.string().trim().min(2, "Query too short").max(200, "Query too long"),
+  types: z.string().max(100).regex(/^[a-z_()]+$/, "Invalid types format").optional(),
+  componentRestrictions: z.object({
+    country: z.string().length(2).regex(/^[a-zA-Z]{2}$/, "Invalid country code").optional(),
+  }).optional(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -20,26 +29,28 @@ serve(async (req) => {
       });
     }
 
-    const { query, types, componentRestrictions } = await req.json();
+    const rawBody = await req.json();
+    const parsed = AutocompleteSchema.safeParse(rawBody);
 
-    if (!query || typeof query !== "string" || query.trim().length < 2) {
-      return new Response(JSON.stringify({ predictions: [] }), {
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ predictions: [], error: "Invalid input" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const { query, types, componentRestrictions } = parsed.data;
+
     // Build Google Places Autocomplete URL
     const params = new URLSearchParams({
-      input: query.trim(),
+      input: query,
       key: apiKey,
     });
 
-    // types: "(cities)" for city search, "(regions)" for admin areas, "country" etc.
     if (types) {
       params.set("types", types);
     }
 
-    // Component restrictions for country filtering
     if (componentRestrictions?.country) {
       params.set("components", `country:${componentRestrictions.country}`);
     }
@@ -60,7 +71,6 @@ serve(async (req) => {
       );
     }
 
-    // Return simplified predictions
     const predictions = (data.predictions || []).map((p: any) => ({
       placeId: p.place_id,
       description: p.description,

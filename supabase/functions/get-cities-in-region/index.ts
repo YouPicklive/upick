@@ -1,10 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const CitiesInRegionSchema = z.object({
+  stateRegionName: z.string().trim().min(1, "stateRegionName required").max(200, "stateRegionName too long"),
+  countryName: z.string().trim().max(100).optional(),
+  countryCode: z.string().trim().max(5).regex(/^[A-Za-z]+$/, "Invalid country code").optional(),
+});
 
 // Simple in-memory cache (edge function instance level)
 const cache = new Map<string, { cities: any[]; ts: number }>();
@@ -24,14 +31,17 @@ serve(async (req) => {
       });
     }
 
-    const { stateRegionName, countryName, countryCode } = await req.json();
+    const rawBody = await req.json();
+    const parsed = CitiesInRegionSchema.safeParse(rawBody);
 
-    if (!stateRegionName) {
-      return new Response(JSON.stringify({ error: "stateRegionName required", cities: [] }), {
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid input", cities: [] }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { stateRegionName, countryName, countryCode } = parsed.data;
 
     const cacheKey = `${stateRegionName}_${countryCode || countryName || ""}`.toLowerCase();
     const cached = cache.get(cacheKey);
@@ -48,9 +58,8 @@ serve(async (req) => {
     const cities: any[] = [];
     let nextPageToken: string | null = null;
     let pageCount = 0;
-    const MAX_PAGES = 3; // Google allows up to 3 pages (60 results)
+    const MAX_PAGES = 3;
 
-    // Paginate through Google Text Search results
     do {
       const params = new URLSearchParams({
         query,
@@ -89,16 +98,12 @@ serve(async (req) => {
       nextPageToken = data.next_page_token || null;
       pageCount++;
 
-      // Google requires a short delay before using next_page_token
       if (nextPageToken && pageCount < MAX_PAGES) {
         await new Promise((r) => setTimeout(r, 2000));
       }
     } while (nextPageToken && pageCount < MAX_PAGES);
 
-    // Sort alphabetically
     cities.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Cache the result
     cache.set(cacheKey, { cities, ts: Date.now() });
 
     return new Response(JSON.stringify({ cities }), {
