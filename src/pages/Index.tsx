@@ -98,6 +98,10 @@ const Index = () => {
     }
     if (selectedVibe) {
       setVibeInput({ selectedVibe: selectedVibe as any });
+      // Auto-apply free filter when "Free & Beautiful" vibe is selected
+      if (selectedVibe === 'free_beautiful' || selectedVibe === 'free-beautiful') {
+        setVibeInput({ filters: ['cheap'] });
+      }
     }
     setPlayerCount(1);
     setMode('vibe');
