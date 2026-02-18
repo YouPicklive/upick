@@ -134,9 +134,12 @@ export function useUserEntitlements() {
     checkSubscription();
   }, [isAuthenticated, user?.id]);
 
-  // Periodic check (60s)
+  // Periodic check — only for Plus/Premium users (60s), free tier skips polling
   useEffect(() => {
     if (!isAuthenticated || !user) return;
+    const isPlusOrPremium = entitlements?.plus_active || entitlements?.tier === 'plus' || entitlements?.tier === 'premium';
+    if (!isPlusOrPremium) return;
+    
     const interval = setInterval(async () => {
       try {
         const { data } = await supabase.functions.invoke<SubscriptionStatus>('check-subscription');
@@ -146,7 +149,7 @@ export function useUserEntitlements() {
       }
     }, 60000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, entitlements?.plus_active, entitlements?.tier]);
 
   const upgradeToPlus = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke('create-checkout', {

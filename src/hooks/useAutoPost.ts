@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useSelectedCity } from './useSelectedCity';
 
 /**
  * Records spin events and triggers feed posting via edge function.
@@ -8,6 +9,7 @@ import { useAuth } from './useAuth';
  */
 export function useAutoPost() {
   const { user, isAuthenticated } = useAuth();
+  const { selectedCity } = useSelectedCity();
   const postedSpins = useRef(new Set<string>());
 
   const postSpin = useCallback(async (spot: {
@@ -34,8 +36,8 @@ export function useAutoPost() {
         category: spot.category || null,
         lat: spot.latitude || null,
         lng: spot.longitude || null,
-        city: 'Richmond',
-        region: 'VA',
+        city: selectedCity?.name || 'Richmond',
+        region: selectedCity?.state || 'VA',
         should_post_to_feed: shouldPost,
         caption: options?.caption || null,
       } as any).select('id').single();
@@ -52,7 +54,7 @@ export function useAutoPost() {
     } catch {
       // Silent fail
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, selectedCity]);
 
   const postSave = useCallback(async (spot: {
     name: string;
@@ -73,14 +75,14 @@ export function useAutoPost() {
         result_category: spot.category || null,
         lat: spot.latitude || null,
         lng: spot.longitude || null,
-        city: 'Richmond',
-        region: 'VA',
+        city: selectedCity?.name || 'Richmond',
+        region: selectedCity?.state || 'VA',
         visibility: 'public',
       } as any);
     } catch {
       // Silent fail
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, selectedCity]);
 
   return { postSpin, postSave };
 }

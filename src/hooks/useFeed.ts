@@ -99,7 +99,7 @@ export function useFeed(options: UseFeedOptions = {}) {
       let profileMap = new Map();
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
-          .from('profiles' as any)
+          .from('profiles_public')
           .select('id, username, display_name, avatar_url')
           .in('id', userIds);
         profileMap = new Map((profiles as any[] || []).map((p: any) => [p.id, p]));

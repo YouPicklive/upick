@@ -240,3 +240,20 @@
 .animate-swipe-right {
   animation: swipe-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Safe-area insets for iOS notch + Android keyboard */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Ensure minimum 44px touch targets */
+@layer utilities {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
