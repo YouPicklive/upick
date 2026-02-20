@@ -8,6 +8,8 @@ import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSu
 import { PackPurchaseModal } from './PackPurchaseModal';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { PickACard, ArchetypeKey } from './PickACard';
+import { useNavigate } from 'react-router-dom';
 
 interface VibeScreenProps {
   step: 0 | 1 | 2;
@@ -87,11 +89,20 @@ export function VibeScreen({
   onBack,
 }: VibeScreenProps) {
   useScrollToTop([step]);
+  const navigate = useNavigate();
 
   const [showShoppingModal, setShowShoppingModal] = useState(false);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
+  const [archetypeSelected, setArchetypeSelected] = useState(false);
 
   const randomness = computeRandomness(vibeInput);
+
+  const handleArchetypeSelect = (key: ArchetypeKey) => {
+    onVibeChange({ archetypeKey: key });
+    setArchetypeSelected(true);
+    // Auto-advance after archetype is picked
+    setTimeout(() => onStart(), 300);
+  };
 
   const handleIntentSelect = (intent: VibeIntent) => {
     if (intent === 'shopping') {
@@ -352,8 +363,8 @@ export function VibeScreen({
 
             {/* Fortune Pack Selector */}
             <div className="bg-card rounded-2xl p-5 shadow-card mt-4">
-              <h2 className="font-display text-base font-bold mb-1">Fortune Pack</h2>
-              <p className="text-muted-foreground text-xs mb-3">Pick a fortune theme for your spin</p>
+              <h2 className="font-display text-base font-bold mb-1">Fortune Packs</h2>
+              <p className="text-muted-foreground text-xs mb-3">Optional — pick a theme for your fortune</p>
               <div className="grid grid-cols-2 gap-2.5">
                 {FORTUNE_PACKS.map((pack) => {
                   const isSelected = fortunePack === pack.id;
@@ -392,10 +403,19 @@ export function VibeScreen({
                 })}
               </div>
             </div>
+
+            {/* ── Pick a Card ── */}
+            <div className="mt-4">
+              <PickACard
+                isPremium={isPremium}
+                onArchetypeSelect={handleArchetypeSelect}
+                onUpgradePlus={() => navigate('/membership')}
+              />
+            </div>
           </div>
         )}
 
-        {/* Continue button */}
+        {/* Continue button — hidden when card selection is in progress */}
         <Button
           variant="hero"
           size="xl"

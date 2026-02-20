@@ -216,11 +216,11 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
             </p>
           </div>
 
-          {/* Fortune Pack Shelf */}
+          {/* Pick a Card Shelf */}
           <section className="mb-10">
             <div className="text-center mb-4">
-              <h3 className="font-display text-base font-bold text-foreground">Fortune Packs</h3>
-              <p className="text-muted-foreground text-xs mt-0.5">Optional — guide your spin.</p>
+              <h3 className="font-display text-base font-bold text-foreground">Pick a Card</h3>
+              <p className="text-muted-foreground text-xs mt-0.5">Optional — guide your spin with intention.</p>
             </div>
 
             <div className="relative">
