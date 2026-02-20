@@ -7,6 +7,7 @@ import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
 import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSubcategoryModal';
 import { PackPurchaseModal } from './PackPurchaseModal';
 import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 
 interface VibeScreenProps {
   step: 0 | 1 | 2;
@@ -39,12 +40,10 @@ const FILTERS: { id: VibeFilter; label: string; group: string }[] = [
 ];
 
 const DISTANCE_FILTER_KEYS: VibeFilter[] = ['near-me', 'nearby', 'short-drive', 'city-wide', 'any-distance'];
-const DISTANCE_CHIPS: { label: string; filter: VibeFilter }[] = [
-  { label: '1 mi', filter: 'near-me' },
-  { label: '3 mi', filter: 'nearby' },
+const DISTANCE_CHIPS: { label: string; filter: VibeFilter; plusOnly?: boolean }[] = [
   { label: '5 mi', filter: 'short-drive' },
   { label: '10 mi', filter: 'city-wide' },
-  { label: '25 mi', filter: 'any-distance' },
+  { label: '25 mi', filter: 'any-distance', plusOnly: true },
 ];
 
 const MAX_FILTERS = 2;
@@ -128,7 +127,18 @@ export function VibeScreen({
     }
   };
 
-  const handleDistanceSelect = (filter: VibeFilter) => {
+  const handleDistanceSelect = (filter: VibeFilter, plusOnly?: boolean) => {
+    if (plusOnly && !isPremium) {
+      toast('🔒 Explorer Mode is Plus only', {
+        description: 'Unlock 25 mi radius and explore further with Plus.',
+        action: {
+          label: 'Upgrade',
+          onClick: () => window.open('https://buy.stripe.com/cNifZg1UJejr45v6KX9R602', '_blank'),
+        },
+        duration: 4000,
+      });
+      return;
+    }
     const withoutDist = vibeInput.filters.filter(f => !DISTANCE_FILTER_KEYS.includes(f));
     const alreadySelected = vibeInput.filters.includes(filter);
     onVibeChange({ filters: alreadySelected ? withoutDist : [...withoutDist, filter] });
@@ -233,23 +243,33 @@ export function VibeScreen({
             <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
               <p className="text-sm font-semibold mb-3">📍 Distance</p>
               <div className="flex flex-wrap gap-2">
-                {DISTANCE_CHIPS.map(({ label, filter }) => {
+                {DISTANCE_CHIPS.map(({ label, filter, plusOnly }) => {
                   const isSelected = vibeInput.filters.includes(filter);
+                  const isLocked = plusOnly && !isPremium;
                   return (
                     <button
                       key={filter}
-                      onClick={() => handleDistanceSelect(filter)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                        isSelected
+                      onClick={() => handleDistanceSelect(filter, plusOnly)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                        isLocked
+                          ? 'bg-secondary/50 text-muted-foreground/60 border border-border/50'
+                          : isSelected
                           ? 'gradient-warm text-primary-foreground shadow-glow'
                           : 'bg-secondary hover:bg-secondary/80'
                       }`}
                     >
+                      {isLocked && <Lock className="w-3 h-3" />}
                       {label}
+                      {isLocked && <span className="text-[10px] text-muted-foreground/50">Plus</span>}
                     </button>
                   );
                 })}
               </div>
+              {!isPremium && (
+                <p className="text-[11px] text-muted-foreground/60 mt-2">
+                  🔓 Unlock 25 mi Explorer Mode with Plus
+                </p>
+              )}
             </div>
 
             {/* Open Now toggle */}
