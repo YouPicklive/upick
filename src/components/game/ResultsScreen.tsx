@@ -223,6 +223,7 @@ export function ResultsScreen({
         link.click();
         URL.revokeObjectURL(url);
       }
+      onAwardPoints?.('share', 5);
     } catch (error) {
       console.error('Share failed:', error);
     } finally {
@@ -478,7 +479,10 @@ export function ResultsScreen({
                         longitude: winner.longitude || null,
                         note: spinNote || null,
                       });
-                      if (saved) setSpinSaved(true);
+                      if (saved) {
+                        setSpinSaved(true);
+                        onAwardPoints?.('save', 3);
+                      }
                     }}
                   >
                     <Bookmark className="w-3.5 h-3.5 mr-1.5" /> Save Spin

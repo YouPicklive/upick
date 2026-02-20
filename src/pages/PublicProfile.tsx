@@ -5,6 +5,7 @@ import { useSavedActivities, SavedActivity } from '@/hooks/useSavedActivities';
 import { useSavedSpins, SavedSpin } from '@/hooks/useSavedSpins';
 import { usePlaceReviews, PlaceReview } from '@/hooks/usePlaceReviews';
 import { ReviewModal } from '@/components/game/ReviewModal';
+import { MileMarkersTab } from '@/components/profile/MileMarkersTab';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { Button } from '@/components/ui/button';
 import { User, Settings, Loader2, Sparkles, MapPin, Bookmark, Calendar, ExternalLink, Clock, Heart, Star, MessageSquare, Trash2, Pencil, Check, X } from 'lucide-react';
@@ -12,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+
 
 function SavedActivityCard({ activity }: { activity: SavedActivity }) {
   return (
@@ -69,7 +71,7 @@ export default function PublicProfile() {
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [stats, setStats] = useState({ postCount: 0, likesReceived: 0 });
-  const [activeTab, setActiveTab] = useState<'activity' | 'saved'>('activity');
+  const [activeTab, setActiveTab] = useState<'activity' | 'saved' | 'markers'>('activity');
   const [savedSubTab, setSavedSubTab] = useState<'spins' | 'events' | 'reviews'>('spins');
 
   const isOwner = isAuthenticated && user && profile && user.id === profile.id;
@@ -216,10 +218,25 @@ export default function PublicProfile() {
           >
             <Bookmark className="w-3.5 h-3.5" /> Saved
           </button>
+          {isOwner && (
+            <button
+              onClick={() => setActiveTab('markers')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'markers'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              🏁 Mile Markers
+            </button>
+          )}
         </div>
 
         {/* Tab content */}
-        {activeTab === 'activity' ? (
+        {activeTab === 'markers' && isOwner && profile && (
+          <MileMarkersTab userId={profile.id} />
+        )}
+        {activeTab === 'activity' && (
           <div>
             {postsLoading ? (
               <div className="flex justify-center py-10">
@@ -249,7 +266,9 @@ export default function PublicProfile() {
               </div>
             )}
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'saved' && (
           <div>
             {/* Sub-tabs */}
             <div className="flex gap-1 mb-4">

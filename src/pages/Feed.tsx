@@ -6,8 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedActivities } from '@/hooks/useSavedActivities';
 import { useSelectedCity } from '@/hooks/useSelectedCity';
+import { useMileMarkers } from '@/hooks/useMileMarkers';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CityLabel } from '@/components/CityLabel';
 import { CityPickerModal } from '@/components/CityPickerModal';
@@ -51,7 +52,7 @@ function PostTypeLabel({ type, isBot, subtype }: { type: string; isBot?: boolean
   );
 }
 
-function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, onUnsave, onUpgrade }: {
+function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, onUnsave, onUpgrade, onAwardLikePoint }: {
   post: FeedPost;
   onLike: (id: string) => void;
   isAuthenticated: boolean;
@@ -60,6 +61,7 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
   onSave: () => void;
   onUnsave: () => void;
   onUpgrade: () => void;
+  onAwardLikePoint?: () => void;
 }) {
   const displayName = post.is_bot && post.bot_display_name ? post.bot_display_name : (post.is_anonymous ? 'Someone' : (post.display_name || post.username || 'Someone'));
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
@@ -70,25 +72,34 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
     if (isSaved) onUnsave(); else onSave();
   };
 
+  const handleLikeClick = () => {
+    if (!isAuthenticated) return;
+    const wasLiked = post.liked_by_me;
+    onLike(post.id);
+    // Award points only when transitioning from not-liked → liked
+    if (!wasLiked) {
+      onAwardLikePoint?.();
+    }
+  };
+
   return (
     <div className="bg-card rounded-xl border border-border/50 p-4 transition-shadow hover:shadow-card">
       <div className="flex items-start gap-3 mb-3">
         <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0 border border-border/50">
-          {!post.is_anonymous && post.avatar_url ? (
+          {post.is_bot && post.bot_avatar_url ? (
+            <img src={post.bot_avatar_url} alt="" className="w-full h-full object-cover" />
+          ) : !post.is_anonymous && post.avatar_url ? (
             <img src={post.avatar_url} alt="" className="w-full h-full object-cover" />
           ) : (
             <span className="text-sm font-semibold text-muted-foreground">{displayName[0]?.toUpperCase()}</span>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {post.is_bot && post.bot_display_name ? (
-              <Link
-                to={`/bot/${encodeURIComponent(post.bot_display_name.replace(/^@/, ''))}`}
-                className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors"
-              >
+              <span className="text-sm font-semibold text-foreground truncate">
                 {displayName}
-              </Link>
+              </span>
             ) : post.user_id && post.username ? (
               <Link
                 to={`/u/${post.username}`}
@@ -98,6 +109,12 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
               </Link>
             ) : (
               <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
+            )}
+            {/* Explorer Bot badge */}
+            {post.is_bot && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full border border-border/50">
+                <Bot className="w-2.5 h-2.5" /> Explorer Bot
+              </span>
             )}
             <PostTypeLabel type={post.post_type} isBot={post.is_bot} subtype={post.post_subtype} />
           </div>
@@ -129,7 +146,7 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
 
       <div className="flex items-center gap-4">
         <button
-          onClick={() => isAuthenticated && onLike(post.id)}
+          onClick={handleLikeClick}
           className={`flex items-center gap-1.5 text-sm transition-colors ${
             post.liked_by_me ? 'text-primary font-medium' : 'text-muted-foreground hover:text-primary'
           } ${!isAuthenticated ? 'opacity-50 cursor-default' : ''}`}
@@ -149,6 +166,7 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
     </div>
   );
 }
+
 
 interface SocialShareCard {
   id: string;
@@ -215,6 +233,7 @@ export default function Feed() {
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
   const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
+  const { awardPoints } = useMileMarkers();
   const [feedTab, setFeedTab] = useState<'today' | 'trending' | 'new'>('new');
 
   const { posts, loading, toggleLike } = useFeed({
@@ -392,6 +411,7 @@ export default function Feed() {
                   onSave={() => handleSaveFeedPost(item.data as FeedPost)}
                   onUnsave={() => handleUnsaveFeedPost(item.data as FeedPost)}
                   onUpgrade={handleUpgrade}
+                  onAwardLikePoint={() => awardPoints('like', 1)}
                 />
               )
             )}

@@ -650,9 +650,22 @@ serve(async (req) => {
     }
 
     // Filter out permanently/temporarily closed businesses
-    const openRawResults = allRawResults.filter((r: any) =>
+    let openRawResults = allRawResults.filter((r: any) =>
       r.business_status !== 'CLOSED_TEMPORARILY' && r.business_status !== 'PERMANENTLY_CLOSED'
     );
+
+    // Strict open_now filter: if openNow is enabled, also check opening_hours.open_now field
+    // Google Nearby Search sets this field when opennow param is used, but double-enforce
+    if (openNow) {
+      const withHours = openRawResults.filter((r: any) =>
+        r.opening_hours?.open_now === true
+      );
+      // Only apply this stricter filter if it still gives us results; otherwise keep the
+      // business_status-filtered set (avoids false-negative empty results for 24h places etc.)
+      if (withHours.length >= 3) {
+        openRawResults = withHours;
+      }
+    }
 
     // If too few, widen radius
     if (openRawResults.length < 8 && !filterArr.includes("near-me")) {
@@ -662,7 +675,10 @@ serve(async (req) => {
         for (const place of results) {
           if (!seenPlaceIds.has(place.place_id)) {
             seenPlaceIds.add(place.place_id);
-            if (place.business_status !== 'CLOSED_TEMPORARILY' && place.business_status !== 'PERMANENTLY_CLOSED') {
+            if (
+              place.business_status !== 'CLOSED_TEMPORARILY' && place.business_status !== 'PERMANENTLY_CLOSED' &&
+              (!openNow || place.opening_hours?.open_now !== false)
+            ) {
               openRawResults.push(place);
             }
           }
