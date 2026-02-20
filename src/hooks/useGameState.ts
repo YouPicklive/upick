@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { GameState, Spot, SAMPLE_SPOTS, Preferences, VibeInput, VibeIntent, VibeEnergy, VibeFilter, intentToCategories, computeRandomness, YouPickVibe } from '@/types/game';
 import { getMicroAdventures } from '@/data/microAdventures';
 import { applyFreeOutdoorGuardrail, shouldApplyFreeOutdoorGuardrail, FREE_OUTDOOR_FALLBACKS, shouldApplyFreeGuardrail, applyFreeOnlyGuardrail, FREE_GENERAL_FALLBACKS } from '@/hooks/usePlacesSearch';
+import { applyArchetypeRanking, ArchetypeKey } from '@/components/game/PickACard';
 
 const initialPreferences: Preferences = {
   location: 'both',
@@ -21,6 +22,7 @@ const initialVibeInput: VibeInput = {
   filters: ['open-now', 'city-wide'] as any, // Default: 10 mi (free-tier friendly)
   shoppingSubcategory: null,
   selectedVibe: null,
+  archetypeKey: null,
 };
 
 const initialState: GameState = {
@@ -267,7 +269,16 @@ export function useGameState() {
       filteredSpots = [...filteredSpots, ...fallbacks];
     }
 
-    const shuffled = [...filteredSpots].sort(() => Math.random() - 0.5).slice(0, 10);
+    // Apply archetype ranking if a card was picked (modifies order, not pool)
+    if (state.vibeInput.archetypeKey) {
+      filteredSpots = applyArchetypeRanking(filteredSpots, state.vibeInput.archetypeKey as ArchetypeKey);
+    }
+
+    // For Fool archetype: full random shuffle; otherwise take top-ranked
+    const isFool = state.vibeInput.archetypeKey === 'fool';
+    const shuffled = isFool
+      ? [...filteredSpots].sort(() => Math.random() - 0.5).slice(0, 10)
+      : filteredSpots.slice(0, 10);
     
     setState((prev) => ({
       ...prev,

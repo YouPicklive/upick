@@ -67,6 +67,7 @@ export interface VibeInput {
   filters: VibeFilter[];
   shoppingSubcategory?: ShoppingSubcategory | null;
   selectedVibe?: YouPickVibe | null;
+  archetypeKey?: string | null; // Pick a Card archetype
 }
 
 export type RandomnessLevel = 'wild' | 'balanced' | 'specific';
