@@ -18,7 +18,7 @@ const initialPreferences: Preferences = {
 const initialVibeInput: VibeInput = {
   intent: null,
   energy: null,
-  filters: ['open-now', 'short-drive'] as any,
+  filters: ['open-now', 'city-wide'] as any, // Default: 10 mi (free-tier friendly)
   shoppingSubcategory: null,
   selectedVibe: null,
 };
