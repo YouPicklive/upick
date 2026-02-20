@@ -19,6 +19,8 @@ interface UsePlacesSearchReturn {
 // Session-level cache to avoid redundant API calls
 const cache = new Map<string, Spot[]>();
 
+export function clearPlacesCache(): void { cache.clear(); }
+
 function cacheKey(lat: number, lng: number, intent: string | null, shoppingSub?: string | null): string {
   // Round coords to ~100m precision for caching
   return `${lat.toFixed(3)}_${lng.toFixed(3)}_${intent || 'surprise'}_${shoppingSub || ''}`;
@@ -318,6 +320,7 @@ export function usePlacesSearch(): UsePlacesSearchReturn {
             energy: vibe.energy,
             filters: vibe.filters,
             shoppingSubcategory: vibe.shoppingSubcategory || null,
+            openNow: vibe.filters.includes('open-now'),
           },
         });
 

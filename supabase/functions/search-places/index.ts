@@ -17,6 +17,7 @@ const SearchPlacesSchema = z.object({
   filters: z.array(z.string().max(50)).max(20).nullable().optional(),
   shoppingSubcategory: z.enum(["random", "decor", "clothes", "games", "books", "gifts", "vintage", "artisan"]).nullable().optional(),
   selectedVibe: z.string().max(50).nullable().optional(),
+  openNow: z.boolean().optional().default(false),
 });
 
 const corsHeaders = {
@@ -145,30 +146,36 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 function getMaxRadiusMiles(filters?: string[]): number {
   if (!filters) return 15;
-  if (filters.includes("near-me")) return 5;
+  if (filters.includes("near-me")) return 1;
+  if (filters.includes("nearby")) return 3;
   if (filters.includes("short-drive")) return 5;
+  if (filters.includes("city-wide")) return 10;
   if (filters.includes("any-distance")) return 45;
   return 15;
 }
 
 function getGoogleRadiusMeters(filters?: string[], intent?: string | null): number {
-  if (filters?.includes("near-me")) return 2500;
-  if (filters?.includes("any-distance")) return 25000;
+  if (filters?.includes("near-me")) return 1600;       // ~1 mi
+  if (filters?.includes("nearby")) return 4800;         // ~3 mi
+  if (filters?.includes("short-drive")) return 8000;    // ~5 mi (default chip)
+  if (filters?.includes("city-wide")) return 16000;     // ~10 mi
+  if (filters?.includes("any-distance")) return 40000;  // ~25 mi
   if (intent === "events") return 8000;
-  return 5000;
+  return 5000; // unchanged fallback
 }
 
 // ── Google API ────────────────────────────────────────────────────────
 
 async function googleNearbySearch(
   apiKey: string, lat: number, lng: number, radius: number, type: string,
-  minPrice?: number, maxPrice?: number
+  minPrice?: number, maxPrice?: number, openNow?: boolean
 ): Promise<any[]> {
   const params = new URLSearchParams({
     location: `${lat},${lng}`, radius: String(radius), type, key: apiKey,
   });
   if (minPrice !== undefined) params.set("minprice", String(minPrice));
   if (maxPrice !== undefined) params.set("maxprice", String(maxPrice));
+  if (openNow) params.append("opennow", "");
   const res = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params}`);
   const data = await res.json();
   return data.results || [];
@@ -315,7 +322,7 @@ serve(async (req) => {
       });
     }
 
-    const { latitude, longitude, intent, energy, filters, shoppingSubcategory } = parsed.data;
+    const { latitude, longitude, intent, energy, filters, shoppingSubcategory, openNow } = parsed.data;
     const effectiveIntent = intent || "surprise";
     const filterArr = filters || [];
     const maxMiles = getMaxRadiusMiles(filterArr);
@@ -631,9 +638,9 @@ serve(async (req) => {
     const seenPlaceIds = new Set<string>();
     const typesToQuery = placeTypes.slice(0, 3);
 
-    // Fetch from multiple types
+    // Fetch from multiple types, passing openNow
     for (const type of typesToQuery) {
-      const results = await googleNearbySearch(apiKey, latitude, longitude, googleRadius, type, minPrice, maxPrice);
+      const results = await googleNearbySearch(apiKey, latitude, longitude, googleRadius, type, minPrice, maxPrice, openNow);
       for (const place of results) {
         if (!seenPlaceIds.has(place.place_id)) {
           seenPlaceIds.add(place.place_id);
@@ -642,15 +649,22 @@ serve(async (req) => {
       }
     }
 
+    // Filter out permanently/temporarily closed businesses
+    const openRawResults = allRawResults.filter((r: any) =>
+      r.business_status !== 'CLOSED_TEMPORARILY' && r.business_status !== 'PERMANENTLY_CLOSED'
+    );
+
     // If too few, widen radius
-    if (allRawResults.length < 8 && !filterArr.includes("near-me")) {
+    if (openRawResults.length < 8 && !filterArr.includes("near-me")) {
       const widerRadius = Math.min(googleRadius * 2, 25000);
       for (const type of typesToQuery.slice(0, 2)) {
-        const results = await googleNearbySearch(apiKey, latitude, longitude, widerRadius, type, minPrice, maxPrice);
+        const results = await googleNearbySearch(apiKey, latitude, longitude, widerRadius, type, minPrice, maxPrice, openNow);
         for (const place of results) {
           if (!seenPlaceIds.has(place.place_id)) {
             seenPlaceIds.add(place.place_id);
-            allRawResults.push(place);
+            if (place.business_status !== 'CLOSED_TEMPORARILY' && place.business_status !== 'PERMANENTLY_CLOSED') {
+              openRawResults.push(place);
+            }
           }
         }
       }
@@ -658,7 +672,7 @@ serve(async (req) => {
 
     // Run through unified pipeline
     const validated = runFilterPipeline(
-      allRawResults.map(r => ({ ...r, types: r.types || [], name: r.name || "" })),
+      openRawResults.map(r => ({ ...r, types: r.types || [], name: r.name || "" })),
       effectiveIntent,
       filterArr,
       8,

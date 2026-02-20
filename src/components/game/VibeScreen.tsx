@@ -6,6 +6,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
 import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSubcategoryModal';
 import { PackPurchaseModal } from './PackPurchaseModal';
+import { Switch } from '@/components/ui/switch';
 
 interface VibeScreenProps {
   step: 0 | 1 | 2;
@@ -35,6 +36,15 @@ const INTENTS: { id: VibeIntent; emoji: string; label: string; plusOnly?: boolea
 const FILTERS: { id: VibeFilter; label: string; group: string }[] = [
   { id: 'mid', label: '💸 Mid', group: 'budget' },
   { id: 'treat', label: '💎 Splurge', group: 'budget' },
+];
+
+const DISTANCE_FILTER_KEYS: VibeFilter[] = ['near-me', 'nearby', 'short-drive', 'city-wide', 'any-distance'];
+const DISTANCE_CHIPS: { label: string; filter: VibeFilter }[] = [
+  { label: '1 mi', filter: 'near-me' },
+  { label: '3 mi', filter: 'nearby' },
+  { label: '5 mi', filter: 'short-drive' },
+  { label: '10 mi', filter: 'city-wide' },
+  { label: '25 mi', filter: 'any-distance' },
 ];
 
 const MAX_FILTERS = 2;
@@ -105,15 +115,23 @@ export function VibeScreen({
 
   const handleFilterToggle = (filter: VibeFilter) => {
     const current = vibeInput.filters;
+    // Only count budget filters toward MAX_FILTERS
+    const activeBudgetFilters = current.filter(f => FILTERS.some(fl => fl.id === f));
     if (current.includes(filter)) {
       onVibeChange({ filters: current.filter(f => f !== filter) });
-    } else if (current.length < MAX_FILTERS) {
+    } else if (activeBudgetFilters.length < MAX_FILTERS) {
       const group = FILTERS.find(f => f.id === filter)?.group;
       const cleaned = group 
         ? current.filter(f => FILTERS.find(fl => fl.id === f)?.group !== group)
         : current;
       onVibeChange({ filters: [...cleaned, filter] });
     }
+  };
+
+  const handleDistanceSelect = (filter: VibeFilter) => {
+    const withoutDist = vibeInput.filters.filter(f => !DISTANCE_FILTER_KEYS.includes(f));
+    const alreadySelected = vibeInput.filters.includes(filter);
+    onVibeChange({ filters: alreadySelected ? withoutDist : [...withoutDist, filter] });
   };
 
   const handleNext = () => {
@@ -211,11 +229,52 @@ export function VibeScreen({
               <p className="text-muted-foreground text-sm">Optional — pick one or skip for full randomness</p>
             </div>
 
+            {/* Distance chips */}
+            <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
+              <p className="text-sm font-semibold mb-3">📍 Distance</p>
+              <div className="flex flex-wrap gap-2">
+                {DISTANCE_CHIPS.map(({ label, filter }) => {
+                  const isSelected = vibeInput.filters.includes(filter);
+                  return (
+                    <button
+                      key={filter}
+                      onClick={() => handleDistanceSelect(filter)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        isSelected
+                          ? 'gradient-warm text-primary-foreground shadow-glow'
+                          : 'bg-secondary hover:bg-secondary/80'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Open Now toggle */}
+            <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold">Open Now</p>
+                  <p className="text-xs text-muted-foreground">Only show places open right now</p>
+                </div>
+                <Switch
+                  checked={vibeInput.filters.includes('open-now')}
+                  onCheckedChange={(checked) => {
+                    const withoutOpenNow = vibeInput.filters.filter(f => f !== 'open-now');
+                    onVibeChange({ filters: checked ? [...withoutOpenNow, 'open-now'] : withoutOpenNow });
+                  }}
+                />
+              </div>
+            </div>
+
             <div className="bg-card rounded-2xl p-5 shadow-card mb-4">
               <div className="flex flex-wrap gap-2.5">
                 {FILTERS.map((item) => {
                   const isSelected = vibeInput.filters.includes(item.id);
-                  const isDisabled = !isSelected && vibeInput.filters.length >= MAX_FILTERS;
+                  const activeBudgetFilters = vibeInput.filters.filter(f => FILTERS.some(fl => fl.id === f));
+                  const isDisabled = !isSelected && activeBudgetFilters.length >= MAX_FILTERS;
                   return (
                     <button
                       key={item.id}
@@ -276,7 +335,7 @@ export function VibeScreen({
                 {FORTUNE_PACKS.map((pack) => {
                   const isSelected = fortunePack === pack.id;
                   const isPremiumPack = pack.tier !== 'free';
-                  const isLocked = isPremiumPack && !isPremium && (pack.tier === 'plus' || !ownedPacks.includes(pack.id));
+                  const isLocked = isPremiumPack && !isPremium && !ownedPacks.includes(pack.id);
                   return (
                     <button
                       key={pack.id}
@@ -298,7 +357,7 @@ export function VibeScreen({
                       <span className="text-2xl">{pack.emoji}</span>
                       <span className="font-semibold text-xs">{pack.name}</span>
                       <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {isLocked && pack.tier === 'pack' ? '$2.99' : isLocked && pack.tier === 'plus' ? 'Plus' : pack.description}
+                        {isLocked ? '$2.99' : isPremium && isPremiumPack ? 'Included ✓' : pack.description}
                       </span>
                       {isLocked && (
                         <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">

@@ -10,11 +10,13 @@ import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedFortunes } from '@/hooks/useSavedFortunes';
 import { useAutoPost } from '@/hooks/useAutoPost';
 import { useSelectedCity } from '@/hooks/useSelectedCity';
+import { useMileMarkers } from '@/hooks/useMileMarkers';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { SpinLimitModal } from '@/components/game/SpinLimitModal';
+import { Button } from '@/components/ui/button';
 
 import { vibeToInternalMapping } from '@/types/game';
 import { toast } from 'sonner';
@@ -22,7 +24,7 @@ import { toast } from 'sonner';
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const { canUseTrial, useTrialSpin: markTrialUsed, hasUsedTrial } = useTrialSpin();
   
   const {
@@ -56,10 +58,12 @@ const Index = () => {
   const { canSaveFortunes } = useUserEntitlements();
   const { saveFortune } = useSavedFortunes();
   const { postSpin, postSave } = useAutoPost();
+  const { awardPoints } = useMileMarkers();
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
   const [findingSpots, setFindingSpots] = useState(false);
+  const [openNowEmpty, setOpenNowEmpty] = useState(false);
  
   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
   const { selectedCity } = useSelectedCity();
@@ -71,6 +75,12 @@ const Index = () => {
     }
     return coordinates || { latitude: 37.5407, longitude: -77.4360 };
   }, [selectedCity, coordinates]);
+  // Daily open award
+  useEffect(() => {
+    if (!user?.id) return;
+    void awardPoints('daily_open', 5);
+  }, [user?.id]);
+
   // Handle checkout success/cancelled query params
   useEffect(() => {
     const packPurchase = searchParams.get('pack_purchase');
@@ -144,6 +154,12 @@ const Index = () => {
       setFindingSpots(false);
       if (realSpots.length >= 4) {
         startGame(realSpots);
+        void awardPoints('spin', 2);
+        return;
+      }
+      // Open Now empty state
+      if (realSpots.length === 0 && state.vibeInput.filters.includes('open-now')) {
+        setOpenNowEmpty(true);
         return;
       }
     } catch {
@@ -202,6 +218,38 @@ const Index = () => {
   
   if (!isAuthenticated && !allowTrialAccess) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Open Now empty state
+  if (openNowEmpty) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6 px-6 text-center">
+        <div>
+          <p className="text-5xl mb-4">😴</p>
+          <h2 className="font-display text-xl font-bold mb-2">Nothing open right now nearby</h2>
+          <p className="text-sm text-muted-foreground mb-6">Try expanding your search or turning off Open Now</p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button variant="outline" onClick={() => {
+            setOpenNowEmpty(false);
+            const withoutDist = state.vibeInput.filters.filter(f =>
+              !['near-me','nearby','short-drive','city-wide','any-distance'].includes(f as string)
+            );
+            setVibeInput({ filters: [...withoutDist, 'any-distance'] as any });
+            setTimeout(() => void handleVibeComplete(), 50);
+          }}>
+            Increase Distance
+          </Button>
+          <Button variant="hero" onClick={() => {
+            setOpenNowEmpty(false);
+            setVibeInput({ filters: state.vibeInput.filters.filter(f => f !== 'open-now') });
+            setTimeout(() => void handleVibeComplete(), 50);
+          }}>
+            Turn Off Open Now
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   // Finding spots loading state
@@ -311,6 +359,7 @@ const Index = () => {
         onPostToFeed={(shouldPost, caption) => {
           postSpin(winner, { shouldPost, caption });
         }}
+        onAwardPoints={awardPoints}
       />
     );
   }

@@ -211,6 +211,9 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
               <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
             </Button>
             <p className="text-muted-foreground text-xs mt-2 text-center">One quick decision, guided by fate.</p>
+            <p className="text-muted-foreground text-[11px] text-center mt-0.5">
+              Searching near: {selectedCity ? selectedCity.label : 'Richmond, VA'}
+            </p>
           </div>
 
           {/* Fortune Pack Shelf */}
@@ -225,7 +228,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                 {FORTUNE_PACKS.map((pack) => {
                   const isSelected = fortunePack === pack.id;
                   const isPremiumPack = pack.tier !== 'free';
-                  const isLocked = isPremiumPack && !isPremium && (pack.tier === 'plus' || !ownedPacks.includes(pack.id));
+                  const isLocked = isPremiumPack && !isPremium && !ownedPacks.includes(pack.id);
                   return (
                     <button
                       key={pack.id}
@@ -247,7 +250,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                       <span className="text-2xl">{pack.emoji}</span>
                       <span className="font-semibold text-xs">{pack.name}</span>
                       <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {isLocked && pack.tier === 'pack' ? '$2.99' : isLocked && pack.tier === 'plus' ? 'Plus' : pack.description}
+                        {isLocked ? '$2.99' : isPremium && isPremiumPack ? 'Included ✓' : pack.description}
                       </span>
                       {isLocked &&
                       <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">

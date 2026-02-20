@@ -28,6 +28,7 @@ interface ResultsScreenProps {
   onSaveFortune?: (fortuneText: string, packId: string) => void;
   onPostToFeed?: (shouldPost: boolean, caption: string) => void;
   isAuthenticated?: boolean;
+  onAwardPoints?: (reason: string, points: number) => void;
 }
 
 const categoryEmojis: Record<string, string> = {
@@ -92,7 +93,7 @@ function PhotoCarousel({ photos, alt, category }: { photos: string[]; alt: strin
 export function ResultsScreen({ 
   winner, likedSpots = [], fortunePack = 'free', onPlayAgain, onNotForMe,
   isTrialMode, userCoordinates, isPremium = false, ownedPacks = [], onFortunePackChange,
-  canSaveFortunes = false, onSaveFortune, onPostToFeed, isAuthenticated = false
+  canSaveFortunes = false, onSaveFortune, onPostToFeed, isAuthenticated = false, onAwardPoints
 }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
