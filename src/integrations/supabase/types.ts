@@ -235,6 +235,104 @@ export type Database = {
         }
         Relationships: []
       }
+      mile_marker_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          points: number
+          reason: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          points: number
+          reason: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          points?: number
+          reason?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mile_marker_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mile_marker_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mile_marker_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mile_markers: {
+        Row: {
+          last_daily_award_date: string | null
+          lifetime_points: number
+          points_balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_daily_award_date?: string | null
+          lifetime_points?: number
+          points_balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_daily_award_date?: string | null
+          lifetime_points?: number
+          points_balance?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mile_markers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "bot_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mile_markers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mile_markers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_photos: {
         Row: {
           id: string
@@ -430,6 +528,107 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reward_redemptions: {
+        Row: {
+          created_at: string
+          id: string
+          points_spent: number
+          redemption_code: string
+          request_id: string
+          reward_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points_spent: number
+          redemption_code: string
+          request_id: string
+          reward_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points_spent?: number
+          redemption_code?: string
+          request_id?: string
+          reward_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rewards: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string
+          expires_at: string | null
+          id: string
+          partner_business_id: string | null
+          points_cost: number
+          quantity_available: number
+          reward_type: string
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description: string
+          expires_at?: string | null
+          id?: string
+          partner_business_id?: string | null
+          points_cost: number
+          quantity_available?: number
+          reward_type: string
+          title: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string
+          expires_at?: string | null
+          id?: string
+          partner_business_id?: string | null
+          points_cost?: number
+          quantity_available?: number
+          reward_type?: string
+          title?: string
+        }
+        Relationships: []
       }
       saved_activities: {
         Row: {
@@ -893,6 +1092,15 @@ export type Database = {
       }
     }
     Functions: {
+      award_mile_markers: {
+        Args: {
+          p_metadata?: Json
+          p_points: number
+          p_reason: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       check_and_consume_spin: { Args: { p_user_id: string }; Returns: Json }
       has_role: {
         Args: {
@@ -900,6 +1108,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      redeem_mile_marker_reward: {
+        Args: { p_request_id: string; p_reward_id: string; p_user_id: string }
+        Returns: Json
       }
       user_has_plus: { Args: { check_user_id: string }; Returns: boolean }
       user_owns_pack: {
