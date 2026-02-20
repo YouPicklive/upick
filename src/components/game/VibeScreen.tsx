@@ -293,11 +293,14 @@ export function VibeScreen({
                   );
                 })}
               </div>
-              {vibeInput.filters.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-3 text-center">
-                  {vibeInput.filters.length}/{MAX_FILTERS} filters selected
-                </p>
-              )}
+              {(() => {
+                const activeBudget = vibeInput.filters.filter(f => FILTERS.some(fl => fl.id === f));
+                return activeBudget.length > 0 ? (
+                  <p className="text-xs text-muted-foreground mt-3 text-center">
+                    {activeBudget.length}/{MAX_FILTERS} budget filters selected
+                  </p>
+                ) : null;
+              })()}
             </div>
 
             {/* Summary */}
