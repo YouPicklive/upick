@@ -18,7 +18,7 @@ const initialPreferences: Preferences = {
 const initialVibeInput: VibeInput = {
   intent: null,
   energy: null,
-  filters: [],
+  filters: ['open-now', 'short-drive'] as any,
   shoppingSubcategory: null,
   selectedVibe: null,
 };

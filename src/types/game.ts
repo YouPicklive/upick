@@ -26,7 +26,7 @@ export interface Spot {
 // --- Quick Vibe types ---
 export type VibeIntent = 'food' | 'drinks' | 'activity' | 'shopping' | 'events' | 'services' | 'surprise';
 export type VibeEnergy = 'chill' | 'social' | 'romantic' | 'adventure' | 'productive' | 'self-care' | 'weird';
-export type VibeFilter = 'cheap' | 'mid' | 'treat';
+export type VibeFilter = 'cheap' | 'mid' | 'treat' | 'open-now' | 'near-me' | 'nearby' | 'short-drive' | 'city-wide' | 'any-distance';
 
 export type ShoppingSubcategory = 'random' | 'decor' | 'clothes' | 'games' | 'books' | 'gifts' | 'vintage' | 'artisan';
 

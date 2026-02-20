@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { clearPlacesCache } from './usePlacesSearch';
 
 export interface CitySelection {
   id?: string;
@@ -106,6 +107,7 @@ export function useSelectedCity() {
 
   const selectCity = useCallback(async (city: CitySelection) => {
     setSelectedCityState(city);
+    clearPlacesCache();
     // Auto-save to recent cities
     setSavedCitiesState(prev => {
       const key = city.placeId || city.id || city.label;
@@ -125,6 +127,7 @@ export function useSelectedCity() {
 
   const clearCity = useCallback(async () => {
     setSelectedCityState(null);
+    clearPlacesCache();
     setIsPickerOpen(false);
     if (user) {
       await supabase
