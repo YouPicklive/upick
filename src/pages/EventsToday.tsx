@@ -4,15 +4,12 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedActivities } from '@/hooks/useSavedActivities';
-import { useSelectedCity } from '@/hooks/useSelectedCity';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Calendar, Clock, MapPin, Loader2, ExternalLink, RefreshCw, Bookmark, BookmarkCheck, Star,
   Music, Trophy, Palette, Drama, UtensilsCrossed, Users, Heart, ShoppingBag, Sparkles, PartyPopper,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CityLabel } from '@/components/CityLabel';
-import { CityPickerModal } from '@/components/CityPickerModal';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -164,23 +161,22 @@ const CACHE_TTL = 10 * 60 * 1000;
 export default function EventsToday() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { isPremium, isPremiumTier } = useUserEntitlements();
+  const { isPremium } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
-  const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<Timeframe>('today');
   const [filterType, setFilterType] = useState<string | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setInterval>>();
 
-  // Derive the city and coordinates to use for search
-  const effectiveCity = selectedCity ? `${selectedCity.name}, ${selectedCity.state || ''}`.trim() : 'Richmond, VA';
-  const effectiveLat = selectedCity?.latitude ?? coordinates?.latitude;
-  const effectiveLng = selectedCity?.longitude ?? coordinates?.longitude;
+  // Coordinates: GPS > Richmond fallback
+  const effectiveLat = coordinates?.latitude ?? 37.5407;
+  const effectiveLng = coordinates?.longitude ?? -77.4360;
+  const locationLabel = coordinates ? 'Near you' : 'Richmond, VA area';
 
   const fetchEvents = useCallback(async () => {
-    const cacheKey = `${timeframe}|${effectiveCity}|${effectiveLat?.toFixed(2)}|${effectiveLng?.toFixed(2)}`;
+    const cacheKey = `${timeframe}|${effectiveLat.toFixed(2)}|${effectiveLng.toFixed(2)}`;
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       setEvents(cached.events);
@@ -193,7 +189,7 @@ export default function EventsToday() {
       const { data, error } = await supabase.functions.invoke('search-events', {
         body: {
           timeframe,
-          city: effectiveCity,
+          city: 'Near me',
           mode: 'discover',
           latitude: effectiveLat,
           longitude: effectiveLng,
@@ -208,15 +204,13 @@ export default function EventsToday() {
 
       let processed: LocalEvent[] = data.events;
 
-      if (effectiveLat && effectiveLng) {
-        processed = processed.map((e: LocalEvent) => {
-          if (e.latitude && e.longitude) {
-            return { ...e, distance: haversine(effectiveLat, effectiveLng, e.latitude, e.longitude) };
-          }
-          return e;
-        });
-        processed.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
-      }
+      processed = processed.map((e: LocalEvent) => {
+        if (e.latitude && e.longitude) {
+          return { ...e, distance: haversine(effectiveLat, effectiveLng, e.latitude, e.longitude) };
+        }
+        return e;
+      });
+      processed.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
 
       cache.set(cacheKey, { events: processed, ts: Date.now() });
       setEvents(processed);
@@ -226,7 +220,7 @@ export default function EventsToday() {
     } finally {
       setLoading(false);
     }
-  }, [timeframe, effectiveCity, effectiveLat, effectiveLng]);
+  }, [timeframe, effectiveLat, effectiveLng]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -264,29 +258,12 @@ export default function EventsToday() {
     });
   };
 
-  const handleUseCurrentLocation = () => {
-    clearCity();
-  };
-
-  const cityDisplayLabel = selectedCity ? selectedCity.label : (coordinates ? 'Near You' : 'Richmond, VA');
-
   const availableTypes = [...new Set(events.map(e => e.type).filter(Boolean))];
   const displayed = filterType ? events.filter(e => e.type === filterType) : events;
 
   return (
     <div className="min-h-screen bg-background">
       <GlobalHeader />
-      <CityPickerModal
-        open={isPickerOpen}
-        onClose={closePicker}
-        onSelectCity={selectCity}
-        onUseCurrentLocation={handleUseCurrentLocation}
-        savedCities={savedCities}
-        popularCities={popularCities}
-        allCities={allCities}
-        onRemoveSaved={removeSavedCity}
-        isPremiumTier={isPremiumTier}
-      />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
@@ -296,7 +273,7 @@ export default function EventsToday() {
               Events Near You
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {selectedCity ? selectedCity.label : coordinates ? 'Within 25 miles' : 'Richmond, VA area'}
+              {locationLabel} · Within 25 miles
             </p>
           </div>
           <Button
@@ -308,11 +285,6 @@ export default function EventsToday() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-        </div>
-
-        {/* City selector */}
-        <div className="mb-4">
-          <CityLabel label={cityDisplayLabel} onClick={openPicker} />
         </div>
 
         {/* Timeframe pills */}

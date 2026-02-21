@@ -150,18 +150,20 @@ function getMaxRadiusMiles(filters?: string[]): number {
   if (filters.includes("nearby")) return 3;
   if (filters.includes("short-drive")) return 5;
   if (filters.includes("city-wide")) return 10;
-  if (filters.includes("any-distance")) return 45;
+  if (filters.includes("explorer-50")) return 50;
+  if (filters.includes("any-distance")) return 25;
   return 15;
 }
 
 function getGoogleRadiusMeters(filters?: string[], intent?: string | null): number {
   if (filters?.includes("near-me")) return 1600;       // ~1 mi
   if (filters?.includes("nearby")) return 4800;         // ~3 mi
-  if (filters?.includes("short-drive")) return 8000;    // ~5 mi (default chip)
+  if (filters?.includes("short-drive")) return 8000;    // ~5 mi
   if (filters?.includes("city-wide")) return 16000;     // ~10 mi
+  if (filters?.includes("explorer-50")) return 80000;   // ~50 mi
   if (filters?.includes("any-distance")) return 40000;  // ~25 mi
   if (intent === "events") return 8000;
-  return 5000; // unchanged fallback
+  return 16000; // default 10 mi
 }
 
 // ── Google API ────────────────────────────────────────────────────────

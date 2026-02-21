@@ -9,8 +9,6 @@ import { PackPurchaseModal } from './PackPurchaseModal';
 import appIcon from '@/assets/app-icon.png';
 import wheelCenterIcon from '@/assets/wheel-center-icon.png';
 import { GlobalHeader } from '@/components/GlobalHeader';
-import { CityPickerModal } from '@/components/CityPickerModal';
-import { useSelectedCity } from '@/hooks/useSelectedCity';
 import { ActiveFilterChips } from './ActiveFilterChips';
 import { VibeFilter } from '@/types/game';
 import { toast } from 'sonner';
@@ -24,6 +22,13 @@ const VIBES = [
 { id: 'full_send', name: 'Full Send', subtitle: 'Bold. Loud. Out tonight.', icon: '🔥' },
 { id: 'free_beautiful', name: 'Free & Beautiful', subtitle: 'Low-cost outdoor magic.', icon: '🌸' }] as
 const;
+
+const DISTANCE_LABELS: Record<string, string> = {
+  'short-drive': '5 mi',
+  'city-wide': '10 mi',
+  'any-distance': '25 mi',
+  'explorer-50': '50 mi',
+};
 
 interface LandingScreenProps {
   onSoloStart: (selectedVibe?: string) => void;
@@ -41,26 +46,9 @@ interface LandingScreenProps {
 export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'free', onFortunePackChange, activeFilters = [], onClearFilter, onOpenPreferences }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
-  const { isPremiumTier } = useUserEntitlements();
-  const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
-
-  const handleCitySelect = (city: any) => {
-    selectCity(city);
-    toast(`Now exploring ${city.label || city.name}.`, { duration: 2500 });
-  };
-
-  // Auto-open picker on first launch if no city selected
-  useEffect(() => {
-    if (!selectedCity && !isPickerOpen) {
-      // Small delay so modal doesn't flash before page renders
-      const timer = setTimeout(() => openPicker(), 400);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedCity, isPickerOpen, openPicker]);
 
   const handleClearBudget = (filter: VibeFilter) => {
     onClearFilter?.(filter);
-    // Check if this was the last budget filter
     if (activeFilters.length <= 1) {
       toast('Full randomness activated.', { duration: 2500 });
     }
@@ -74,6 +62,12 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
   const handleSignOut = async () => {
     await signOut();
   };
+
+  // Derive radius label from active filters
+  const activeDistanceFilter = activeFilters.find(f => f in DISTANCE_LABELS);
+  const radiusLabel = activeDistanceFilter
+    ? `Within ${DISTANCE_LABELS[activeDistanceFilter]}`
+    : 'Within 10 mi';
 
   // Show floating CTA when main spin button scrolls out of view
   useEffect(() => {
@@ -89,7 +83,6 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 
   const handleVibeSelect = (vibeId: string) => {
     setSelectedVibe((prev) => prev === vibeId ? null : vibeId);
-    // Smooth scroll to spin button
     setTimeout(() => {
       spinButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 150);
@@ -107,25 +100,13 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
     <div className="min-h-screen bg-background flex flex-col">
       <GlobalHeader />
 
-      <CityPickerModal
-        open={isPickerOpen}
-        onClose={closePicker}
-        onSelectCity={handleCitySelect}
-        onUseCurrentLocation={clearCity}
-        savedCities={savedCities}
-        popularCities={popularCities}
-        allCities={allCities}
-        onRemoveSaved={removeSavedCity}
-        isPremiumTier={isPremiumTier}
-      />
-
       <main className="flex-1 flex flex-col px-6 pb-16">
         <div className="max-w-md mx-auto w-full">
           {/* Active Filter Chips */}
           <ActiveFilterChips
-            cityLabel={selectedCity ? selectedCity.label : 'Current Location'}
+            radiusLabel={radiusLabel}
             budgetFilters={activeFilters}
-            onCityTap={openPicker}
+            onRadiusTap={() => onOpenPreferences?.()}
             onBudgetTap={() => onOpenPreferences?.()}
             onClearBudget={handleClearBudget}
           />
@@ -212,7 +193,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
             </Button>
             <p className="text-muted-foreground text-xs mt-2 text-center">One quick decision, guided by fate.</p>
             <p className="text-muted-foreground text-[11px] text-center mt-0.5">
-              Searching near: {selectedCity ? selectedCity.label : 'Richmond, VA'}
+              {radiusLabel} · Near you
             </p>
           </div>
 
