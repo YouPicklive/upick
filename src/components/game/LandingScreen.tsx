@@ -167,8 +167,8 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 
           <section className="mb-10">
             <div className="text-center mb-4">
-              <h3 className="font-display text-base font-bold text-foreground">Pick Your Card</h3>
-              <p className="text-muted-foreground text-xs mt-0.5">Trust your instinct.</p>
+              <h3 className="font-display text-base font-bold text-foreground">Pick your deck</h3>
+              <p className="text-muted-foreground text-xs mt-0.5">Choose a card pack for your draw.</p>
             </div>
 
             <div className="relative">
@@ -177,6 +177,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                   const isSelected = fortunePack === pack.id;
                   const isPremiumPack = pack.tier !== 'free';
                   const isLocked = isPremiumPack && !isPremium && !ownedPacks.includes(pack.id);
+                  const badge = pack.tier === 'free' ? 'Free' : (isPremium ? 'Plus' : (ownedPacks.includes(pack.id) ? 'Purchased' : (pack.tier === 'plus' ? 'Plus' : '$2.99')));
                   return (
                     <button
                       key={pack.id}
@@ -198,7 +199,17 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
                       <span className="text-2xl">{pack.emoji}</span>
                       <span className="font-semibold text-xs">{pack.name}</span>
                       <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {isLocked ? '$2.99' : isPremium && isPremiumPack ? 'Included ✓' : pack.description}
+                        {pack.description}
+                      </span>
+                      {/* Badge */}
+                      <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
+                        isSelected && !isLocked
+                          ? 'bg-primary-foreground/20 text-primary-foreground'
+                          : isLocked
+                          ? 'bg-muted text-muted-foreground'
+                          : 'bg-primary/10 text-primary'
+                      }`}>
+                        {badge}
                       </span>
                       {isLocked &&
                       <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">

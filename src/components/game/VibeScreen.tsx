@@ -8,7 +8,6 @@ import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSu
 import { PackPurchaseModal } from './PackPurchaseModal';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { PickACard, ArchetypeKey } from './PickACard';
 import { useNavigate } from 'react-router-dom';
 
 interface VibeScreenProps {
@@ -94,16 +93,8 @@ export function VibeScreen({
 
   const [showShoppingModal, setShowShoppingModal] = useState(false);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
-  const [archetypeSelected, setArchetypeSelected] = useState(false);
 
   const randomness = computeRandomness(vibeInput);
-
-  const handleArchetypeSelect = (key: ArchetypeKey) => {
-    onVibeChange({ archetypeKey: key });
-    setArchetypeSelected(true);
-    // Auto-advance after archetype is picked
-    setTimeout(() => onStart(), 300);
-  };
 
   const handleIntentSelect = (intent: VibeIntent) => {
     if (intent === 'shopping') {
@@ -362,15 +353,16 @@ export function VibeScreen({
 
             <RandomnessMeter level={randomness} />
 
-            {/* Pick Your Card — Trust Your Instinct */}
+            {/* Pick Your Deck */}
             <div className="bg-card rounded-2xl p-5 shadow-card mt-4">
-              <h2 className="font-display text-base font-bold mb-1">Pick Your Card</h2>
-              <p className="text-muted-foreground text-xs mb-3">Trust your instinct.</p>
+              <h2 className="font-display text-base font-bold mb-1">Pick your deck</h2>
+              <p className="text-muted-foreground text-xs mb-3">Choose a card pack for your draw.</p>
               <div className="grid grid-cols-2 gap-2.5">
                 {FORTUNE_PACKS.map((pack) => {
                   const isSelected = fortunePack === pack.id;
                   const isPremiumPack = pack.tier !== 'free';
                   const isLocked = isPremiumPack && !isPremium && !ownedPacks.includes(pack.id);
+                  const badge = pack.tier === 'free' ? 'Free' : (isPremium ? 'Plus' : (ownedPacks.includes(pack.id) ? 'Purchased' : (pack.tier === 'plus' ? 'Plus' : '$2.99')));
                   return (
                     <button
                       key={pack.id}
@@ -392,7 +384,17 @@ export function VibeScreen({
                       <span className="text-2xl">{pack.emoji}</span>
                       <span className="font-semibold text-xs">{pack.name}</span>
                       <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {isLocked ? '$2.99' : isPremium && isPremiumPack ? 'Included ✓' : pack.description}
+                        {pack.description}
+                      </span>
+                      {/* Badge */}
+                      <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                        isSelected && !isLocked
+                          ? 'bg-primary-foreground/20 text-primary-foreground'
+                          : isLocked
+                          ? 'bg-muted text-muted-foreground'
+                          : 'bg-primary/10 text-primary'
+                      }`}>
+                        {badge}
                       </span>
                       {isLocked && (
                         <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">
@@ -403,15 +405,6 @@ export function VibeScreen({
                   );
                 })}
               </div>
-            </div>
-
-            {/* ── Pick a Card ── */}
-            <div className="mt-4">
-              <PickACard
-                isPremium={isPremium}
-                onArchetypeSelect={handleArchetypeSelect}
-                onUpgradePlus={() => navigate('/membership')}
-              />
             </div>
           </div>
         )}
