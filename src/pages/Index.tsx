@@ -7,7 +7,7 @@ import { useTrialSpin } from '@/hooks/useTrialSpin';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { usePlacesSearch } from '@/hooks/usePlacesSearch';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
-import { useSavedFortunes } from '@/hooks/useSavedFortunes';
+
 import { useAutoPost } from '@/hooks/useAutoPost';
 import { useMileMarkers } from '@/hooks/useMileMarkers';
 import { LandingScreen } from '@/components/game/LandingScreen';
@@ -55,7 +55,7 @@ const Index = () => {
 
   const { searchPlaces, isLoading: placesLoading } = usePlacesSearch();
   const { canSaveFortunes } = useUserEntitlements();
-  const { saveFortune } = useSavedFortunes();
+  
   const { postSpin, postSave } = useAutoPost();
   const { awardPoints } = useMileMarkers();
 
@@ -344,8 +344,7 @@ const Index = () => {
         ownedPacks={ownedPacks}
         onFortunePackChange={(packId) => setPreferences({ fortunePack: packId })}
         canSaveFortunes={canSaveFortunes}
-        onSaveFortune={(fortuneText, packId) => {
-          saveFortune(fortuneText, packId);
+        onSaveFortune={() => {
           postSave({ name: winner.name, id: winner.id, category: winner.category });
         }}
         onPostToFeed={(shouldPost, caption) => {
