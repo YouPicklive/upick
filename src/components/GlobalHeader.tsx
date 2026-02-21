@@ -39,7 +39,7 @@ export function GlobalHeader() {
     { label: 'Profile', icon: User, path: profilePath },
     { label: 'Feed', icon: Rss, path: '/feed' },
     { label: 'Events Today', icon: Calendar, path: '/events-today' },
-    { label: 'Saved Fortunes', icon: Bookmark, path: '/saved' },
+    { label: 'Saved Cards', icon: Bookmark, path: '/saved' },
     { label: 'Membership', icon: Star, path: '/membership' },
     { label: 'Settings', icon: Settings, path: '/settings' },
   ];

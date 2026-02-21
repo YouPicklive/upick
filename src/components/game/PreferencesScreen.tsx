@@ -227,9 +227,9 @@ export function PreferencesScreen({
           </div>
         </PreferenceCard>
 
-        {/* Fortune Pack */}
+        {/* Card Deck */}
         <PreferenceCard
-          title="Fortune pack"
+          title="Card deck"
           action={
             <button
               onClick={() => setShowPackShop(true)}
@@ -282,7 +282,7 @@ export function PreferencesScreen({
           </div>
           {!isPremium && (
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              Tap locked packs to buy or <button onClick={() => setShowPackShop(true)} className="text-primary font-medium hover:underline">get Plus</button>
+              Tap locked decks to buy or <button onClick={() => setShowPackShop(true)} className="text-primary font-medium hover:underline">get Plus</button>
             </p>
           )}
         </PreferenceCard>

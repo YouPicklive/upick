@@ -91,8 +91,8 @@ export default function Membership() {
             <ul className="space-y-3 text-sm text-muted-foreground mb-5">
               <li className="flex items-center gap-3"><Zap className="w-4 h-4 text-accent shrink-0" /> Unlimited spins, every day</li>
               <li className="flex items-center gap-3"><MapPin className="w-4 h-4 shrink-0" style={{ color: 'hsl(152, 55%, 42%)' }} /> Extended search radius (US)</li>
-              <li className="flex items-center gap-3"><Sparkles className="w-4 h-4 text-primary shrink-0" /> All premium fortune packs</li>
-              <li className="flex items-center gap-3"><Bookmark className="w-4 h-4 text-accent shrink-0" /> Save your favorite fortunes</li>
+              <li className="flex items-center gap-3"><Sparkles className="w-4 h-4 text-primary shrink-0" /> All premium card decks</li>
+              <li className="flex items-center gap-3"><Bookmark className="w-4 h-4 text-accent shrink-0" /> Save your favorite card draws</li>
             </ul>
             <Button variant="hero" size="lg" className="w-full" onClick={handleUpgradePlus}>
               <Star className="w-4 h-4 mr-2" /> Upgrade to Plus
@@ -129,7 +129,7 @@ export default function Membership() {
 
         {ownedPacks.length > 0 && (
           <div className="mt-6">
-            <h3 className="font-display font-bold text-sm mb-3 text-muted-foreground uppercase tracking-wider">Owned Fortune Packs</h3>
+            <h3 className="font-display font-bold text-sm mb-3 text-muted-foreground uppercase tracking-wider">Owned Card Packs</h3>
             <div className="flex flex-wrap gap-2">
               {ownedPacks.map(pack => (
                 <span key={pack} className="bg-secondary px-3 py-1.5 rounded-full text-sm font-medium capitalize">{pack.replace('_', ' ')}</span>
@@ -140,7 +140,7 @@ export default function Membership() {
 
         <div className="mt-8 space-y-2">
           <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={() => navigate('/profile')}>Edit Profile</Button>
-          <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={() => navigate('/saved')}>Saved Fortunes</Button>
+          <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={() => navigate('/saved')}>Saved Cards</Button>
         </div>
       </main>
     </div>
