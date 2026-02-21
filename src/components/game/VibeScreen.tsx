@@ -362,10 +362,10 @@ export function VibeScreen({
 
             <RandomnessMeter level={randomness} />
 
-            {/* Fortune Pack Selector */}
+            {/* Pick Your Card — Trust Your Instinct */}
             <div className="bg-card rounded-2xl p-5 shadow-card mt-4">
-              <h2 className="font-display text-base font-bold mb-1">Fortune Packs</h2>
-              <p className="text-muted-foreground text-xs mb-3">Optional — pick a theme for your fortune</p>
+              <h2 className="font-display text-base font-bold mb-1">Pick Your Card</h2>
+              <p className="text-muted-foreground text-xs mb-3">Trust your instinct.</p>
               <div className="grid grid-cols-2 gap-2.5">
                 {FORTUNE_PACKS.map((pack) => {
                   const isSelected = fortunePack === pack.id;
