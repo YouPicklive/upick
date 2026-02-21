@@ -83,6 +83,36 @@ export type Database = {
         }
         Relationships: []
       }
+      card_decks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price_cents: number | null
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id: string
+          is_active?: boolean
+          name: string
+          price_cents?: number | null
+          tier?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_cents?: number | null
+          tier?: string
+        }
+        Relationships: []
+      }
       cities: {
         Row: {
           country: string
@@ -118,6 +148,59 @@ export type Database = {
           timezone?: string | null
         }
         Relationships: []
+      }
+      deck_cards: {
+        Row: {
+          action_text: string
+          arcana: string
+          card_name: string
+          card_number: number | null
+          category: string | null
+          created_at: string
+          deck_id: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          suit: string | null
+          vibe_tag: string | null
+        }
+        Insert: {
+          action_text: string
+          arcana?: string
+          card_name: string
+          card_number?: number | null
+          category?: string | null
+          created_at?: string
+          deck_id: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          suit?: string | null
+          vibe_tag?: string | null
+        }
+        Update: {
+          action_text?: string
+          arcana?: string
+          card_name?: string
+          card_number?: number | null
+          category?: string | null
+          created_at?: string
+          deck_id?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          suit?: string | null
+          vibe_tag?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_cards_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "card_decks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feed_posts: {
         Row: {
@@ -690,6 +773,60 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_card_draws: {
+        Row: {
+          action_text: string
+          card_id: string
+          card_name: string
+          category: string | null
+          created_at: string
+          deck_id: string
+          id: string
+          spin_id: string | null
+          user_id: string
+          vibe_tag: string | null
+        }
+        Insert: {
+          action_text: string
+          card_id: string
+          card_name: string
+          category?: string | null
+          created_at?: string
+          deck_id: string
+          id?: string
+          spin_id?: string | null
+          user_id: string
+          vibe_tag?: string | null
+        }
+        Update: {
+          action_text?: string
+          card_id?: string
+          card_name?: string
+          category?: string | null
+          created_at?: string
+          deck_id?: string
+          id?: string
+          spin_id?: string | null
+          user_id?: string
+          vibe_tag?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_card_draws_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "deck_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_card_draws_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "card_decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_fortunes: {
         Row: {
           context: Json
@@ -905,6 +1042,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_deck_ownership: {
+        Row: {
+          created_at: string
+          deck_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deck_id: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deck_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_deck_ownership_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "card_decks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_entitlements: {
         Row: {
