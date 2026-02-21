@@ -9,9 +9,7 @@ import { PackPurchaseModal } from './PackPurchaseModal';
 import appIcon from '@/assets/app-icon.png';
 import wheelCenterIcon from '@/assets/wheel-center-icon.png';
 import { GlobalHeader } from '@/components/GlobalHeader';
-import { ActiveFilterChips } from './ActiveFilterChips';
 import { VibeFilter } from '@/types/game';
-import { toast } from 'sonner';
 
 const VIBES = [
 { id: 'reset', name: 'Reset', subtitle: 'Ground, breathe, recalibrate.', icon: '🌿' },
@@ -23,12 +21,6 @@ const VIBES = [
 { id: 'free_beautiful', name: 'Free & Beautiful', subtitle: 'Low-cost outdoor magic.', icon: '🌸' }] as
 const;
 
-const DISTANCE_LABELS: Record<string, string> = {
-  'short-drive': '5 mi',
-  'city-wide': '10 mi',
-  'any-distance': '25 mi',
-  'explorer-50': '50 mi',
-};
 
 interface LandingScreenProps {
   onSoloStart: (selectedVibe?: string) => void;
@@ -46,13 +38,6 @@ interface LandingScreenProps {
 export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'free', onFortunePackChange, activeFilters = [], onClearFilter, onOpenPreferences }: LandingScreenProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, signOut, loading } = useAuth();
-
-  const handleClearBudget = (filter: VibeFilter) => {
-    onClearFilter?.(filter);
-    if (activeFilters.length <= 1) {
-      toast('Full randomness activated.', { duration: 2500 });
-    }
-  };
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
   const [showFloatingCTA, setShowFloatingCTA] = useState(false);
@@ -62,12 +47,6 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
   const handleSignOut = async () => {
     await signOut();
   };
-
-  // Derive radius label from active filters
-  const activeDistanceFilter = activeFilters.find(f => f in DISTANCE_LABELS);
-  const radiusLabel = activeDistanceFilter
-    ? `Within ${DISTANCE_LABELS[activeDistanceFilter]}`
-    : 'Within 10 mi';
 
   // Show floating CTA when main spin button scrolls out of view
   useEffect(() => {
@@ -102,17 +81,9 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 
       <main className="flex-1 flex flex-col px-6 pb-16">
         <div className="max-w-md mx-auto w-full">
-          {/* Active Filter Chips */}
-          <ActiveFilterChips
-            radiusLabel={radiusLabel}
-            budgetFilters={activeFilters}
-            onRadiusTap={() => onOpenPreferences?.()}
-            onBudgetTap={() => onOpenPreferences?.()}
-            onClearBudget={handleClearBudget}
-          />
 
           {/* Hero Section */}
-          <div className="text-center animate-slide-up pt-2 pb-8">
+          <div className="text-center animate-slide-up pt-6 pb-8">
             <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-3">
               YOU SET THE VIBE
               <br />
@@ -127,7 +98,7 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           <section className="mb-8">
             <div className="text-center mb-5">
               <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Whats the move?</h2>
-              <p className="text-muted-foreground text-sm mt-1">Pick a card.</p>
+              <p className="text-muted-foreground text-sm mt-1">Pick a vibe.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -192,16 +163,12 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
               <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
             </Button>
             <p className="text-muted-foreground text-xs mt-2 text-center">One quick decision, guided by fate.</p>
-            <p className="text-muted-foreground text-[11px] text-center mt-0.5">
-              {radiusLabel} · Near you
-            </p>
           </div>
 
-          {/* Pick a Card Shelf */}
           <section className="mb-10">
             <div className="text-center mb-4">
-              <h3 className="font-display text-base font-bold text-foreground">Pick a Card</h3>
-              <p className="text-muted-foreground text-xs mt-0.5">Optional — guide your spin with intention.</p>
+              <h3 className="font-display text-base font-bold text-foreground">Pick Your Card</h3>
+              <p className="text-muted-foreground text-xs mt-0.5">Trust your instinct.</p>
             </div>
 
             <div className="relative">
