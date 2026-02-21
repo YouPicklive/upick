@@ -9,6 +9,7 @@ import { PostSpinCardDraw } from './PostSpinCardDraw';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import { useSavedSpins } from '@/hooks/useSavedSpins';
 import { usePlaceReviews } from '@/hooks/usePlaceReviews';
+import { useAuth } from '@/hooks/useAuth';
 import html2canvas from 'html2canvas';
 import { formatDistanceWithEmoji, type Coordinates } from '@/hooks/useGeolocation';
 import { toast } from 'sonner';
@@ -115,6 +116,7 @@ export function ResultsScreen({
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
+  const { user } = useAuth();
   const { events, isLoading: eventsLoading, timeframe, setTimeframe, searchEvents } = useEventSearch();
   const { saveSpin } = useSavedSpins();
   const { addReview } = usePlaceReviews();
@@ -310,8 +312,7 @@ export function ResultsScreen({
                   deckId={fortunePack}
                   isPremium={isPremium}
                   ownedPacks={ownedPacks}
-                  canSaveFortunes={canSaveFortunes}
-                  onSaveFortune={onSaveFortune}
+                  userId={user?.id}
                   onCardRevealed={(card) => {
                     setFortune(card.action_text);
                   }}
