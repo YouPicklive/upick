@@ -1,36 +1,40 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Lock, RefreshCw, Bookmark, Share2 } from 'lucide-react';
+import { Lock, RefreshCw, Bookmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFortunes, FortunePackInfo } from '@/hooks/useFortunes';
+import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 
 // ── Types ──
 
-interface DrawnCard {
+export interface DrawnCard {
   id: string;
-  text: string;
-  tags: string[];
+  card_name: string;
+  action_text: string;
+  vibe_tag: string | null;
+  category: string | null;
+  card_number: number | null;
+}
+
+interface DeckInfo {
+  id: string;
+  name: string;
+  tier: string;
+  description: string | null;
 }
 
 interface PostSpinCardDrawProps {
-  packId: string;
+  deckId: string;
   isPremium: boolean;
   ownedPacks: string[];
   canSaveFortunes: boolean;
   onSaveFortune?: (fortuneText: string, packId: string) => void;
-  onFortuneRevealed?: (fortune: string) => void;
+  onCardRevealed?: (card: DrawnCard) => void;
   onUpgrade: () => void;
 }
 
 // ── Helpers ──
-
-function getBadgeLabel(pack: FortunePackInfo, isPremium: boolean, ownedPacks: string[]): string {
-  if (pack.tier === 'free') return 'Free';
-  if (isPremium) return 'Plus';
-  if (ownedPacks.includes(pack.id)) return 'Purchased';
-  return pack.tier === 'plus' ? 'Plus' : '$2.99';
-}
 
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -44,45 +48,66 @@ function useReducedMotion(): boolean {
   return reduced;
 }
 
+/** Check if user can access a deck: free, or Plus subscriber, or owns it */
+function canAccessDeck(
+  deckTier: string,
+  isPremium: boolean,
+  ownedPacks: string[],
+  deckId: string
+): boolean {
+  if (deckTier === 'free') return true;
+  if (isPremium) return true;
+  if (ownedPacks.includes(deckId)) return true;
+  return false;
+}
+
 // ── Card Back (face-down) ──
 
-interface CardBackProps {
+function CardBack({
+  index,
+  disabled,
+  onClick,
+  reducedMotion,
+}: {
   index: number;
-  selected: boolean;
   disabled: boolean;
   onClick: () => void;
   reducedMotion: boolean;
-}
-
-function CardBack({ index, selected, disabled, onClick, reducedMotion }: CardBackProps) {
+}) {
   const animDelay = `${index * 150}ms`;
 
   return (
     <button
       role="option"
-      aria-selected={selected}
+      aria-selected={false}
       aria-label={`Card ${index + 1}`}
-      tabIndex={disabled && !selected ? -1 : 0}
+      tabIndex={disabled ? -1 : 0}
       onClick={!disabled ? onClick : undefined}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!disabled) onClick(); } }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (!disabled) onClick();
+        }
+      }}
       className={`
         relative w-[100px] h-[150px] sm:w-[110px] sm:h-[165px] rounded-2xl border-2 
         flex flex-col items-center justify-center
         transition-all duration-300 outline-none
         focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
-        ${disabled && !selected
-          ? 'opacity-50 cursor-default border-border/30 bg-card/40'
-          : 'cursor-pointer border-primary/30 bg-gradient-to-b from-[hsl(var(--primary)/0.08)] to-[hsl(var(--accent)/0.06)] hover:-translate-y-1 hover:shadow-[0_8px_24px_hsl(var(--primary)/0.2)] hover:border-primary/50'
+        ${
+          disabled
+            ? 'opacity-50 cursor-default border-border/30 bg-card/40'
+            : 'cursor-pointer border-primary/30 bg-gradient-to-b from-[hsl(var(--primary)/0.08)] to-[hsl(var(--accent)/0.06)] hover:-translate-y-1 hover:shadow-[0_8px_24px_hsl(var(--primary)/0.2)] hover:border-primary/50'
         }
       `}
-      style={!reducedMotion ? { animationDelay: animDelay } : undefined}
     >
       {/* Breathing pulse overlay */}
       {!disabled && !reducedMotion && (
         <div
           className="absolute inset-0 rounded-2xl animate-pulse pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse at center, hsl(var(--primary) / 0.06) 0%, transparent 70%)',
+            background:
+              'radial-gradient(ellipse at center, hsl(var(--primary) / 0.06) 0%, transparent 70%)',
             animationDelay: animDelay,
             animationDuration: '3s',
           }}
@@ -91,8 +116,17 @@ function CardBack({ index, selected, disabled, onClick, reducedMotion }: CardBac
 
       {/* Center emblem */}
       <div className="w-14 h-14 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-center mb-2">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-primary/50">
-          <path d="M12 2L14.09 8.26L20 9.27L15.5 13.14L16.91 19.02L12 16.27L7.09 19.02L8.5 13.14L4 9.27L9.91 8.26L12 2Z" fill="currentColor" />
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="text-primary/50"
+        >
+          <path
+            d="M12 2L14.09 8.26L20 9.27L15.5 13.14L16.91 19.02L12 16.27L7.09 19.02L8.5 13.14L4 9.27L9.91 8.26L12 2Z"
+            fill="currentColor"
+          />
         </svg>
       </div>
       <span className="text-[10px] text-muted-foreground/60 font-medium tracking-widest uppercase">
@@ -104,21 +138,16 @@ function CardBack({ index, selected, disabled, onClick, reducedMotion }: CardBac
 
 // ── Card Front (revealed) ──
 
-interface CardFrontProps {
-  card: DrawnCard;
-  packInfo: FortunePackInfo;
-}
-
-function CardFront({ card, packInfo }: CardFrontProps) {
+function CardFront({ card, deckName }: { card: DrawnCard; deckName: string }) {
   return (
     <div className="w-[100px] h-[150px] sm:w-[110px] sm:h-[165px] rounded-2xl border-2 border-primary/50 bg-gradient-to-b from-[hsl(var(--primary)/0.12)] via-[hsl(var(--accent)/0.06)] to-background shadow-[0_8px_32px_hsl(var(--primary)/0.15)] flex flex-col items-center justify-center p-3 text-center">
-      <span className="text-2xl mb-1">{packInfo.emoji}</span>
+      <span className="text-2xl mb-1">🃏</span>
       <span className="font-display text-[11px] font-bold text-foreground leading-tight mb-1">
-        {packInfo.name}
+        {card.card_name}
       </span>
-      {card.tags.length > 0 && (
+      {card.vibe_tag && (
         <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-          {card.tags[0]}
+          {card.vibe_tag}
         </span>
       )}
     </div>
@@ -127,34 +156,33 @@ function CardFront({ card, packInfo }: CardFrontProps) {
 
 // ── Flip Card Container ──
 
-interface FlipCardProps {
+function FlipCard({
+  index,
+  card,
+  deckName,
+  isFlipped,
+  isDisabled,
+  onClick,
+  reducedMotion,
+}: {
   index: number;
   card: DrawnCard;
-  packInfo: FortunePackInfo;
+  deckName: string;
   isFlipped: boolean;
   isDisabled: boolean;
   onClick: () => void;
   reducedMotion: boolean;
-}
-
-function FlipCard({ index, card, packInfo, isFlipped, isDisabled, onClick, reducedMotion }: FlipCardProps) {
+}) {
   if (reducedMotion) {
-    // Reduced motion: cross-fade instead of flip
     return (
       <div className="relative">
         {!isFlipped ? (
           <div className="animate-fade-in">
-            <CardBack
-              index={index}
-              selected={false}
-              disabled={isDisabled}
-              onClick={onClick}
-              reducedMotion={reducedMotion}
-            />
+            <CardBack index={index} disabled={isDisabled} onClick={onClick} reducedMotion={reducedMotion} />
           </div>
         ) : (
           <div className="animate-fade-in">
-            <CardFront card={card} packInfo={packInfo} />
+            <CardFront card={card} deckName={deckName} />
           </div>
         )}
       </div>
@@ -172,21 +200,11 @@ function FlipCard({ index, card, packInfo, isFlipped, isDisabled, onClick, reduc
       >
         {/* Back face */}
         <div style={{ backfaceVisibility: 'hidden' }}>
-          <CardBack
-            index={index}
-            selected={isFlipped}
-            disabled={isDisabled}
-            onClick={onClick}
-            reducedMotion={reducedMotion}
-          />
+          <CardBack index={index} disabled={isDisabled} onClick={onClick} reducedMotion={reducedMotion} />
         </div>
-
         {/* Front face */}
-        <div
-          className="absolute inset-0"
-          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-        >
-          <CardFront card={card} packInfo={packInfo} />
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+          <CardFront card={card} deckName={deckName} />
         </div>
       </div>
     </div>
@@ -196,44 +214,82 @@ function FlipCard({ index, card, packInfo, isFlipped, isDisabled, onClick, reduc
 // ── Main Component ──
 
 export function PostSpinCardDraw({
-  packId,
+  deckId,
   isPremium,
   ownedPacks,
   canSaveFortunes,
   onSaveFortune,
-  onFortuneRevealed,
+  onCardRevealed,
   onUpgrade,
 }: PostSpinCardDrawProps) {
-  const { getMultipleFortunes, getPackInfo } = useFortunes();
-  const packInfo = getPackInfo(packId);
   const reducedMotion = useReducedMotion();
 
   const [cards, setCards] = useState<DrawnCard[]>([]);
+  const [deckInfo, setDeckInfo] = useState<DeckInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [accessDenied, setAccessDenied] = useState(false);
+  const [locked, setLocked] = useState(false);
   const [flippedIndex, setFlippedIndex] = useState<number | null>(null);
   const [fortuneSaved, setFortuneSaved] = useState(false);
-  const [drawKey, setDrawKey] = useState(0); // for re-dealing
+  const [drawKey, setDrawKey] = useState(0);
 
-  // Check if user has access to this pack
-  const hasAccess = packInfo.tier === 'free' || isPremium || ownedPacks.includes(packId);
-
-  // Fetch cards
+  // Fetch deck info + cards
   const fetchCards = useCallback(async () => {
     setLoading(true);
     setFlippedIndex(null);
     setFortuneSaved(false);
-    setAccessDenied(false);
+    setLocked(false);
 
-    const result = await getMultipleFortunes(packId, 3);
-    if (result.accessDenied) {
-      setAccessDenied(true);
+    try {
+      // 1. Get deck info
+      const { data: deck, error: deckErr } = await supabase
+        .from('card_decks')
+        .select('id, name, tier, description')
+        .eq('id', deckId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (deckErr || !deck) {
+        logger.error('Error fetching deck:', deckErr);
+        setCards([]);
+        setLoading(false);
+        return;
+      }
+
+      setDeckInfo(deck as DeckInfo);
+
+      // 2. Check access
+      if (!canAccessDeck(deck.tier, isPremium, ownedPacks, deckId)) {
+        setLocked(true);
+        setCards([]);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Get cards from deck
+      const { data: deckCards, error: cardsErr } = await supabase
+        .from('deck_cards')
+        .select('id, card_name, action_text, vibe_tag, category, card_number')
+        .eq('deck_id', deckId)
+        .eq('is_active', true);
+
+      if (cardsErr) {
+        logger.error('Error fetching deck cards:', cardsErr);
+        setCards([]);
+        setLoading(false);
+        return;
+      }
+
+      // Shuffle and pick 3
+      const shuffled = [...(deckCards || [])].sort(() => Math.random() - 0.5);
+      const picked = shuffled.slice(0, 3) as DrawnCard[];
+      setCards(picked);
+    } catch (err) {
+      logger.error('Error in PostSpinCardDraw:', err);
       setCards([]);
-    } else {
-      setCards(result.fortunes);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [packId, getMultipleFortunes, drawKey]);
+  }, [deckId, isPremium, ownedPacks, drawKey]);
 
   useEffect(() => {
     fetchCards();
@@ -244,17 +300,17 @@ export function PostSpinCardDraw({
     setFlippedIndex(index);
     const selectedCard = cards[index];
     if (selectedCard) {
-      onFortuneRevealed?.(selectedCard.text);
+      onCardRevealed?.(selectedCard);
     }
   };
 
   const handleDrawAgain = () => {
-    setDrawKey(prev => prev + 1);
+    setDrawKey((prev) => prev + 1);
   };
 
   const handleSave = () => {
     if (!canSaveFortunes) {
-      toast.info('Upgrade to Plus to save fortunes', {
+      toast.info('Upgrade to Plus to save card draws', {
         action: { label: 'Upgrade', onClick: onUpgrade },
       });
       return;
@@ -262,11 +318,13 @@ export function PostSpinCardDraw({
     if (fortuneSaved || flippedIndex === null) return;
     const card = cards[flippedIndex];
     if (card) {
-      onSaveFortune?.(card.text, packId);
+      onSaveFortune?.(card.action_text, deckId);
       setFortuneSaved(true);
-      toast.success('Fortune saved! ✨');
+      toast.success('Card saved! ✨');
     }
   };
+
+  const deckName = deckInfo?.name || 'Card Deck';
 
   // Loading skeleton
   if (loading) {
@@ -277,7 +335,7 @@ export function PostSpinCardDraw({
           <Skeleton className="h-3 w-44 mx-auto" />
         </div>
         <div className="flex justify-center gap-4">
-          {[0, 1, 2].map(i => (
+          {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="w-[100px] h-[150px] sm:w-[110px] sm:h-[165px] rounded-2xl" />
           ))}
         </div>
@@ -285,21 +343,24 @@ export function PostSpinCardDraw({
     );
   }
 
-  // Locked / access denied overlay
-  if (accessDenied || !hasAccess) {
+  // Locked overlay
+  if (locked && deckInfo) {
+    const ctaLabel =
+      deckInfo.tier === 'plus'
+        ? 'Upgrade to Plus'
+        : deckInfo.tier === 'paid'
+        ? 'Unlock this deck'
+        : 'Unlock this deck';
+
     return (
       <div className="bg-card rounded-2xl p-5 shadow-card border border-border/40 text-center">
         <div className="flex justify-center mb-3">
-          <span className="text-4xl">{packInfo.emoji}</span>
+          <span className="text-4xl">🔒</span>
         </div>
-        <h3 className="font-display text-base font-bold mb-1">
-          {packInfo.name} Deck
-        </h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Unlock this deck to draw cards.
-        </p>
+        <h3 className="font-display text-base font-bold mb-1">{deckName}</h3>
+        <p className="text-sm text-muted-foreground mb-4">Unlock this deck to draw cards.</p>
         <div className="flex justify-center gap-3 mb-4 opacity-40 pointer-events-none">
-          {[0, 1, 2].map(i => (
+          {[0, 1, 2].map((i) => (
             <div
               key={i}
               className="w-[80px] h-[120px] rounded-xl border-2 border-primary/20 bg-gradient-to-b from-primary/5 to-accent/5 flex items-center justify-center"
@@ -309,7 +370,7 @@ export function PostSpinCardDraw({
           ))}
         </div>
         <Button variant="hero" size="sm" onClick={onUpgrade} className="w-full">
-          {packInfo.tier === 'plus' ? 'Upgrade to Plus' : `Unlock ${packInfo.name} — $2.99`}
+          {ctaLabel}
         </Button>
       </div>
     );
@@ -335,17 +396,13 @@ export function PostSpinCardDraw({
       </div>
 
       {/* Cards grid */}
-      <div
-        role="listbox"
-        aria-label="Face-down cards"
-        className="flex justify-center gap-4 mb-5"
-      >
+      <div role="listbox" aria-label="Face-down cards" className="flex justify-center gap-4 mb-5">
         {cards.map((card, i) => (
           <FlipCard
             key={`${drawKey}-${i}`}
             index={i}
             card={card}
-            packInfo={packInfo}
+            deckName={deckName}
             isFlipped={flippedIndex === i}
             isDisabled={flippedIndex !== null && flippedIndex !== i}
             onClick={() => handleCardSelect(i)}
@@ -354,25 +411,26 @@ export function PostSpinCardDraw({
         ))}
       </div>
 
-      {/* Revealed fortune message */}
+      {/* Revealed card message */}
       {selectedCard && (
         <div className="animate-fade-in" role="status" aria-live="polite">
           <div className="bg-primary/6 rounded-xl p-4 border border-primary/15 mb-4">
-            <p className="text-sm italic text-foreground leading-relaxed text-center mb-2">
-              "{selectedCard.text}"
+            <p className="font-display text-sm font-bold text-foreground text-center mb-1">
+              {selectedCard.card_name}
             </p>
-            {selectedCard.tags.length > 0 && (
-              <div className="flex justify-center gap-1.5">
-                {selectedCard.tags.slice(0, 3).map(tag => (
-                  <span key={tag} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                    {tag}
-                  </span>
-                ))}
+            <p className="text-sm italic text-muted-foreground leading-relaxed text-center mb-2">
+              "{selectedCard.action_text}"
+            </p>
+            {selectedCard.vibe_tag && (
+              <div className="flex justify-center">
+                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                  {selectedCard.vibe_tag}
+                </span>
               </div>
             )}
-            {packId !== 'free' && (
+            {deckId !== 'fools_journey' && (
               <p className="text-[10px] text-primary/70 font-medium mt-2 text-center">
-                {packInfo.emoji} {packInfo.name} Deck
+                🃏 {deckName}
               </p>
             )}
           </div>
@@ -406,9 +464,7 @@ export function PostSpinCardDraw({
       )}
 
       {!selectedCard && (
-        <p className="text-center text-xs text-muted-foreground">
-          Three cards await — choose one.
-        </p>
+        <p className="text-center text-xs text-muted-foreground">Three cards await — choose one.</p>
       )}
     </div>
   );

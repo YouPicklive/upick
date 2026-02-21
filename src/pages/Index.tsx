@@ -337,7 +337,7 @@ const Index = () => {
         winner={winner}
         likedSpots={state.likedSpots}
         fortunePack={state.preferences.fortunePack}
-        prePickedCard={prePickedCard}
+        
         onPlayAgain={handlePlayAgain}
         onNotForMe={handleNotForMe}
         isTrialMode={!isAuthenticated}
