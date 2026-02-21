@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useSelectedCity } from './useSelectedCity';
+import { useGeolocation } from './useGeolocation';
 
 /**
  * Records spin events and triggers feed posting via edge function.
@@ -9,7 +9,7 @@ import { useSelectedCity } from './useSelectedCity';
  */
 export function useAutoPost() {
   const { user, isAuthenticated } = useAuth();
-  const { selectedCity } = useSelectedCity();
+  const { coordinates } = useGeolocation();
   const postedSpins = useRef(new Set<string>());
 
   const postSpin = useCallback(async (spot: {
@@ -21,14 +21,12 @@ export function useAutoPost() {
     neighborhood?: string;
   }, options?: { shouldPost?: boolean; caption?: string }) => {
     if (!isAuthenticated || !user) return;
-    // Deduplicate within session
     if (postedSpins.current.has(spot.id)) return;
     postedSpins.current.add(spot.id);
 
     const shouldPost = options?.shouldPost ?? true;
 
     try {
-      // Insert spin_event
       const { data, error } = await supabase.from('spin_events' as any).insert({
         user_id: user.id,
         place_id: spot.id,
@@ -36,25 +34,24 @@ export function useAutoPost() {
         category: spot.category || null,
         lat: spot.latitude || null,
         lng: spot.longitude || null,
-        city: selectedCity?.name || 'Richmond',
-        region: selectedCity?.state || 'VA',
+        city: 'Near You',
+        region: null,
         should_post_to_feed: shouldPost,
         caption: options?.caption || null,
       } as any).select('id').single();
 
       if (error || !data) return;
 
-      // Fire edge function to create feed post (fire-and-forget)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       fetch(`${supabaseUrl}/functions/v1/post-spin-to-feed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spin_event_id: (data as any).id }),
-      }).catch(() => { /* silent */ });
+      }).catch(() => {});
     } catch {
       // Silent fail
     }
-  }, [isAuthenticated, user, selectedCity]);
+  }, [isAuthenticated, user]);
 
   const postSave = useCallback(async (spot: {
     name: string;
@@ -65,7 +62,6 @@ export function useAutoPost() {
   }) => {
     if (!isAuthenticated || !user) return;
     try {
-      // Directly insert a feed_post for saves (simpler, no edge function needed)
       await supabase.from('feed_posts' as any).insert({
         user_id: user.id,
         post_type: 'save',
@@ -75,14 +71,14 @@ export function useAutoPost() {
         result_category: spot.category || null,
         lat: spot.latitude || null,
         lng: spot.longitude || null,
-        city: selectedCity?.name || 'Richmond',
-        region: selectedCity?.state || 'VA',
+        city: 'Near You',
+        region: null,
         visibility: 'public',
       } as any);
     } catch {
       // Silent fail
     }
-  }, [isAuthenticated, user, selectedCity]);
+  }, [isAuthenticated, user]);
 
   return { postSpin, postSave };
 }

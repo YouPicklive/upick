@@ -229,16 +229,13 @@ export default function Feed() {
   const { isPremium, isPremiumTier } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
-  const { selectedCity, savedCities, popularCities, allCities, isPickerOpen, selectCity, clearCity, removeSavedCity, openPicker, closePicker } = useSelectedCity();
   const { awardPoints } = useMileMarkers();
   const [feedTab, setFeedTab] = useState<'today' | 'trending' | 'new'>('new');
 
   const { posts, loading, toggleLike } = useFeed({
-    latitude: selectedCity ? selectedCity.latitude : coordinates?.latitude,
-    longitude: selectedCity ? selectedCity.longitude : coordinates?.longitude,
-    radiusMiles: selectedCity ? undefined : 25,
-    cityId: selectedCity?.id || undefined,
-    city: selectedCity ? selectedCity.name : undefined,
+    latitude: coordinates?.latitude,
+    longitude: coordinates?.longitude,
+    radiusMiles: 25,
     tab: feedTab,
   });
   const [shareOpen, setShareOpen] = useState(false);
@@ -305,12 +302,6 @@ export default function Feed() {
     });
   };
 
-  const handleUseCurrentLocation = () => {
-    clearCity();
-  };
-
-  const cityDisplayLabel = selectedCity ? selectedCity.label : (coordinates ? 'Near You' : 'All Cities');
-
   const mergedFeed = [
     ...posts.map(p => ({ type: 'post' as const, data: p, created_at: p.created_at })),
     ...socialShares.map(s => ({ type: 'share' as const, data: s, created_at: s.created_at })),
@@ -320,28 +311,15 @@ export default function Feed() {
     <div className="min-h-screen bg-background">
       <GlobalHeader />
       <SharePostModal open={shareOpen} onClose={() => { setShareOpen(false); fetchSocialShares(); }} />
-      <CityPickerModal
-        open={isPickerOpen}
-        onClose={closePicker}
-        onSelectCity={selectCity}
-        onUseCurrentLocation={handleUseCurrentLocation}
-        savedCities={savedCities}
-        popularCities={popularCities}
-        allCities={allCities}
-        onRemoveSaved={removeSavedCity}
-        isPremiumTier={isPremiumTier}
-      />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-display text-xl font-bold">Community Activity</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {selectedCity
-                ? `Showing activity in ${selectedCity.label}`
-                : coordinates
-                  ? 'Showing activity within 25 miles'
-                  : 'Showing all recent activity'}
+              {coordinates
+                ? 'Showing activity within 25 miles'
+                : 'Showing all recent activity'}
             </p>
           </div>
           {isAuthenticated && (
@@ -349,10 +327,6 @@ export default function Feed() {
               <Share2 className="w-3.5 h-3.5" /> Share
             </Button>
           )}
-        </div>
-
-        <div className="flex items-center gap-3 mb-5">
-          <CityLabel label={cityDisplayLabel} onClick={openPicker} />
         </div>
 
         {/* Feed tabs */}
