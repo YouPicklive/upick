@@ -9,7 +9,6 @@ import { usePlacesSearch } from '@/hooks/usePlacesSearch';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedFortunes } from '@/hooks/useSavedFortunes';
 import { useAutoPost } from '@/hooks/useAutoPost';
-import { useSelectedCity } from '@/hooks/useSelectedCity';
 import { useMileMarkers } from '@/hooks/useMileMarkers';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
@@ -66,15 +65,12 @@ const Index = () => {
   const [openNowEmpty, setOpenNowEmpty] = useState(false);
  
   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
-  const { selectedCity } = useSelectedCity();
 
-  // Derive effective coordinates: selectedCity > GPS > Richmond fallback
+  // Derive effective coordinates: GPS > Richmond fallback
   const getSearchCoords = useCallback(() => {
-    if (selectedCity?.latitude && selectedCity?.longitude) {
-      return { latitude: selectedCity.latitude, longitude: selectedCity.longitude };
-    }
     return coordinates || { latitude: 37.5407, longitude: -77.4360 };
-  }, [selectedCity, coordinates]);
+  }, [coordinates]);
+
   // Daily open award
   useEffect(() => {
     if (!user?.id) return;
@@ -102,11 +98,6 @@ const Index = () => {
   }, [searchParams, setSearchParams]);
 
   const handleSoloStart = useCallback((selectedVibe?: string) => {
-    // Enforce location selection before spinning
-    if (!selectedCity) {
-      toast.info('Pick a location first to start spinning!', { duration: 3000 });
-      return;
-    }
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
@@ -120,7 +111,7 @@ const Index = () => {
     }
     setPlayerCount(1);
     setMode('vibe');
-  }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode, setVibeInput, selectedCity]);
+  }, [isAuthenticated, markTrialUsed, setPlayerCount, setMode, setVibeInput]);
 
   const handleVibeComplete = useCallback(async () => {
     // Server-enforced spin gating for authenticated users
@@ -145,7 +136,7 @@ const Index = () => {
       setVibeInput({ selectedVibe: 'explore' });
     }
 
-    // Determine coordinates: selectedCity > GPS > Richmond fallback
+    // Coordinates: GPS > Richmond fallback
     const searchCoords = getSearchCoords();
 
     setFindingSpots(true);
@@ -233,7 +224,7 @@ const Index = () => {
           <Button variant="outline" onClick={() => {
             setOpenNowEmpty(false);
             const withoutDist = state.vibeInput.filters.filter(f =>
-              !['near-me','nearby','short-drive','city-wide','any-distance'].includes(f as string)
+              !['near-me','nearby','short-drive','city-wide','any-distance','explorer-50'].includes(f as string)
             );
             setVibeInput({ filters: [...withoutDist, 'any-distance'] as any });
             setTimeout(() => void handleVibeComplete(), 50);

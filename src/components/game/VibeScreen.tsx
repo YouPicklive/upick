@@ -41,11 +41,12 @@ const FILTERS: { id: VibeFilter; label: string; group: string }[] = [
   { id: 'treat', label: '💎 Splurge', group: 'budget' },
 ];
 
-const DISTANCE_FILTER_KEYS: VibeFilter[] = ['near-me', 'nearby', 'short-drive', 'city-wide', 'any-distance'];
+const DISTANCE_FILTER_KEYS: VibeFilter[] = ['near-me', 'nearby', 'short-drive', 'city-wide', 'any-distance', 'explorer-50'];
 const DISTANCE_CHIPS: { label: string; filter: VibeFilter; plusOnly?: boolean }[] = [
   { label: '5 mi', filter: 'short-drive' },
   { label: '10 mi', filter: 'city-wide' },
   { label: '25 mi', filter: 'any-distance', plusOnly: true },
+  { label: '50 mi', filter: 'explorer-50', plusOnly: true },
 ];
 
 const MAX_FILTERS = 2;

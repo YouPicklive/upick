@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile, Profile } from '@/hooks/useProfile';
-import { useSelectedCity, CitySelection, CityRecord } from '@/hooks/useSelectedCity';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -18,18 +17,6 @@ interface AppContextValue {
   profileLoading: boolean;
   updateProfile: ReturnType<typeof useProfile>['updateProfile'];
   checkUsernameAvailable: ReturnType<typeof useProfile>['checkUsernameAvailable'];
-
-  // City
-  selectedCity: CitySelection | null;
-  savedCities: CitySelection[];
-  allCities: CityRecord[];
-  popularCities: CitySelection[];
-  isPickerOpen: boolean;
-  selectCity: (city: CitySelection) => Promise<void>;
-  clearCity: () => Promise<void>;
-  removeSavedCity: (label: string) => void;
-  openPicker: () => void;
-  closePicker: () => void;
 
   // Entitlements
   isPremium: boolean;
@@ -55,7 +42,6 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const profile = useProfile();
-  const city = useSelectedCity();
   const entitlements = useUserEntitlements();
 
   const value = useMemo<AppContextValue>(() => ({
@@ -71,18 +57,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     profileLoading: profile.loading,
     updateProfile: profile.updateProfile,
     checkUsernameAvailable: profile.checkUsernameAvailable,
-
-    // City
-    selectedCity: city.selectedCity,
-    savedCities: city.savedCities,
-    allCities: city.allCities,
-    popularCities: city.popularCities,
-    isPickerOpen: city.isPickerOpen,
-    selectCity: city.selectCity,
-    clearCity: city.clearCity,
-    removeSavedCity: city.removeSavedCity,
-    openPicker: city.openPicker,
-    closePicker: city.closePicker,
 
     // Entitlements
     isPremium: entitlements.isPremium,
@@ -101,7 +75,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     purchasePack: entitlements.purchasePack,
     refreshSubscription: entitlements.refreshSubscription,
     entitlementsLoading: entitlements.loading,
-  }), [auth, profile, city, entitlements]);
+  }), [auth, profile, entitlements]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
