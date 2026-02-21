@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface FortuneWheelProps {
   items: string[];
@@ -10,6 +10,12 @@ export function FortuneWheel({ items, onSpinComplete, spinning }: FortuneWheelPr
   const [rotation, setRotation] = useState(0);
   const rotationRef = useRef(0);
   const hasSpunRef = useRef(false);
+  const callbackRef = useRef(onSpinComplete);
+
+  // Keep callback ref current without re-triggering the effect
+  useEffect(() => {
+    callbackRef.current = onSpinComplete;
+  }, [onSpinComplete]);
 
   useEffect(() => {
     if (spinning && items.length > 0 && !hasSpunRef.current) {
@@ -24,12 +30,12 @@ export function FortuneWheel({ items, onSpinComplete, spinning }: FortuneWheelPr
       rotationRef.current = targetRotation;
 
       const timer = setTimeout(() => {
-        onSpinComplete(items[winningIndex]);
+        callbackRef.current(items[winningIndex]);
       }, 4500);
 
       return () => clearTimeout(timer);
     }
-  }, [spinning, items, onSpinComplete]);
+  }, [spinning, items]);
 
   // Muted, sophisticated palette
   const colors = [
