@@ -15,6 +15,7 @@ export interface DrawnCard {
   vibe_tag: string | null;
   category: string | null;
   card_number: number | null;
+  image_url: string | null;
 }
 
 interface DeckInfo {
@@ -121,15 +122,34 @@ function CardBack({
 
 function CardFront({ card }: { card: DrawnCard }) {
   return (
-    <div className="w-[100px] h-[150px] sm:w-[110px] sm:h-[165px] rounded-2xl border-2 border-primary/50 bg-gradient-to-b from-[hsl(var(--primary)/0.12)] via-[hsl(var(--accent)/0.06)] to-background shadow-[0_8px_32px_hsl(var(--primary)/0.15)] flex flex-col items-center justify-center p-3 text-center">
-      <span className="text-2xl mb-1">🃏</span>
-      <span className="font-display text-[11px] font-bold text-foreground leading-tight mb-1">
-        {card.card_name}
-      </span>
-      {card.vibe_tag && (
-        <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-          {card.vibe_tag}
-        </span>
+    <div className="w-[100px] h-[150px] sm:w-[110px] sm:h-[165px] rounded-2xl border-2 border-primary/50 bg-gradient-to-b from-[hsl(var(--primary)/0.12)] via-[hsl(var(--accent)/0.06)] to-background shadow-[0_8px_32px_hsl(var(--primary)/0.15)] flex flex-col items-center justify-center text-center overflow-hidden relative">
+      {card.image_url ? (
+        <>
+          <img
+            src={card.image_url}
+            alt={card.card_name}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="relative mt-auto p-2">
+            <span className="font-display text-[10px] font-bold text-white leading-tight drop-shadow-md">
+              {card.card_name}
+            </span>
+          </div>
+        </>
+      ) : (
+        <>
+          <span className="text-2xl mb-1">🃏</span>
+          <span className="font-display text-[11px] font-bold text-foreground leading-tight mb-1">
+            {card.card_name}
+          </span>
+          {card.vibe_tag && (
+            <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+              {card.vibe_tag}
+            </span>
+          )}
+        </>
       )}
     </div>
   );
@@ -273,7 +293,7 @@ export function PostSpinCardDraw({
       // 3. Fetch cards and deal 3
       const { data: deckCards, error: cardsErr } = await supabase
         .from('deck_cards')
-        .select('id, card_name, action_text, vibe_tag, category, card_number')
+        .select('id, card_name, action_text, vibe_tag, category, card_number, image_url')
         .eq('deck_id', effectiveDeckId)
         .eq('is_active', true);
 
