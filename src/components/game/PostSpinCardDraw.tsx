@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Lock, RefreshCw, Bookmark } from 'lucide-react';
+import { Lock, RefreshCw, Bookmark, Share2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,10 +28,12 @@ interface PostSpinCardDrawProps {
   deckId: string;
   isPremium: boolean;
   ownedPacks: string[];
-  canSaveFortunes: boolean;
-  onSaveFortune?: (fortuneText: string, packId: string) => void;
+  userId?: string | null;
+  spinId?: string | null;
   onCardRevealed?: (card: DrawnCard) => void;
   onUpgrade: () => void;
+  onShare?: (card: DrawnCard) => void;
+  onClose?: () => void;
 }
 
 // ── Helpers ──
@@ -46,19 +48,6 @@ function useReducedMotion(): boolean {
     return () => mq.removeEventListener('change', handler);
   }, []);
   return reduced;
-}
-
-/** Check if user can access a deck: free, or Plus subscriber, or owns it */
-function canAccessDeck(
-  deckTier: string,
-  isPremium: boolean,
-  ownedPacks: string[],
-  deckId: string
-): boolean {
-  if (deckTier === 'free') return true;
-  if (isPremium) return true;
-  if (ownedPacks.includes(deckId)) return true;
-  return false;
 }
 
 // ── Card Back (face-down) ──
@@ -101,7 +90,6 @@ function CardBack({
         }
       `}
     >
-      {/* Breathing pulse overlay */}
       {!disabled && !reducedMotion && (
         <div
           className="absolute inset-0 rounded-2xl animate-pulse pointer-events-none"
@@ -114,15 +102,8 @@ function CardBack({
         />
       )}
 
-      {/* Center emblem */}
       <div className="w-14 h-14 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-center mb-2">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          className="text-primary/50"
-        >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-primary/50">
           <path
             d="M12 2L14.09 8.26L20 9.27L15.5 13.14L16.91 19.02L12 16.27L7.09 19.02L8.5 13.14L4 9.27L9.91 8.26L12 2Z"
             fill="currentColor"
@@ -138,7 +119,7 @@ function CardBack({
 
 // ── Card Front (revealed) ──
 
-function CardFront({ card, deckName }: { card: DrawnCard; deckName: string }) {
+function CardFront({ card }: { card: DrawnCard }) {
   return (
     <div className="w-[100px] h-[150px] sm:w-[110px] sm:h-[165px] rounded-2xl border-2 border-primary/50 bg-gradient-to-b from-[hsl(var(--primary)/0.12)] via-[hsl(var(--accent)/0.06)] to-background shadow-[0_8px_32px_hsl(var(--primary)/0.15)] flex flex-col items-center justify-center p-3 text-center">
       <span className="text-2xl mb-1">🃏</span>
@@ -159,7 +140,6 @@ function CardFront({ card, deckName }: { card: DrawnCard; deckName: string }) {
 function FlipCard({
   index,
   card,
-  deckName,
   isFlipped,
   isDisabled,
   onClick,
@@ -167,7 +147,6 @@ function FlipCard({
 }: {
   index: number;
   card: DrawnCard;
-  deckName: string;
   isFlipped: boolean;
   isDisabled: boolean;
   onClick: () => void;
@@ -182,7 +161,7 @@ function FlipCard({
           </div>
         ) : (
           <div className="animate-fade-in">
-            <CardFront card={card} deckName={deckName} />
+            <CardFront card={card} />
           </div>
         )}
       </div>
@@ -198,13 +177,11 @@ function FlipCard({
           transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
         }}
       >
-        {/* Back face */}
         <div style={{ backfaceVisibility: 'hidden' }}>
           <CardBack index={index} disabled={isDisabled} onClick={onClick} reducedMotion={reducedMotion} />
         </div>
-        {/* Front face */}
         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-          <CardFront card={card} deckName={deckName} />
+          <CardFront card={card} />
         </div>
       </div>
     </div>
@@ -217,110 +194,162 @@ export function PostSpinCardDraw({
   deckId,
   isPremium,
   ownedPacks,
-  canSaveFortunes,
-  onSaveFortune,
+  userId,
+  spinId,
   onCardRevealed,
   onUpgrade,
+  onShare,
+  onClose,
 }: PostSpinCardDrawProps) {
   const reducedMotion = useReducedMotion();
 
-  const [cards, setCards] = useState<DrawnCard[]>([]);
+  // State
+  const [dealtCards, setDealtCards] = useState<DrawnCard[]>([]);
+  const [chosenCard, setChosenCard] = useState<DrawnCard | null>(null);
+  const [revealCardId, setRevealCardId] = useState<string | null>(null);
+  const [isDeckLocked, setIsDeckLocked] = useState(false);
   const [deckInfo, setDeckInfo] = useState<DeckInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [locked, setLocked] = useState(false);
-  const [flippedIndex, setFlippedIndex] = useState<number | null>(null);
-  const [fortuneSaved, setFortuneSaved] = useState(false);
+  const [cardSaved, setCardSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [drawKey, setDrawKey] = useState(0);
 
-  // Fetch deck info + cards
+  const effectiveDeckId = deckId || 'fools_journey';
+
+  // Fetch deck info + deal cards
   const fetchCards = useCallback(async () => {
     setLoading(true);
-    setFlippedIndex(null);
-    setFortuneSaved(false);
-    setLocked(false);
+    setChosenCard(null);
+    setRevealCardId(null);
+    setCardSaved(false);
+    setIsDeckLocked(false);
 
     try {
       // 1. Get deck info
       const { data: deck, error: deckErr } = await supabase
         .from('card_decks')
         .select('id, name, tier, description')
-        .eq('id', deckId)
+        .eq('id', effectiveDeckId)
         .eq('is_active', true)
         .maybeSingle();
 
       if (deckErr || !deck) {
         logger.error('Error fetching deck:', deckErr);
-        setCards([]);
+        setDealtCards([]);
         setLoading(false);
         return;
       }
 
       setDeckInfo(deck as DeckInfo);
 
-      // 2. Check access
-      if (!canAccessDeck(deck.tier, isPremium, ownedPacks, deckId)) {
-        setLocked(true);
-        setCards([]);
+      // 2. Determine access
+      let hasAccess = false;
+      if (deck.tier === 'free') {
+        hasAccess = true;
+      } else if (isPremium) {
+        hasAccess = true;
+      } else if (deck.tier === 'paid' && userId) {
+        // Check user_deck_ownership
+        const { data: ownership } = await supabase
+          .from('user_deck_ownership')
+          .select('deck_id')
+          .eq('user_id', userId)
+          .eq('deck_id', effectiveDeckId)
+          .maybeSingle();
+        if (ownership) hasAccess = true;
+      }
+      // Also check legacy ownedPacks array
+      if (!hasAccess && ownedPacks.includes(effectiveDeckId)) {
+        hasAccess = true;
+      }
+
+      if (!hasAccess) {
+        setIsDeckLocked(true);
+        setDealtCards([]);
         setLoading(false);
         return;
       }
 
-      // 3. Get cards from deck
+      // 3. Fetch cards and deal 3
       const { data: deckCards, error: cardsErr } = await supabase
         .from('deck_cards')
         .select('id, card_name, action_text, vibe_tag, category, card_number')
-        .eq('deck_id', deckId)
+        .eq('deck_id', effectiveDeckId)
         .eq('is_active', true);
 
       if (cardsErr) {
         logger.error('Error fetching deck cards:', cardsErr);
-        setCards([]);
+        setDealtCards([]);
         setLoading(false);
         return;
       }
 
       // Shuffle and pick 3
       const shuffled = [...(deckCards || [])].sort(() => Math.random() - 0.5);
-      const picked = shuffled.slice(0, 3) as DrawnCard[];
-      setCards(picked);
+      setDealtCards((shuffled.slice(0, 3) as DrawnCard[]) || []);
     } catch (err) {
       logger.error('Error in PostSpinCardDraw:', err);
-      setCards([]);
+      setDealtCards([]);
     } finally {
       setLoading(false);
     }
-  }, [deckId, isPremium, ownedPacks, drawKey]);
+  }, [effectiveDeckId, isPremium, ownedPacks, userId, drawKey]);
 
   useEffect(() => {
     fetchCards();
   }, [fetchCards]);
 
   const handleCardSelect = (index: number) => {
-    if (flippedIndex !== null) return;
-    setFlippedIndex(index);
-    const selectedCard = cards[index];
-    if (selectedCard) {
-      onCardRevealed?.(selectedCard);
-    }
+    if (chosenCard) return; // already chosen
+    const card = dealtCards[index];
+    if (!card) return;
+    setChosenCard(card);
+    setRevealCardId(card.id);
+    onCardRevealed?.(card);
   };
 
   const handleDrawAgain = () => {
     setDrawKey((prev) => prev + 1);
   };
 
-  const handleSave = () => {
-    if (!canSaveFortunes) {
-      toast.info('Upgrade to Plus to save card draws', {
-        action: { label: 'Upgrade', onClick: onUpgrade },
-      });
+  const handleSave = async () => {
+    if (!userId) {
+      toast.info('Sign in to save card draws');
       return;
     }
-    if (fortuneSaved || flippedIndex === null) return;
-    const card = cards[flippedIndex];
-    if (card) {
-      onSaveFortune?.(card.action_text, deckId);
-      setFortuneSaved(true);
-      toast.success('Card saved! ✨');
+    if (cardSaved || !chosenCard || saving) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('saved_card_draws').insert({
+        user_id: userId,
+        deck_id: effectiveDeckId,
+        card_id: chosenCard.id,
+        card_name: chosenCard.card_name,
+        action_text: chosenCard.action_text,
+        vibe_tag: chosenCard.vibe_tag,
+        category: chosenCard.category,
+        spin_id: spinId || null,
+      });
+
+      if (error) {
+        logger.error('Error saving card draw:', error);
+        toast.error('Could not save card');
+      } else {
+        setCardSaved(true);
+        toast.success('Card saved! ✨');
+      }
+    } catch (err) {
+      logger.error('Error saving card draw:', err);
+      toast.error('Could not save card');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleShare = () => {
+    if (chosenCard) {
+      onShare?.(chosenCard);
     }
   };
 
@@ -344,12 +373,10 @@ export function PostSpinCardDraw({
   }
 
   // Locked overlay
-  if (locked && deckInfo) {
+  if (isDeckLocked && deckInfo) {
     const ctaLabel =
       deckInfo.tier === 'plus'
         ? 'Upgrade to Plus'
-        : deckInfo.tier === 'paid'
-        ? 'Unlock this deck'
         : 'Unlock this deck';
 
     return (
@@ -377,7 +404,7 @@ export function PostSpinCardDraw({
   }
 
   // Empty state
-  if (cards.length === 0) {
+  if (dealtCards.length === 0) {
     return (
       <div className="bg-card rounded-2xl p-5 shadow-card border border-border/40 text-center">
         <p className="text-sm text-muted-foreground">No cards available in this deck yet.</p>
@@ -385,7 +412,7 @@ export function PostSpinCardDraw({
     );
   }
 
-  const selectedCard = flippedIndex !== null ? cards[flippedIndex] : null;
+  const flippedIndex = chosenCard ? dealtCards.findIndex((c) => c.id === chosenCard.id) : null;
 
   return (
     <div className="bg-card rounded-2xl p-5 shadow-card border border-border/40">
@@ -397,14 +424,13 @@ export function PostSpinCardDraw({
 
       {/* Cards grid */}
       <div role="listbox" aria-label="Face-down cards" className="flex justify-center gap-4 mb-5">
-        {cards.map((card, i) => (
+        {dealtCards.map((card, i) => (
           <FlipCard
             key={`${drawKey}-${i}`}
             index={i}
             card={card}
-            deckName={deckName}
             isFlipped={flippedIndex === i}
-            isDisabled={flippedIndex !== null && flippedIndex !== i}
+            isDisabled={chosenCard !== null && chosenCard.id !== card.id}
             onClick={() => handleCardSelect(i)}
             reducedMotion={reducedMotion}
           />
@@ -412,46 +438,54 @@ export function PostSpinCardDraw({
       </div>
 
       {/* Revealed card message */}
-      {selectedCard && (
+      {chosenCard && (
         <div className="animate-fade-in" role="status" aria-live="polite">
           <div className="bg-primary/6 rounded-xl p-4 border border-primary/15 mb-4">
             <p className="font-display text-sm font-bold text-foreground text-center mb-1">
-              {selectedCard.card_name}
+              {chosenCard.card_name}
             </p>
             <p className="text-sm italic text-muted-foreground leading-relaxed text-center mb-2">
-              "{selectedCard.action_text}"
+              "{chosenCard.action_text}"
             </p>
-            {selectedCard.vibe_tag && (
+            {chosenCard.vibe_tag && (
               <div className="flex justify-center">
                 <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                  {selectedCard.vibe_tag}
+                  {chosenCard.vibe_tag}
                 </span>
               </div>
             )}
-            {deckId !== 'fools_journey' && (
+            {effectiveDeckId !== 'fools_journey' && (
               <p className="text-[10px] text-primary/70 font-medium mt-2 text-center">
                 🃏 {deckName}
               </p>
             )}
           </div>
 
-          {/* Actions */}
+          {/* Action buttons: Save, Share, Close */}
           <div className="flex items-center justify-center gap-3">
-            {onSaveFortune && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                cardSaved
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-secondary hover:bg-secondary/80 text-foreground'
+              }`}
+            >
+              <Bookmark className={`w-3 h-3 ${cardSaved ? 'fill-current' : ''}`} />
+              {cardSaved ? 'Saved' : saving ? 'Saving…' : 'Save'}
+            </button>
+
+            {onShare && (
               <button
-                onClick={handleSave}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  fortuneSaved
-                    ? 'bg-primary/10 text-primary'
-                    : canSaveFortunes
-                    ? 'bg-secondary hover:bg-secondary/80 text-foreground'
-                    : 'bg-secondary/50 text-muted-foreground'
-                }`}
+                onClick={handleShare}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
               >
-                <Bookmark className={`w-3 h-3 ${fortuneSaved ? 'fill-current' : ''}`} />
-                {fortuneSaved ? 'Saved' : 'Save'}
+                <Share2 className="w-3 h-3" />
+                Share
               </button>
             )}
+
             <button
               onClick={handleDrawAgain}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
@@ -459,11 +493,21 @@ export function PostSpinCardDraw({
               <RefreshCw className="w-3 h-3" />
               Draw again
             </button>
+
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Close
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {!selectedCard && (
+      {!chosenCard && (
         <p className="text-center text-xs text-muted-foreground">Three cards await — choose one.</p>
       )}
     </div>
