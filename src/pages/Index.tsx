@@ -10,7 +10,7 @@ import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedFortunes } from '@/hooks/useSavedFortunes';
 import { useAutoPost } from '@/hooks/useAutoPost';
 import { useMileMarkers } from '@/hooks/useMileMarkers';
-import { LandingScreen, PrePickedCard } from '@/components/game/LandingScreen';
+import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
@@ -63,7 +63,7 @@ const Index = () => {
   const [isTrialMode, setIsTrialMode] = useState(false);
   const [findingSpots, setFindingSpots] = useState(false);
   const [openNowEmpty, setOpenNowEmpty] = useState(false);
-  const [prePickedCard, setPrePickedCard] = useState<PrePickedCard | undefined>(undefined);
+  
  
   const { coordinates, isLoading: locationLoading, requestLocation } = useGeolocation();
 
@@ -98,13 +98,10 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const handleSoloStart = useCallback((selectedVibe?: string, pickedCard?: PrePickedCard) => {
+  const handleSoloStart = useCallback((selectedVibe?: string) => {
     if (!isAuthenticated) {
       markTrialUsed();
       setIsTrialMode(true);
-    }
-    if (pickedCard) {
-      setPrePickedCard(pickedCard);
     }
     if (selectedVibe) {
       setVibeInput({ selectedVibe: selectedVibe as any });
