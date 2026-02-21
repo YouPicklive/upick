@@ -2,72 +2,57 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-interface SavedFortune {
+export interface SavedCardDraw {
   id: string;
   user_id: string;
-  fortune_pack_id: string | null;
-  fortune_text: string;
-  context: Record<string, any>;
+  deck_id: string;
+  card_id: string;
+  card_name: string;
+  action_text: string;
+  vibe_tag: string | null;
+  category: string | null;
+  spin_id: string | null;
   created_at: string;
 }
 
 export function useSavedFortunes() {
   const { user, isAuthenticated } = useAuth();
-  const [savedFortunes, setSavedFortunes] = useState<SavedFortune[]>([]);
+  const [savedCards, setSavedCards] = useState<SavedCardDraw[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
-      setSavedFortunes([]);
+      setSavedCards([]);
       return;
     }
 
-    const fetchFortunes = async () => {
+    const fetchCards = async () => {
       setLoading(true);
       const { data } = await supabase
-        .from('saved_fortunes' as any)
+        .from('saved_card_draws')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      setSavedFortunes((data as unknown as SavedFortune[]) || []);
+      setSavedCards((data as SavedCardDraw[]) || []);
       setLoading(false);
     };
 
-    fetchFortunes();
+    fetchCards();
   }, [isAuthenticated, user?.id]);
 
-  const saveFortune = useCallback(async (fortuneText: string, packId?: string, context?: Record<string, any>) => {
-    if (!user) return { error: 'Not authenticated' };
-
-    const { data, error } = await supabase
-      .from('saved_fortunes' as any)
-      .insert({
-        user_id: user.id,
-        fortune_text: fortuneText,
-        fortune_pack_id: packId || null,
-        context: context || {},
-      } as any)
-      .select()
-      .single();
-
-    if (error) return { error: error.message };
-
-    setSavedFortunes(prev => [(data as unknown as SavedFortune), ...prev]);
-    return { error: null };
-  }, [user?.id]);
-
-  const deleteFortune = useCallback(async (fortuneId: string) => {
+  const deleteCard = useCallback(async (cardId: string) => {
     if (!user) return;
 
     await supabase
-      .from('saved_fortunes' as any)
+      .from('saved_card_draws')
       .delete()
-      .eq('id', fortuneId)
+      .eq('id', cardId)
       .eq('user_id', user.id);
 
-    setSavedFortunes(prev => prev.filter(f => f.id !== fortuneId));
+    setSavedCards(prev => prev.filter(c => c.id !== cardId));
   }, [user?.id]);
 
-  return { savedFortunes, loading, saveFortune, deleteFortune };
+  // Keep old names for backward compat
+  return { savedFortunes: savedCards, savedCards, loading, deleteFortune: deleteCard, deleteCard };
 }
