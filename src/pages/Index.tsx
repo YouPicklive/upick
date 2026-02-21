@@ -83,7 +83,7 @@ const Index = () => {
     const packPurchase = searchParams.get('pack_purchase');
     if (packPurchase === 'success') {
       toast.success('🎉 Pack purchased successfully!', {
-        description: 'Your new fortune pack is now unlocked.',
+        description: 'Your new card deck is now unlocked.',
         duration: 5000,
       });
       searchParams.delete('pack_purchase');

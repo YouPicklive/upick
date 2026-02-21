@@ -48,7 +48,7 @@ export default function SavedFortunes() {
           <Bookmark className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <h2 className="font-display text-xl font-bold mb-2">Save Your Favorites</h2>
           <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
-            With Plus, you can save card draws that resonate with you and revisit them anytime.
+            With Plus, you can save cards that resonate with you and revisit them anytime.
           </p>
           <Button variant="hero" size="lg" onClick={() => navigate('/membership')}>
             <Star className="w-4 h-4 mr-2" /> Upgrade to Plus

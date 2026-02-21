@@ -71,8 +71,8 @@ export function PackPurchaseModal({
         </button>
 
         <div className="text-center mb-5">
-          <h2 className="font-display text-xl font-bold mb-1">Fortune Pack Shop</h2>
-          <p className="text-muted-foreground text-sm">Buy packs or go Plus for everything</p>
+          <h2 className="font-display text-xl font-bold mb-1">Card Pack Shop</h2>
+          <p className="text-muted-foreground text-sm">Buy decks or go Plus for everything</p>
         </div>
 
         {/* Plus Bundle */}
@@ -88,7 +88,7 @@ export function PackPurchaseModal({
                 <span className="text-xs text-muted-foreground">/mo</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">All packs + unlimited spins + premium distances</p>
+            <p className="text-xs text-muted-foreground mb-3">All decks + unlimited spins + premium distances</p>
             <Button onClick={onUpgradePlus} variant="hero" size="default" className="w-full">
               <Star className="w-4 h-4 mr-2" />
               Get Plus — Best Value

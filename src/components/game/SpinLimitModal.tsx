@@ -41,7 +41,7 @@ export function SpinLimitModal({ spinsToday, maxFreeSpins, onUpgrade, onClose }:
             </li>
             <li className="flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
-              Premium fortune packs
+              Premium card decks
             </li>
           </ul>
         </div>
