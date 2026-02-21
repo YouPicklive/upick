@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, ArrowLeft, Sparkles, Target, Zap, Lock, Crown } from 'lucide-react';
 import { VibeIntent, VibeEnergy, VibeFilter, VibeInput, computeRandomness, RandomnessLevel, YouPickVibe, YOUPICK_VIBES } from '@/types/game';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
-import { FORTUNE_PACKS, FortunePackInfo } from '@/hooks/useFortunes';
+import { useCardDecks, CardDeck } from '@/hooks/useCardDecks';
 import { ShoppingSubcategoryModal, type ShoppingSubcategory } from './ShoppingSubcategoryModal';
 import { PackPurchaseModal } from './PackPurchaseModal';
 import { Switch } from '@/components/ui/switch';
@@ -91,6 +91,7 @@ export function VibeScreen({
   useScrollToTop([step]);
   const navigate = useNavigate();
 
+  const { decks: cardDecks, loading: decksLoading } = useCardDecks();
   const [showShoppingModal, setShowShoppingModal] = useState(false);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
 
@@ -354,58 +355,17 @@ export function VibeScreen({
             <RandomnessMeter level={randomness} />
 
             {/* Pick Your Deck */}
-            <div className="bg-card rounded-2xl p-5 shadow-card mt-4">
-              <h2 className="font-display text-base font-bold mb-1">Pick your deck</h2>
-              <p className="text-muted-foreground text-xs mb-3">Choose a card pack for your draw.</p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {FORTUNE_PACKS.map((pack) => {
-                  const isSelected = fortunePack === pack.id;
-                  const isPremiumPack = pack.tier !== 'free';
-                  const isLocked = isPremiumPack && !isPremium && !ownedPacks.includes(pack.id);
-                  const badge = pack.tier === 'free' ? 'Free' : (isPremium ? 'Plus' : (ownedPacks.includes(pack.id) ? 'Purchased' : (pack.tier === 'plus' ? 'Plus' : '$2.99')));
-                  return (
-                    <button
-                      key={pack.id}
-                      onClick={() => {
-                        if (isLocked) {
-                          setShowPackPurchase(true);
-                          return;
-                        }
-                        onFortunePackChange(pack.id);
-                      }}
-                      className={`p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 relative ${
-                        isSelected && !isLocked
-                          ? 'gradient-warm text-primary-foreground shadow-glow'
-                          : isLocked
-                          ? 'bg-secondary/50 opacity-70'
-                          : 'bg-secondary hover:bg-secondary/80'
-                      }`}
-                    >
-                      <span className="text-2xl">{pack.emoji}</span>
-                      <span className="font-semibold text-xs">{pack.name}</span>
-                      <span className={`text-[10px] ${isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {pack.description}
-                      </span>
-                      {/* Badge */}
-                      <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${
-                        isSelected && !isLocked
-                          ? 'bg-primary-foreground/20 text-primary-foreground'
-                          : isLocked
-                          ? 'bg-muted text-muted-foreground'
-                          : 'bg-primary/10 text-primary'
-                      }`}>
-                        {badge}
-                      </span>
-                      {isLocked && (
-                        <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">
-                          <Lock className="w-3 h-3" />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <DeckSelector
+              decks={cardDecks}
+              decksLoading={decksLoading}
+              selectedDeckId={fortunePack}
+              isPremium={isPremium}
+              ownedPacks={ownedPacks}
+              onSelect={(deckId) => {
+                onFortunePackChange(deckId);
+              }}
+              onLockedClick={() => setShowPackPurchase(true)}
+            />
           </div>
         )}
 
@@ -445,6 +405,121 @@ export function VibeScreen({
           onClose={() => setShowPackPurchase(false)}
         />
       )}
+    </div>
+  );
+}
+
+// Deck emoji map for display
+const DECK_EMOJI: Record<string, string> = {
+  fools_journey: '🃏',
+  night_out: '🌙',
+  love_dating: '💕',
+  what_should_i_do: '🎯',
+};
+
+function DeckSelector({
+  decks,
+  decksLoading,
+  selectedDeckId,
+  isPremium,
+  ownedPacks,
+  onSelect,
+  onLockedClick,
+}: {
+  decks: CardDeck[];
+  decksLoading: boolean;
+  selectedDeckId: string;
+  isPremium: boolean;
+  ownedPacks: string[];
+  onSelect: (deckId: string) => void;
+  onLockedClick: () => void;
+}) {
+  if (decksLoading) {
+    return (
+      <div className="bg-card rounded-2xl p-5 shadow-card mt-4">
+        <h2 className="font-display text-base font-bold mb-1">Pick your deck</h2>
+        <p className="text-muted-foreground text-xs mb-3">Choose a card pack for your draw.</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="h-24 rounded-xl bg-secondary animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (decks.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-card rounded-2xl p-5 shadow-card mt-4">
+      <h2 className="font-display text-base font-bold mb-1">Pick your deck</h2>
+      <p className="text-muted-foreground text-xs mb-3">Choose a card pack for your draw.</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        {decks.map((deck) => {
+          const isSelected = selectedDeckId === deck.id;
+          const isPaid = deck.tier !== 'free';
+          const isLocked = isPaid && !isPremium && !ownedPacks.includes(deck.id);
+          const badge = deck.tier === 'free'
+            ? 'Free'
+            : isPremium
+            ? 'Plus'
+            : ownedPacks.includes(deck.id)
+            ? 'Purchased'
+            : deck.tier === 'plus'
+            ? 'Plus'
+            : deck.price_cents
+            ? `$${(deck.price_cents / 100).toFixed(2)}`
+            : 'Plus';
+
+          const emoji = DECK_EMOJI[deck.id] || '🎴';
+
+          return (
+            <button
+              key={deck.id}
+              onClick={() => {
+                if (isLocked) {
+                  onLockedClick();
+                  return;
+                }
+                onSelect(deck.id);
+              }}
+              className={`p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all duration-200 relative ${
+                isSelected && !isLocked
+                  ? 'gradient-warm text-primary-foreground shadow-glow'
+                  : isLocked
+                  ? 'bg-secondary/50 opacity-70'
+                  : 'bg-secondary hover:bg-secondary/80'
+              }`}
+            >
+              <span className="text-2xl">{emoji}</span>
+              <span className="font-semibold text-xs">{deck.name}</span>
+              {deck.description && (
+                <span className={`text-[10px] leading-tight text-center line-clamp-1 ${
+                  isSelected && !isLocked ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                }`}>
+                  {deck.description}
+                </span>
+              )}
+              <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                isSelected && !isLocked
+                  ? 'bg-primary-foreground/20 text-primary-foreground'
+                  : isLocked
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-primary/10 text-primary'
+              }`}>
+                {badge}
+              </span>
+              {isLocked && (
+                <span className="absolute top-1.5 right-1.5 text-muted-foreground/40">
+                  <Lock className="w-3 h-3" />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

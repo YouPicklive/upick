@@ -268,7 +268,7 @@ const Index = () => {
           isTrialMode={!isAuthenticated && canUseTrial}
           ownedPacks={ownedPacks}
           fortunePack={state.preferences.fortunePack}
-          onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
+          onFortunePackChange={(packId) => setPreferences({ fortunePack: packId })}
           activeFilters={state.vibeInput.filters}
           onClearFilter={(filter) => setVibeInput({ filters: state.vibeInput.filters.filter(f => f !== filter) })}
           onOpenPreferences={() => { setMode('vibe'); setVibeStep(1); }}
@@ -299,7 +299,7 @@ const Index = () => {
           onStepChange={setVibeStep}
           onVibeChange={setVibeInput}
           onPlayerCountChange={setPlayerCount}
-          onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
+          onFortunePackChange={(packId) => setPreferences({ fortunePack: packId })}
           onStart={handleVibeComplete}
           onBack={() => setMode('landing')}
         />
@@ -345,7 +345,7 @@ const Index = () => {
         userCoordinates={coordinates}
         isPremium={isPremium}
         ownedPacks={ownedPacks}
-        onFortunePackChange={(packId) => setPreferences({ fortunePack: packId as any })}
+        onFortunePackChange={(packId) => setPreferences({ fortunePack: packId })}
         canSaveFortunes={canSaveFortunes}
         onSaveFortune={(fortuneText, packId) => {
           saveFortune(fortuneText, packId);
