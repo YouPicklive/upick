@@ -327,8 +327,43 @@ serve(async (req) => {
     const { latitude, longitude, intent, energy, filters, shoppingSubcategory, openNow } = parsed.data;
     const effectiveIntent = intent || "surprise";
     const filterArr = filters || [];
-    const maxMiles = getMaxRadiusMiles(filterArr);
-    const googleRadius = getGoogleRadiusMeters(filterArr, intent);
+
+    // ── Server-side radius clamping for non-Plus users ───────────────
+    const authHeader = req.headers.get("authorization");
+    let isPlus = false;
+    if (authHeader) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const adminClient = createClient(supabaseUrl, serviceKey);
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user } } = await adminClient.auth.getUser(token);
+      if (user) {
+        const { data: ent } = await adminClient
+          .from("user_entitlements")
+          .select("plus_active")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        isPlus = ent?.plus_active === true;
+      }
+    }
+
+    // Clamp distance filters: free users max 10 mi
+    const clampedFilters = [...filterArr];
+    if (!isPlus) {
+      const plusOnlyDistances = ["any-distance", "explorer-50"];
+      const hasLockedDistance = clampedFilters.some(f => plusOnlyDistances.includes(f));
+      if (hasLockedDistance) {
+        // Remove the locked filter and replace with city-wide (10 mi)
+        for (const d of plusOnlyDistances) {
+          const idx = clampedFilters.indexOf(d);
+          if (idx !== -1) clampedFilters.splice(idx, 1);
+        }
+        clampedFilters.push("city-wide");
+      }
+    }
+
+    const maxMiles = getMaxRadiusMiles(clampedFilters);
+    const googleRadius = getGoogleRadiusMeters(clampedFilters, intent);
 
     // ========== SHOPPING SUBCATEGORY PATH ==========
     if (intent === "shopping" && shoppingSubcategory) {
