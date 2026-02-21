@@ -12,7 +12,7 @@ const initialPreferences: Preferences = {
   distance: 'any',
   mood: 'any',
   budget: 'any',
-  fortunePack: 'free',
+  fortunePack: 'fools_journey',
   freeOnly: false,
 };
 

@@ -104,7 +104,7 @@ export interface Preferences {
   distance: 'walking' | 'short-drive' | 'road-trip' | 'epic-adventure' | 'any';
   mood: 'solo' | 'date' | 'squad' | 'chaotic' | 'cozy' | 'any';
   budget: 'budget' | 'mid' | 'splurge' | 'any';
-  fortunePack: 'free' | 'plus' | 'love' | 'career' | 'unhinged' | 'main_character';
+  fortunePack: string;
   freeOnly: boolean;
 }
 
