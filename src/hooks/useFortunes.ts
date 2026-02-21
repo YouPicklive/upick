@@ -118,11 +118,66 @@ export function useFortunes() {
     return FORTUNE_PACKS.find(p => p.id === packId) || FORTUNE_PACKS[0];
   }, []);
 
+  /**
+   * Fetch multiple random fortunes from a pack for the card draw UI.
+   * Returns an array of { id, text, tags } objects.
+   */
+  const getMultipleFortunes = useCallback(async (
+    packId: string,
+    count: number = 3
+  ): Promise<{ fortunes: { id: string; text: string; tags: string[] }[]; accessDenied: boolean }> => {
+    const pack = FORTUNE_PACKS.find(p => p.id === packId);
+    const tier: FortuneTier = pack?.tier || 'free';
+    const packKey = pack?.packKey || undefined;
+
+    try {
+      let query = supabase
+        .from('fortunes')
+        .select('id, text, tags')
+        .eq('tier', tier)
+        .eq('active', true);
+
+      if (tier === 'pack' && packKey) {
+        query = query.eq('pack_key', packKey);
+      }
+
+      const { data, error: fetchError } = await query;
+
+      if (fetchError) {
+        logger.error('Error fetching fortunes batch:', fetchError);
+        return { fortunes: getFallbackFortunes(count), accessDenied: false };
+      }
+
+      if (!data || data.length === 0) {
+        if (tier === 'free') {
+          return { fortunes: getFallbackFortunes(count), accessDenied: false };
+        }
+        return { fortunes: [], accessDenied: true };
+      }
+
+      // Shuffle and pick `count` fortunes
+      const shuffled = [...data].sort(() => Math.random() - 0.5);
+      const picked = shuffled.slice(0, Math.min(count, shuffled.length));
+      return {
+        fortunes: picked.map(f => ({
+          id: f.id,
+          text: f.text,
+          tags: f.tags || [],
+        })),
+        accessDenied: false,
+      };
+    } catch (err) {
+      logger.error('Error in getMultipleFortunes:', err);
+      return { fortunes: getFallbackFortunes(count), accessDenied: false };
+    }
+  }, []);
+
   return {
     loading,
     error,
     getRandomFortune,
     getFortuneByPackId,
+    getMultipleFortunes,
     getPackInfo,
     FORTUNE_PACKS,
   };
@@ -138,4 +193,20 @@ function getFallbackFortune(): string {
     "Fortune favors the hungry — dig in! 🍴",
   ];
   return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+function getFallbackFortunes(count: number): { id: string; text: string; tags: string[] }[] {
+  const texts = [
+    "The universe has something special planned for you ✨",
+    "Trust the pick — it knows what you need 🔮",
+    "Good vibes are guaranteed at this spot 🌈",
+    "Your next adventure is closer than you think 🌟",
+    "Fortune favors the hungry — dig in! 🍴",
+    "Today is yours to shape — start moving 🌙",
+  ];
+  return texts.sort(() => Math.random() - 0.5).slice(0, count).map((text, i) => ({
+    id: `fallback-${i}`,
+    text,
+    tags: [],
+  }));
 }

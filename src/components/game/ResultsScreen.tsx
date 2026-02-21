@@ -5,6 +5,7 @@ import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navig
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
 import { ReviewModal } from './ReviewModal';
+import { PostSpinCardDraw } from './PostSpinCardDraw';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import { useSavedSpins } from '@/hooks/useSavedSpins';
@@ -98,6 +99,7 @@ export function ResultsScreen({
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [showCardDraw, setShowCardDraw] = useState(false);
   const [fortune, setFortune] = useState('');
   const [isSharing, setIsSharing] = useState(false);
   const [fortuneSaved, setFortuneSaved] = useState(false);
@@ -126,22 +128,23 @@ export function ResultsScreen({
   }, []);
 
   const handleSpinComplete = async () => {
-    const result = await getFortuneByPackId(fortunePack);
-
-    if (result.accessDenied) {
-      const freeResult = await getFortuneByPackId('free');
-      setFortune(freeResult.fortune || 'Great things are coming your way! ✨');
-    } else {
-      setFortune(result.fortune);
-    }
-
+    // Show card draw phase instead of auto-fetching a fortune
     setTimeout(() => {
       setShowWheel(false);
-      setShowResult(true);
+      setShowCardDraw(true);
       if (isEventCategory) {
         searchEvents(winner.name, winner.category, undefined, userCoordinates);
       }
     }, 1500);
+  };
+
+  const handleFortuneRevealed = (fortuneText: string) => {
+    setFortune(fortuneText);
+    // Transition from card draw to full result after a short delay
+    setTimeout(() => {
+      setShowCardDraw(false);
+      setShowResult(true);
+    }, 2000);
   };
 
   // Fire feed post on unmount or when user takes an action
@@ -249,70 +252,21 @@ export function ResultsScreen({
             <p className="text-muted-foreground text-sm">Let fate decide</p>
           </div>
           <FortuneWheel items={wheelItems} onSpinComplete={handleSpinComplete} spinning={spinning} />
+        </div>
+      )}
 
-          {/* Fortune Pack Shelf — under wheel */}
-          {onFortunePackChange && (
-            <div className="mt-6">
-              <div className="text-center mb-3">
-                <h3 className="font-display text-sm font-bold">Fortune Packs</h3>
-                <p className="text-muted-foreground text-[11px]">Pick a deck to guide the spin (optional).</p>
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide">
-                {/* Standard Spin option */}
-                <button
-                  onClick={() => onFortunePackChange('free')}
-                  className={`shrink-0 p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 min-w-[72px] ${
-                    fortunePack === 'free'
-                      ? 'gradient-warm text-primary-foreground shadow-glow'
-                      : 'bg-secondary hover:bg-secondary/80'
-                  }`}
-                >
-                  <span className="text-lg">🎲</span>
-                  <span className="font-medium text-[9px] text-center leading-tight">Standard</span>
-                  {fortunePack === 'free' && (
-                    <span className="text-[8px] font-semibold opacity-80">Active</span>
-                  )}
-                </button>
-                {FORTUNE_PACKS.filter(p => p.id !== 'free').map((pack) => {
-                  const isSelected = fortunePack === pack.id;
-                  const isUnlocked = isPremium || ownedPacks.includes(pack.id);
-                  const isLocked = !isUnlocked;
-                  return (
-                    <button
-                      key={pack.id}
-                      onClick={() => {
-                        if (!isLocked) {
-                          onFortunePackChange(pack.id);
-                        }
-                        // If locked, do nothing (could open paywall — but not changing existing flow)
-                      }}
-                      className={`shrink-0 p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 min-w-[72px] relative ${
-                        isLocked
-                          ? 'bg-secondary/50 opacity-60'
-                          : isSelected
-                          ? 'gradient-warm text-primary-foreground shadow-glow'
-                          : 'bg-secondary hover:bg-secondary/80'
-                      }`}
-                    >
-                      {isLocked && (
-                        <div className="absolute -top-1 -right-1 bg-primary rounded-full p-0.5">
-                          <Lock className="w-2.5 h-2.5 text-primary-foreground" />
-                        </div>
-                      )}
-                      <span className="text-lg">{pack.emoji}</span>
-                      <span className="font-medium text-[9px] text-center leading-tight">{pack.name}</span>
-                      {isSelected && (
-                        <span className="text-[8px] font-semibold opacity-80">Active</span>
-                      )}
-                      {isLocked && (
-                        <span className="text-[8px] text-muted-foreground">{pack.tier === 'plus' ? 'Plus' : '$2.99'}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+      {/* Card Draw Phase — post-spin, pre-result */}
+      {showCardDraw && (
+        <div className="w-full max-w-md animate-scale-in">
+          <PostSpinCardDraw
+            packId={fortunePack}
+            isPremium={isPremium}
+            ownedPacks={ownedPacks}
+            canSaveFortunes={canSaveFortunes}
+            onSaveFortune={onSaveFortune}
+            onFortuneRevealed={handleFortuneRevealed}
+            onUpgrade={() => window.location.href = '/membership'}
+          />
         </div>
       )}
 
