@@ -5,7 +5,6 @@ import { ExternalLink, Globe, RotateCcw, Calendar, Music, Loader2, MapPin, Navig
 import { FortuneWheel } from './FortuneWheel';
 import { SpotImage } from './SpotImage';
 import { ReviewModal } from './ReviewModal';
-import { PostSpinCardDraw } from './PostSpinCardDraw';
 import { useFortunes, FORTUNE_PACKS } from '@/hooks/useFortunes';
 import { useEventSearch, Timeframe, LocalEvent } from '@/hooks/useEventSearch';
 import { useSavedSpins } from '@/hooks/useSavedSpins';
@@ -13,11 +12,13 @@ import { usePlaceReviews } from '@/hooks/usePlaceReviews';
 import html2canvas from 'html2canvas';
 import { formatDistanceWithEmoji, type Coordinates } from '@/hooks/useGeolocation';
 import { toast } from 'sonner';
+import type { PrePickedCard } from './LandingScreen';
 
 interface ResultsScreenProps {
   winner: Spot;
   likedSpots?: Spot[];
   fortunePack?: string;
+  prePickedCard?: PrePickedCard;
   onPlayAgain: () => void;
   onNotForMe?: (spotId: string) => void;
   isTrialMode?: boolean;
@@ -92,15 +93,15 @@ function PhotoCarousel({ photos, alt, category }: { photos: string[]; alt: strin
 }
 
 export function ResultsScreen({ 
-  winner, likedSpots = [], fortunePack = 'free', onPlayAgain, onNotForMe,
+  winner, likedSpots = [], fortunePack = 'free', prePickedCard, onPlayAgain, onNotForMe,
   isTrialMode, userCoordinates, isPremium = false, ownedPacks = [], onFortunePackChange,
   canSaveFortunes = false, onSaveFortune, onPostToFeed, isAuthenticated = false, onAwardPoints
 }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
-  const [showCardDraw, setShowCardDraw] = useState(false);
-  const [fortune, setFortune] = useState('');
+  const [cardRevealed, setCardRevealed] = useState(false);
+  const [fortune, setFortune] = useState(prePickedCard?.text || '');
   const [isSharing, setIsSharing] = useState(false);
   const [fortuneSaved, setFortuneSaved] = useState(false);
   const [postToFeed, setPostToFeed] = useState(true);
@@ -128,23 +129,17 @@ export function ResultsScreen({
   }, []);
 
   const handleSpinComplete = async () => {
-    // Show card draw phase instead of auto-fetching a fortune
     setTimeout(() => {
       setShowWheel(false);
-      setShowCardDraw(true);
+      setShowResult(true);
       if (isEventCategory) {
         searchEvents(winner.name, winner.category, undefined, userCoordinates);
       }
+      // Trigger card flip reveal after result appears
+      if (prePickedCard) {
+        setTimeout(() => setCardRevealed(true), 600);
+      }
     }, 1500);
-  };
-
-  const handleFortuneRevealed = (fortuneText: string) => {
-    setFortune(fortuneText);
-    // Transition from card draw to full result after a short delay
-    setTimeout(() => {
-      setShowCardDraw(false);
-      setShowResult(true);
-    }, 2000);
   };
 
   // Fire feed post on unmount or when user takes an action
@@ -255,20 +250,6 @@ export function ResultsScreen({
         </div>
       )}
 
-      {/* Card Draw Phase — post-spin, pre-result */}
-      {showCardDraw && (
-        <div className="w-full max-w-md animate-scale-in">
-          <PostSpinCardDraw
-            packId={fortunePack}
-            isPremium={isPremium}
-            ownedPacks={ownedPacks}
-            canSaveFortunes={canSaveFortunes}
-            onSaveFortune={onSaveFortune}
-            onFortuneRevealed={handleFortuneRevealed}
-            onUpgrade={() => window.location.href = '/membership'}
-          />
-        </div>
-      )}
 
       {/* Result Phase — frosted glass card */}
       {showResult && (
@@ -330,8 +311,86 @@ export function ResultsScreen({
                 <span>{Array.from({ length: winner.priceLevel }).map(() => '$').join('')}</span>
               </div>
 
-              {/* Fortune with pack badge + save */}
-              {fortune && (
+              {/* Card Reveal — animated flip of pre-picked card */}
+              {prePickedCard && (
+                <div className="mb-5">
+                  <div className="flex justify-center mb-3">
+                    <div style={{ perspective: '800px' }}>
+                      <div
+                        className="relative w-[90px] h-[130px] transition-transform duration-700 ease-in-out"
+                        style={{
+                          transformStyle: 'preserve-3d',
+                          transform: cardRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                        }}
+                      >
+                        {/* Back face */}
+                        <div
+                          className="absolute inset-0 rounded-2xl border-2 border-primary/30 bg-gradient-to-b from-[hsl(var(--primary)/0.1)] to-[hsl(var(--accent)/0.06)] flex flex-col items-center justify-center"
+                          style={{ backfaceVisibility: 'hidden' }}
+                        >
+                          <div className="w-10 h-10 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-center">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-primary/50">
+                              <path d="M12 2L14.09 8.26L20 9.27L15.5 13.14L16.91 19.02L12 16.27L7.09 19.02L8.5 13.14L4 9.27L9.91 8.26L12 2Z" fill="currentColor" />
+                            </svg>
+                          </div>
+                        </div>
+                        {/* Front face */}
+                        <div
+                          className="absolute inset-0 rounded-2xl border-2 border-primary/50 bg-gradient-to-b from-[hsl(var(--primary)/0.12)] to-background shadow-[0_6px_24px_hsl(var(--primary)/0.15)] flex flex-col items-center justify-center p-3 text-center"
+                          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                        >
+                          <span className="text-2xl mb-1">{packInfo.emoji}</span>
+                          <span className="font-display text-[10px] font-bold text-foreground leading-tight">{packInfo.name}</span>
+                          {prePickedCard.tags.length > 0 && (
+                            <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium mt-1">
+                              {prePickedCard.tags[0]}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {cardRevealed && (
+                    <div className="animate-fade-in bg-secondary/60 rounded-xl p-3 relative" role="status" aria-live="polite">
+                      <p className="text-sm italic text-muted-foreground leading-relaxed pr-8">"{prePickedCard.text}"</p>
+                      {prePickedCard.packId !== 'free' && (
+                        <p className="text-[10px] text-primary font-medium mt-1.5">
+                          Guided by: {packInfo.emoji} {packInfo.name}
+                        </p>
+                      )}
+                      {onSaveFortune && (
+                        <button
+                          onClick={() => {
+                            if (!canSaveFortunes) {
+                              toast.info('Upgrade to Plus to save fortunes', {
+                                action: { label: 'Upgrade', onClick: () => window.location.href = '/membership' },
+                              });
+                              return;
+                            }
+                            if (fortuneSaved) return;
+                            onSaveFortune(fortune, fortunePack);
+                            setFortuneSaved(true);
+                            toast.success('Fortune saved! ✨');
+                          }}
+                          className={`absolute top-2.5 right-2.5 p-1.5 rounded-full transition-colors ${
+                            fortuneSaved
+                              ? 'text-primary'
+                              : canSaveFortunes
+                              ? 'text-muted-foreground hover:text-primary'
+                              : 'text-muted-foreground/40'
+                          }`}
+                          title={canSaveFortunes ? (fortuneSaved ? 'Saved!' : 'Save fortune') : 'Plus feature'}
+                        >
+                          <Bookmark className={`w-4 h-4 ${fortuneSaved ? 'fill-current' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Fortune (fallback — no pre-picked card) */}
+              {!prePickedCard && fortune && (
                 <div className="bg-secondary/60 rounded-xl p-3 mb-5 relative">
                   <p className="text-sm italic text-muted-foreground leading-relaxed pr-8">"{fortune}"</p>
                   {fortunePack !== 'free' && (
@@ -339,7 +398,6 @@ export function ResultsScreen({
                       Guided by: {packInfo.emoji} {packInfo.name}
                     </p>
                   )}
-                  {/* Save Fortune Button */}
                   {onSaveFortune && (
                     <button
                       onClick={() => {
