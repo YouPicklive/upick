@@ -41,6 +41,8 @@ interface LandingScreenProps {
   activeFilters?: VibeFilter[];
   onClearFilter?: (filter: VibeFilter) => void;
   onOpenPreferences?: () => void;
+  alignmentStreak?: number;
+  isAuthenticated?: boolean;
 }
 
 // Deck emoji map
@@ -51,9 +53,10 @@ const DECK_EMOJI: Record<string, string> = {
   what_should_i_do: '🎯',
 };
 
-export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'fools_journey', onFortunePackChange, activeFilters = [], onClearFilter, onOpenPreferences }: LandingScreenProps) {
+export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialMode, ownedPacks = [], fortunePack = 'fools_journey', onFortunePackChange, activeFilters = [], onClearFilter, onOpenPreferences, alignmentStreak = 0, isAuthenticated: isAuthProp = false }: LandingScreenProps) {
   const navigate = useNavigate();
-  const { user, isAuthenticated, signOut, loading } = useAuth();
+  const { user, isAuthenticated: isAuthHook, signOut, loading } = useAuth();
+  const isAuthenticated = isAuthProp || isAuthHook;
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
   const [showPackPurchase, setShowPackPurchase] = useState(false);
   const [showFloatingCTA, setShowFloatingCTA] = useState(false);
@@ -98,19 +101,65 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
           {/* Hero Section */}
           <div className="text-center animate-slide-up pt-6 pb-8">
             <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1] mb-3">
-              YOU SET THE VIBE
+              Make Confident Decisions
               <br />
-              <span className="text-gradient font-calligraphy font-normal text-4xl md:text-5xl"> The chopsticks decide </span>
+              <span className="text-gradient font-calligraphy font-normal text-4xl md:text-5xl"> in 60 Seconds. </span>
             </h1>
             <p className="text-muted-foreground text-base max-w-sm mx-auto leading-relaxed">
-              Alignment Through Movement — No overthinking. Just go.
+              Without endless scrolling — just clear direction on what to do next.
             </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-5">
+              <Button variant="hero" size="lg" onClick={handleSpin} className="group">
+                Start Your Daily Alignment
+                <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+              </Button>
+              <button
+                onClick={() => {
+                  document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+              >
+                See How It Works
+              </button>
+            </div>
           </div>
+
+          {/* Alignment Streak */}
+          {isAuthenticated && alignmentStreak > 0 && (
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
+                <span className="text-lg">🔥</span>
+                <span className="text-sm font-semibold text-primary">{alignmentStreak}-Day Alignment Streak</span>
+              </div>
+            </div>
+          )}
+
+          {/* How It Works */}
+          <section id="how-it-works" className="mb-8 bg-card rounded-2xl p-5 shadow-card">
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground text-center mb-4">How It Works</h2>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-lg shrink-0">1️⃣</span>
+                <p className="text-sm text-foreground">Choose your vibe</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-lg shrink-0">2️⃣</span>
+                <p className="text-sm text-foreground">Narrow your options</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-lg shrink-0">3️⃣</span>
+                <p className="text-sm text-foreground">Let alignment guide the decision</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-4 leading-relaxed">
+              Not random. Not overwhelming.<br />Structured clarity.
+            </p>
+          </section>
 
           {/* Vibe Section */}
           <section className="mb-8">
             <div className="text-center mb-5">
-              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Whats the move?</h2>
+              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">What's the move?</h2>
               <p className="text-muted-foreground text-sm mt-1">Pick a vibe.</p>
             </div>
 

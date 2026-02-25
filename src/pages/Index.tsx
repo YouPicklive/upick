@@ -10,6 +10,8 @@ import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 
 import { useAutoPost } from '@/hooks/useAutoPost';
 import { useMileMarkers } from '@/hooks/useMileMarkers';
+import { useAlignmentStreak } from '@/hooks/useAlignmentStreak';
+import { useEventTracking } from '@/hooks/useEventTracking';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { VibeScreen } from '@/components/game/VibeScreen';
 import { PlayingScreen } from '@/components/game/PlayingScreen';
@@ -58,6 +60,8 @@ const Index = () => {
   
   const { postSpin, postSave } = useAutoPost();
   const { awardPoints } = useMileMarkers();
+  const { streak, updateStreak, markExperienceTried } = useAlignmentStreak();
+  const { track } = useEventTracking();
 
   const [showSpinLimit, setShowSpinLimit] = useState(false);
   const [isTrialMode, setIsTrialMode] = useState(false);
@@ -72,10 +76,11 @@ const Index = () => {
     return coordinates || { latitude: 37.5407, longitude: -77.4360 };
   }, [coordinates]);
 
-  // Daily open award
+  // Daily open award + session tracking
   useEffect(() => {
     if (!user?.id) return;
     void awardPoints('daily_open', 5);
+    track('session_started');
   }, [user?.id]);
 
   // Handle checkout success/cancelled query params
@@ -146,6 +151,8 @@ const Index = () => {
       if (realSpots.length >= 4) {
         startGame(realSpots);
         void awardPoints('spin', 2);
+        void updateStreak();
+        track('spin_completed');
         return;
       }
       // Open Now empty state
@@ -269,6 +276,8 @@ const Index = () => {
           activeFilters={state.vibeInput.filters}
           onClearFilter={(filter) => setVibeInput({ filters: state.vibeInput.filters.filter(f => f !== filter) })}
           onOpenPreferences={() => { setMode('vibe'); setVibeStep(1); }}
+          alignmentStreak={streak}
+          isAuthenticated={isAuthenticated}
         />
         {showSpinLimit && (
           <SpinLimitModal
@@ -351,6 +360,8 @@ const Index = () => {
           postSpin(winner, { shouldPost, caption });
         }}
         onAwardPoints={awardPoints}
+        onMarkExperienceTried={markExperienceTried}
+        onTrackEvent={(event) => track(event as any)}
       />
     );
   }

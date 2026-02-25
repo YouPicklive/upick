@@ -202,6 +202,52 @@ export type Database = {
           },
         ]
       }
+      event_logs: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feed_posts: {
         Row: {
           body: string | null
@@ -555,6 +601,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          alignment_streak_count: number
           avatar_url: string | null
           bio: string | null
           bot_slug: string | null
@@ -562,8 +609,10 @@ export type Database = {
           created_at: string
           default_post_privacy: string
           display_name: string | null
+          experiences_completed_count: number
           id: string
           is_bot: boolean
+          last_spin_date: string | null
           region: string | null
           selected_city_id: string | null
           timezone: string | null
@@ -571,6 +620,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          alignment_streak_count?: number
           avatar_url?: string | null
           bio?: string | null
           bot_slug?: string | null
@@ -578,8 +628,10 @@ export type Database = {
           created_at?: string
           default_post_privacy?: string
           display_name?: string | null
+          experiences_completed_count?: number
           id: string
           is_bot?: boolean
+          last_spin_date?: string | null
           region?: string | null
           selected_city_id?: string | null
           timezone?: string | null
@@ -587,6 +639,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          alignment_streak_count?: number
           avatar_url?: string | null
           bio?: string | null
           bot_slug?: string | null
@@ -594,8 +647,10 @@ export type Database = {
           created_at?: string
           default_post_privacy?: string
           display_name?: string | null
+          experiences_completed_count?: number
           id?: string
           is_bot?: boolean
+          last_spin_date?: string | null
           region?: string | null
           selected_city_id?: string | null
           timezone?: string | null
@@ -1275,10 +1330,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_experience_tried: { Args: { p_user_id: string }; Returns: Json }
       redeem_mile_marker_reward: {
         Args: { p_request_id: string; p_reward_id: string; p_user_id: string }
         Returns: Json
       }
+      update_alignment_streak: { Args: { p_user_id: string }; Returns: Json }
       user_has_plus: { Args: { check_user_id: string }; Returns: boolean }
       user_owns_pack: {
         Args: { check_user_id: string; pack_key: string }
