@@ -124,19 +124,25 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
             </div>
           </div>
 
-          {/* Alignment Streak */}
-          {isAuthenticated && alignmentStreak > 0 && (
-            <div className="flex justify-center mb-6">
-              <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
-                <span className="text-lg">🔥</span>
-                <span className="text-sm font-semibold text-primary">{alignmentStreak}-Day Alignment Streak</span>
-              </div>
-            </div>
-          )}
+          {/* Problem Framing */}
+          <section className="mb-8 text-center">
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground mb-3">
+              You Don't Need More Options. You Need Clarity.
+            </h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Endless scrolling.<br />
+              Too many choices.<br />
+              Second-guessing everything.
+            </p>
+            <p className="text-foreground text-sm font-medium mt-4">
+              YouPick narrows the noise so you can move forward confidently.
+            </p>
+          </section>
 
           {/* How It Works */}
           <section id="how-it-works" className="mb-8 bg-card rounded-2xl p-5 shadow-card">
-            <h2 className="font-display text-lg font-bold tracking-tight text-foreground text-center mb-4">How It Works</h2>
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground text-center mb-2">How It Works</h2>
+            <p className="text-xs text-muted-foreground text-center mb-4">Built to reduce choice paralysis.</p>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <span className="text-lg shrink-0">1️⃣</span>
@@ -155,6 +161,16 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
               Not random. Not overwhelming.<br />Structured clarity.
             </p>
           </section>
+
+          {/* Alignment Streak — only for logged-in users */}
+          {isAuthenticated && alignmentStreak > 0 && (
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
+                <span className="text-lg">🔥</span>
+                <span className="text-sm font-semibold text-primary">{alignmentStreak}-Day Alignment Streak</span>
+              </div>
+            </div>
+          )}
 
           {/* Vibe Section */}
           <section className="mb-8">
@@ -190,19 +206,6 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
 
               })}
             </div>
-          </section>
-
-          {/* Select a Deck */}
-          <section className="mb-8">
-            <DeckSelectorHome
-              decks={cardDecks}
-              decksLoading={decksLoading}
-              selectedDeckId={fortunePack}
-              isPremium={isPremium}
-              ownedPacks={ownedPacks}
-              onSelect={(deckId) => onFortunePackChange?.(deckId)}
-              onLockedClick={() => setShowPackPurchase(true)}
-            />
           </section>
 
           {/* Spin Button */}
