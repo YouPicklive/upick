@@ -32,6 +32,8 @@ interface ResultsScreenProps {
   onPostToFeed?: (shouldPost: boolean, caption: string) => void;
   isAuthenticated?: boolean;
   onAwardPoints?: (reason: string, points: number) => void;
+  onMarkExperienceTried?: () => Promise<number | null>;
+  onTrackEvent?: (event: string) => void;
 }
 
 const categoryEmojis: Record<string, string> = {
@@ -96,7 +98,8 @@ function PhotoCarousel({ photos, alt, category }: { photos: string[]; alt: strin
 export function ResultsScreen({ 
   winner, likedSpots = [], fortunePack = 'fools_journey', onPlayAgain, onNotForMe,
   isTrialMode, userCoordinates, isPremium = false, ownedPacks = [], onFortunePackChange,
-  canSaveFortunes = false, onSaveFortune, onPostToFeed, isAuthenticated = false, onAwardPoints
+  canSaveFortunes = false, onSaveFortune, onPostToFeed, isAuthenticated = false, onAwardPoints,
+  onMarkExperienceTried, onTrackEvent
 }: ResultsScreenProps) {
   const [showWheel, setShowWheel] = useState(true);
   const [spinning, setSpinning] = useState(false);
@@ -113,6 +116,8 @@ export function ResultsScreen({
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewContent, setReviewContent] = useState('');
   const [reviewNote, setReviewNote] = useState('');
+  const [experienceTried, setExperienceTried] = useState(false);
+  const [experienceCount, setExperienceCount] = useState<number | null>(null);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
@@ -439,6 +444,39 @@ export function ResultsScreen({
               />
 
 
+              {/* Mark as Tried */}
+              {isAuthenticated && !experienceTried && onMarkExperienceTried && (
+                <div className="mb-4">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-primary/30 hover:bg-primary/5"
+                    onClick={async () => {
+                      const count = await onMarkExperienceTried();
+                      if (count !== null) {
+                        setExperienceTried(true);
+                        setExperienceCount(count);
+                        onTrackEvent?.('experience_marked_tried');
+                      }
+                    }}
+                  >
+                    ✔ I Tried This
+                  </Button>
+                </div>
+              )}
+              {experienceTried && experienceCount !== null && (
+                <div className="bg-primary/5 rounded-xl p-3 mb-4 text-center">
+                  <p className="text-sm text-primary font-medium">
+                    🌟 You've tried {experienceCount} new experience{experienceCount !== 1 ? 's' : ''}.
+                  </p>
+                </div>
+              )}
+
+              {/* Microcopy */}
+              <p className="text-xs text-muted-foreground text-center italic mb-4">
+                Notice your first reaction. That feeling is information.
+              </p>
+
               <div className="flex flex-col gap-2.5">
                 <Button variant="hero" size="lg" className="w-full" onClick={() => { firePost(); handleOpenMaps(); }}>
                   <Navigation className="w-4 h-4 mr-2" />
@@ -455,7 +493,7 @@ export function ResultsScreen({
                     <Share2 className="w-4 h-4 mr-2" />
                     {isSharing ? 'Sharing...' : 'Share My Fate'}
                   </Button>
-                  <Button variant="outline" size="lg" className="flex-1" onClick={() => { firePost(); onPlayAgain(); }}>
+                  <Button variant="outline" size="lg" className="flex-1" onClick={() => { firePost(); onTrackEvent?.('respin_clicked'); onPlayAgain(); }}>
                     <RotateCcw className="w-4 h-4 mr-2" />
                     {isTrialMode ? 'Create Account' : 'Spin Again'}
                   </Button>

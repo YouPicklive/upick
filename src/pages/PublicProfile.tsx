@@ -71,6 +71,8 @@ export default function PublicProfile() {
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [stats, setStats] = useState({ postCount: 0, likesReceived: 0 });
+  const [experiencesCount, setExperiencesCount] = useState(0);
+  const [streakCount, setStreakCount] = useState(0);
   const [activeTab, setActiveTab] = useState<'activity' | 'saved' | 'markers'>('activity');
   const [savedSubTab, setSavedSubTab] = useState<'spins' | 'events' | 'reviews'>('spins');
 
@@ -120,7 +122,21 @@ export default function PublicProfile() {
       setPostsLoading(false);
     };
 
+    // Fetch experience & streak counts
+    const fetchProfileStats = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('experiences_completed_count, alignment_streak_count')
+        .eq('id', profile.id)
+        .single();
+      if (data) {
+        setExperiencesCount((data as any).experiences_completed_count ?? 0);
+        setStreakCount((data as any).alignment_streak_count ?? 0);
+      }
+    };
+
     fetchPosts();
+    fetchProfileStats();
   }, [profile?.id]);
 
   if (loading) {
@@ -170,6 +186,22 @@ export default function PublicProfile() {
             <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
               <MapPin className="w-3 h-3" /> {[profile.city, profile.region].filter(Boolean).join(', ')}
             </p>
+          )}
+
+          {/* Experience & Streak Badges */}
+          {(experiencesCount > 0 || streakCount > 0) && (
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-3">
+              {experiencesCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 bg-secondary px-3 py-1.5 rounded-full text-xs font-medium text-foreground">
+                  🌟 {experiencesCount} experience{experiencesCount !== 1 ? 's' : ''} tried
+                </span>
+              )}
+              {streakCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 bg-primary/10 px-3 py-1.5 rounded-full text-xs font-semibold text-primary">
+                  🔥 {streakCount}-day streak
+                </span>
+              )}
+            </div>
           )}
 
           {/* Stats */}
