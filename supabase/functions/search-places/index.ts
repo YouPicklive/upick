@@ -537,7 +537,7 @@ serve(async (req) => {
                 if (candidate) {
                   if (!image && candidate.photos?.[0]?.photo_reference) {
                     const ref = candidate.photos[0].photo_reference;
-                    image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${ref}&key=${apiKey}`;
+                    image = buildProxyUrl(ref, 1200);
                     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
                     if (serviceKey) {
                       const adminClient = createClient(supabaseUrl, serviceKey);
