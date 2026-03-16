@@ -13,10 +13,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/**
- * Fetches a Google Places photo URL for a business using Find Place + Place Details.
- * Returns the photo URL string or null.
- */
+function buildProxyUrl(photoReference: string, maxWidth: number = 1200): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  return `${supabaseUrl}/functions/v1/place-photo?ref=${photoReference}&maxwidth=${maxWidth}`;
+}
+
 async function fetchPhotoForBusiness(
   name: string,
   lat: number | null,
@@ -25,7 +26,6 @@ async function fetchPhotoForBusiness(
   apiKey: string
 ): Promise<string | null> {
   try {
-    // Step 1: Find Place from Text
     const query = `${name} ${city || ""}`.trim();
     const locationBias = lat && lng ? `&locationbias=point:${lat},${lng}` : "";
     const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=place_id,photos${locationBias}&key=${apiKey}`;
@@ -36,21 +36,17 @@ async function fetchPhotoForBusiness(
     if (findData.candidates && findData.candidates.length > 0) {
       const candidate = findData.candidates[0];
 
-      // If photos are returned directly from Find Place
       if (candidate.photos && candidate.photos.length > 0) {
-        const photoRef = candidate.photos[0].photo_reference;
-        return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${apiKey}`;
+        return buildProxyUrl(candidate.photos[0].photo_reference, 1200);
       }
 
-      // Step 2: Fall back to Place Details for photos
       if (candidate.place_id) {
         const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${candidate.place_id}&fields=photos&key=${apiKey}`;
         const detailsRes = await fetch(detailsUrl);
         const detailsData = await detailsRes.json();
 
         if (detailsData.result?.photos && detailsData.result.photos.length > 0) {
-          const photoRef = detailsData.result.photos[0].photo_reference;
-          return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${apiKey}`;
+          return buildProxyUrl(detailsData.result.photos[0].photo_reference, 1200);
         }
       }
     }
@@ -68,9 +64,10 @@ serve(async (req) => {
   }
 
   try {
-    // Validate caller is admin
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Validate caller is admin
     const authHeader = req.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -105,11 +102,8 @@ serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Optional: pass specific business IDs, otherwise backfill all missing
     const rawBody = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const parsed = BackfillSchema.safeParse(rawBody);
 
@@ -153,20 +147,10 @@ serve(async (req) => {
     const results: { id: string; name: string; photo_url: string | null; status: string }[] = [];
 
     for (const biz of businesses) {
-      const photoUrl = await fetchPhotoForBusiness(
-        biz.name,
-        biz.latitude,
-        biz.longitude,
-        biz.city,
-        apiKey
-      );
+      const photoUrl = await fetchPhotoForBusiness(biz.name, biz.latitude, biz.longitude, biz.city, apiKey);
 
       if (photoUrl) {
-        const { error: updateError } = await supabase
-          .from("businesses")
-          .update({ photo_url: photoUrl })
-          .eq("id", biz.id);
-
+        const { error: updateError } = await supabase.from("businesses").update({ photo_url: photoUrl }).eq("id", biz.id);
         if (!updateError) {
           updated++;
           results.push({ id: biz.id, name: biz.name, photo_url: photoUrl, status: "updated" });

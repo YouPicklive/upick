@@ -224,10 +224,15 @@ async function setCachedPhotos(supabaseUrl: string, serviceKey: string, placeId:
     );
 }
 
-function buildPhotoUrls(photos: any[], apiKey: string, maxWidth: number = 1200): string[] {
+function buildProxyUrl(photoReference: string, maxWidth: number = 1200): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  return `${supabaseUrl}/functions/v1/place-photo?ref=${photoReference}&maxwidth=${maxWidth}`;
+}
+
+function buildPhotoUrls(photos: any[], _apiKey: string, maxWidth: number = 1200): string[] {
   return (photos || [])
     .slice(0, 5)
-    .map((p: any) => `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${p.photo_reference}&key=${apiKey}`);
+    .map((p: any) => buildProxyUrl(p.photo_reference, maxWidth));
 }
 
 // ── Convert to app Spot format ────────────────────────────────────────
@@ -532,7 +537,7 @@ serve(async (req) => {
                 if (candidate) {
                   if (!image && candidate.photos?.[0]?.photo_reference) {
                     const ref = candidate.photos[0].photo_reference;
-                    image = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${ref}&key=${apiKey}`;
+                    image = buildProxyUrl(ref, 1200);
                     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
                     if (serviceKey) {
                       const adminClient = createClient(supabaseUrl, serviceKey);

@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.get-cities-in-region]
 verify_jwt = false
+
+[functions.place-photo]
+verify_jwt = false
