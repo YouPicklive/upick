@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["YOUR_TEAM_ID.live.youpick.app"],
+        "paths": ["*"]
+      }
+    ]
+  }
+}
