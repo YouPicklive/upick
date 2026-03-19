@@ -66,7 +66,7 @@ const PrivacyPolicy = () => {
 
           <Section title="7. Your Rights">
             <p className="text-muted-foreground leading-relaxed">
-              Depending on your location, you may access, correct, delete your data, or withdraw consent. Contact us at support@youpick.app.
+              Depending on your location, you may access, correct, delete your data, or withdraw consent. Contact us at Youpicklive@gmail.com.
             </p>
           </Section>
 
