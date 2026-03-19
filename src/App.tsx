@@ -34,6 +34,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:username" element={<PublicProfile />} />
             <Route path="/settings" element={<Settings />} />

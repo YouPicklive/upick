@@ -255,7 +255,9 @@ export function LandingScreen({ onSoloStart, spinsRemaining, isPremium, isTrialM
             <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
               <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
               <span>·</span>
-              <a href="mailto:support@youpick.app" className="hover:text-foreground transition-colors">Contact</a>
+              <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
+              <span>·</span>
+              <a href="mailto:Youpicklive@gmail.com" className="hover:text-foreground transition-colors">Contact</a>
               <span>·</span>
               <span>© {new Date().getFullYear()} You Pick</span>
             </div>
