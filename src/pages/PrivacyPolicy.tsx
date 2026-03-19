@@ -66,13 +66,13 @@ const PrivacyPolicy = () => {
 
           <Section title="7. Your Rights">
             <p className="text-muted-foreground leading-relaxed">
-              Depending on your location, you may access, correct, delete your data, or withdraw consent. Contact us at support@youpick.app.
+              Depending on your location, you may access, correct, delete your data, or withdraw consent. Contact us at Youpicklive@gmail.com.
             </p>
           </Section>
 
           <Section title="8. Contact">
             <p className="text-muted-foreground">
-              Email: <a href="mailto:support@youpick.app" className="text-primary hover:underline">support@youpick.app</a>
+              Email: <a href="mailto:Youpicklive@gmail.com" className="text-primary hover:underline">Youpicklive@gmail.com</a>
             </p>
           </Section>
         </div>
