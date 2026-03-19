@@ -4,14 +4,17 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedActivities } from '@/hooks/useSavedActivities';
+import { useCityOverride } from '@/hooks/useCityOverride';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Calendar, Clock, MapPin, Loader2, ExternalLink, RefreshCw, Bookmark, BookmarkCheck, Star,
-  Music, Trophy, Palette, Drama, UtensilsCrossed, Users, Heart, ShoppingBag, Sparkles, PartyPopper,
+  Calendar, Clock, MapPin, Loader2, ExternalLink, RefreshCw, Bookmark, BookmarkCheck,
+  Music, Trophy, Palette, Drama, UtensilsCrossed, Users, Heart, ShoppingBag, Sparkles, PartyPopper, Navigation,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { FeedTimeframe, TIMEFRAME_LABELS, formatEventDateLabel } from '@/lib/date-labels';
+import { LocationChip } from '@/components/shared/LocationChip';
 
 interface LocalEvent {
   name: string;
@@ -26,21 +29,14 @@ interface LocalEvent {
   address?: string;
   sourceUrl?: string;
   distance?: number;
+  starts_at?: string;
+  ends_at?: string;
 }
 
-type Timeframe = 'today' | 'week' | 'month';
-
 const TYPE_ICONS: Record<string, typeof Music> = {
-  music: Music,
-  sports: Trophy,
-  art: Palette,
-  comedy: Drama,
-  food: UtensilsCrossed,
-  community: Users,
-  wellness: Heart,
-  family: Sparkles,
-  market: ShoppingBag,
-  festival: PartyPopper,
+  music: Music, sports: Trophy, art: Palette, comedy: Drama,
+  food: UtensilsCrossed, community: Users, wellness: Heart,
+  family: Sparkles, market: ShoppingBag, festival: PartyPopper,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -92,6 +88,11 @@ function EventCard({ event, isPremium, isAuthenticated, isSaved, onSave, onUnsav
     if (isSaved) onUnsave(); else onSave();
   };
 
+  // Smart date label
+  const dateLabel = formatEventDateLabel(event.starts_at, event.ends_at);
+  const fallbackDate = event.date;
+  const displayDate = dateLabel || fallbackDate;
+
   return (
     <div className="bg-card rounded-xl border border-border/50 p-4 hover:shadow-card hover:border-primary/20 transition-all group">
       <div className="flex items-start gap-3">
@@ -112,9 +113,7 @@ function EventCard({ event, isPremium, isAuthenticated, isSaved, onSave, onUnsav
           <button
             onClick={handleSaveClick}
             className={`p-1.5 rounded-lg transition-colors ${
-              isSaved
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground/40 hover:text-primary hover:bg-primary/5'
+              isSaved ? 'text-primary bg-primary/10' : 'text-muted-foreground/40 hover:text-primary hover:bg-primary/5'
             }`}
             title={isSaved ? 'Remove from saved' : isPremium ? 'Save to profile' : 'Plus members can save events'}
           >
@@ -136,10 +135,12 @@ function EventCard({ event, isPremium, isAuthenticated, isSaved, onSave, onUnsav
             {event.category}
           </span>
         )}
-        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-          <Calendar className="w-3 h-3" /> {event.date}
-        </span>
-        {event.time && (
+        {displayDate && (
+          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Calendar className="w-3 h-3" /> {displayDate}
+          </span>
+        )}
+        {!dateLabel && event.time && (
           <span className="text-[11px] text-muted-foreground flex items-center gap-1">
             <Clock className="w-3 h-3" /> {event.time}
           </span>
@@ -154,7 +155,6 @@ function EventCard({ event, isPremium, isAuthenticated, isSaved, onSave, onUnsav
   );
 }
 
-// Session cache
 const cache = new Map<string, { events: LocalEvent[]; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
 
@@ -164,16 +164,16 @@ export default function EventsToday() {
   const { isPremium } = useUserEntitlements();
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
+  const { override: cityOverride, clearOverride: clearCityOverride } = useCityOverride();
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState<Timeframe>('today');
+  const [timeframe, setTimeframe] = useState<FeedTimeframe>('today');
   const [filterType, setFilterType] = useState<string | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setInterval>>();
 
-  // Coordinates: GPS > Richmond fallback
-  const effectiveLat = coordinates?.latitude ?? 37.5407;
-  const effectiveLng = coordinates?.longitude ?? -77.4360;
-  const locationLabel = coordinates ? 'Near you' : 'Richmond, VA area';
+  const effectiveLat = cityOverride?.latitude ?? coordinates?.latitude ?? 37.5407;
+  const effectiveLng = cityOverride?.longitude ?? coordinates?.longitude ?? -77.4360;
+  const locationLabel = cityOverride ? cityOverride.name : coordinates ? 'Near you' : 'Richmond, VA';
 
   const fetchEvents = useCallback(async () => {
     const cacheKey = `${timeframe}|${effectiveLat.toFixed(2)}|${effectiveLng.toFixed(2)}`;
@@ -203,7 +203,6 @@ export default function EventsToday() {
       }
 
       let processed: LocalEvent[] = data.events;
-
       processed = processed.map((e: LocalEvent) => {
         if (e.latitude && e.longitude) {
           return { ...e, distance: haversine(effectiveLat, effectiveLng, e.latitude, e.longitude) };
@@ -260,6 +259,7 @@ export default function EventsToday() {
 
   const availableTypes = [...new Set(events.map(e => e.type).filter(Boolean))];
   const displayed = filterType ? events.filter(e => e.type === filterType) : events;
+  const timeframeLabel = TIMEFRAME_LABELS[timeframe];
 
   return (
     <div className="min-h-screen bg-background">
@@ -272,9 +272,11 @@ export default function EventsToday() {
               <Calendar className="w-5 h-5 text-primary" />
               Events Near You
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {locationLabel} · Within 25 miles
-            </p>
+            <LocationChip
+              label={`${locationLabel} · Within 25 miles`}
+              isOverride={!!cityOverride}
+              onClear={clearCityOverride}
+            />
           </div>
           <Button
             variant="ghost"
@@ -289,7 +291,7 @@ export default function EventsToday() {
 
         {/* Timeframe pills */}
         <div className="flex gap-2 mb-4">
-          {(['today', 'week', 'month'] as Timeframe[]).map(tf => (
+          {(['today', 'weekend', 'week'] as FeedTimeframe[]).map(tf => (
             <button
               key={tf}
               onClick={() => { setTimeframe(tf); setFilterType(null); }}
@@ -299,7 +301,7 @@ export default function EventsToday() {
                   : 'bg-secondary text-muted-foreground border-border hover:border-primary/50'
               }`}
             >
-              {tf === 'today' ? 'Today' : tf === 'week' ? 'This Week' : 'This Month'}
+              {TIMEFRAME_LABELS[tf]}
             </button>
           ))}
         </div>
@@ -343,9 +345,28 @@ export default function EventsToday() {
           <div className="text-center py-20">
             <Calendar className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
             <h2 className="font-display text-lg font-bold mb-1">No events found</h2>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-              Try expanding to "This Week" or "This Month" for more results.
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-5">
+              {cityOverride
+                ? `No events found ${timeframeLabel.toLowerCase()} in ${cityOverride.name}.`
+                : coordinates
+                ? `No upcoming events found in your area for ${timeframeLabel.toLowerCase()}.`
+                : `Nothing found ${timeframeLabel.toLowerCase()} in Richmond, VA.`}
             </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {timeframe !== 'week' && (
+                <Button variant="outline" size="sm" onClick={() => { setTimeframe(timeframe === 'today' ? 'weekend' : 'week'); setFilterType(null); }}>
+                  Try {timeframe === 'today' ? 'This Weekend' : 'Next 7 Days'}
+                </Button>
+              )}
+              {cityOverride && (
+                <Button variant="outline" size="sm" onClick={clearCityOverride} className="gap-1.5">
+                  <Navigation className="w-3 h-3" /> Use Current Location
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => { cache.clear(); fetchEvents(); }}>
+                <RefreshCw className="w-3 h-3 mr-1" /> Retry
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">

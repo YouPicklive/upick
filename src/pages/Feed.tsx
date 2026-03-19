@@ -1,18 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GlobalHeader } from '@/components/GlobalHeader';
-import { useFeed, FeedPost } from '@/hooks/useFeed';
+import { useFeed, FeedPost, FeedTimeframe } from '@/hooks/useFeed';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEntitlements } from '@/hooks/useUserEntitlements';
 import { useSavedActivities } from '@/hooks/useSavedActivities';
 import { useMileMarkers } from '@/hooks/useMileMarkers';
+import { useCityOverride } from '@/hooks/useCityOverride';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck, Bot } from 'lucide-react';
+import { Heart, MapPin, Loader2, Sparkles, Share2, ExternalLink, Bookmark, BookmarkCheck, Bot, Navigation, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { SharePostModal } from '@/components/game/SharePostModal';
 import { toast } from 'sonner';
+import { TIMEFRAME_LABELS, type FeedTimeframe as TF } from '@/lib/date-labels';
+import { LocationChip } from '@/components/shared/LocationChip';
 
 function PostTypeLabel({ type, isBot, subtype }: { type: string; isBot?: boolean; subtype?: string | null }) {
   const labels: Record<string, { text: string; emoji: string }> = {
@@ -23,7 +26,6 @@ function PostTypeLabel({ type, isBot, subtype }: { type: string; isBot?: boolean
     business_event: { text: 'posted an event', emoji: '📅' },
   };
 
-  // Bot subtype labels
   if (isBot && subtype) {
     const subtypeLabels: Record<string, { text: string; emoji: string }> = {
       daily_prompt: { text: 'daily vibe', emoji: '🌅' },
@@ -73,10 +75,7 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
     if (!isAuthenticated) return;
     const wasLiked = post.liked_by_me;
     onLike(post.id);
-    // Award points only when transitioning from not-liked → liked
-    if (!wasLiked) {
-      onAwardLikePoint?.();
-    }
+    if (!wasLiked) onAwardLikePoint?.();
   };
 
   return (
@@ -94,20 +93,14 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {post.is_bot && post.bot_display_name ? (
-              <span className="text-sm font-semibold text-foreground truncate">
-                {displayName}
-              </span>
+              <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
             ) : post.user_id && post.username ? (
-              <Link
-                to={`/u/${post.username}`}
-                className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors"
-              >
+              <Link to={`/u/${post.username}`} className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors">
                 {displayName}
               </Link>
             ) : (
               <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
             )}
-            {/* Explorer Bot badge */}
             {post.is_bot && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full border border-border/50">
                 <Bot className="w-2.5 h-2.5" /> Explorer Bot
@@ -164,7 +157,6 @@ function FeedCard({ post, onLike, isAuthenticated, isPremium, isSaved, onSave, o
   );
 }
 
-
 interface SocialShareCard {
   id: string;
   platform: string;
@@ -211,12 +203,7 @@ function SocialShareFeedCard({ share }: { share: SocialShareCard }) {
         <p className="text-sm text-foreground/80 leading-relaxed mb-3">"{share.caption}"</p>
       )}
 
-      <a
-        href={share.post_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
-      >
+      <a href={share.post_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">
         <ExternalLink className="w-3.5 h-3.5" /> Open Post
       </a>
     </div>
@@ -230,13 +217,18 @@ export default function Feed() {
   const { isSaved, saveActivity, unsaveActivity } = useSavedActivities();
   const { coordinates } = useGeolocation();
   const { awardPoints } = useMileMarkers();
-  const [feedTab, setFeedTab] = useState<'today' | 'trending' | 'new'>('new');
+  const { override: cityOverride, setOverride: setCityOverride, clearOverride: clearCityOverride } = useCityOverride();
+  const [timeframe, setTimeframe] = useState<FeedTimeframe>('today');
+
+  const effectiveLat = cityOverride?.latitude ?? coordinates?.latitude ?? null;
+  const effectiveLng = cityOverride?.longitude ?? coordinates?.longitude ?? null;
+  const locationLabel = cityOverride ? cityOverride.name : coordinates ? 'Your Location' : 'Richmond, VA';
 
   const { posts, loading, toggleLike } = useFeed({
-    latitude: coordinates?.latitude,
-    longitude: coordinates?.longitude,
+    latitude: effectiveLat ?? 37.5407,
+    longitude: effectiveLng ?? -77.4360,
     radiusMiles: 25,
-    tab: feedTab,
+    timeframe,
   });
   const [shareOpen, setShareOpen] = useState(false);
   const [socialShares, setSocialShares] = useState<SocialShareCard[]>([]);
@@ -307,6 +299,8 @@ export default function Feed() {
     ...socialShares.map(s => ({ type: 'share' as const, data: s, created_at: s.created_at })),
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
+  const timeframeLabel = TIMEFRAME_LABELS[timeframe];
+
   return (
     <div className="min-h-screen bg-background">
       <GlobalHeader />
@@ -316,11 +310,11 @@ export default function Feed() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-display text-xl font-bold">Community Activity</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {coordinates
-                ? 'Showing activity within 25 miles'
-                : 'Showing all recent activity'}
-            </p>
+            <LocationChip
+              label={locationLabel}
+              isOverride={!!cityOverride}
+              onClear={clearCityOverride}
+            />
           </div>
           {isAuthenticated && (
             <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} className="gap-1.5">
@@ -329,23 +323,19 @@ export default function Feed() {
           )}
         </div>
 
-        {/* Feed tabs */}
+        {/* Timeframe tabs */}
         <div className="flex gap-2 mb-5">
-          {([
-            { key: 'today' as const, label: 'Today' },
-            { key: 'trending' as const, label: 'Trending' },
-            { key: 'new' as const, label: 'New' },
-          ]).map(tab => (
+          {(['today', 'weekend', 'week'] as FeedTimeframe[]).map(tf => (
             <button
-              key={tab.key}
-              onClick={() => setFeedTab(tab.key)}
+              key={tf}
+              onClick={() => setTimeframe(tf)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                feedTab === tab.key
+                timeframe === tf
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-secondary text-muted-foreground border-border hover:border-primary/50'
               }`}
             >
-              {tab.label}
+              {TIMEFRAME_LABELS[tf]}
             </button>
           ))}
         </div>
@@ -358,13 +348,31 @@ export default function Feed() {
         ) : mergedFeed.length === 0 ? (
           <div className="text-center py-20">
             <Sparkles className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
-            <h2 className="font-display text-lg font-bold mb-1">Be the first to discover something ✨</h2>
+            <h2 className="font-display text-lg font-bold mb-1">
+              No activity found for {timeframeLabel.toLowerCase()}
+            </h2>
             <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
-              Spin the wheel and your discovery will show up here for others nearby.
+              {cityOverride
+                ? `Nothing found ${timeframeLabel.toLowerCase()} in ${cityOverride.name}.`
+                : coordinates
+                ? `No events found in your area for ${timeframeLabel.toLowerCase()}.`
+                : `Nothing found ${timeframeLabel.toLowerCase()} in Richmond, VA.`}
             </p>
-            <Button variant="hero" onClick={() => navigate('/')}>
-              <Sparkles className="w-4 h-4 mr-2" /> Spin Now
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {timeframe !== 'week' && (
+                <Button variant="outline" size="sm" onClick={() => setTimeframe(timeframe === 'today' ? 'weekend' : 'week')}>
+                  Try {timeframe === 'today' ? 'This Weekend' : 'Next 7 Days'}
+                </Button>
+              )}
+              {cityOverride && (
+                <Button variant="outline" size="sm" onClick={clearCityOverride} className="gap-1.5">
+                  <Navigation className="w-3 h-3" /> Use Current Location
+                </Button>
+              )}
+              <Button variant="hero" size="sm" onClick={() => navigate('/')}>
+                <Sparkles className="w-4 h-4 mr-1" /> Spin Now
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
