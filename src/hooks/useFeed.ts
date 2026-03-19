@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { FeedTimeframe, getTimeframeRange } from '@/lib/date-labels';
 
 export interface FeedPost {
   id: string;
@@ -26,7 +27,6 @@ export interface FeedPost {
   bot_display_name: string | null;
   bot_avatar_url: string | null;
   metadata: Record<string, any> | null;
-  // Joined from profiles
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
@@ -34,7 +34,7 @@ export interface FeedPost {
   liked_by_me: boolean;
 }
 
-export type FeedTab = 'today' | 'trending' | 'new';
+export type { FeedTimeframe };
 
 interface UseFeedOptions {
   cityId?: string | null;
@@ -43,7 +43,7 @@ interface UseFeedOptions {
   longitude?: number | null;
   radiusMiles?: number;
   postType?: string;
-  tab?: FeedTab;
+  timeframe?: FeedTimeframe;
 }
 
 export function useFeed(options: UseFeedOptions = {}) {
@@ -54,6 +54,8 @@ export function useFeed(options: UseFeedOptions = {}) {
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
+      const { rangeStart, rangeEnd } = getTimeframeRange(options.timeframe || 'today');
+
       let query = supabase
         .from('feed_posts' as any)
         .select('*')
@@ -65,22 +67,14 @@ export function useFeed(options: UseFeedOptions = {}) {
         query = query.eq('post_type', options.postType);
       }
 
-      // Filter by city_id (preferred) or city name
       if (options.cityId) {
         query = query.eq('city_id', options.cityId);
       } else if (options.city) {
         query = query.eq('city', options.city);
       }
 
-      // Tab-specific filters
-      if (options.tab === 'today') {
-        const now = new Date();
-        const dayStart = new Date(now);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-        // Show events starting today + daily prompts
-        query = query.gte('created_at', dayStart.toISOString());
-      }
+      // Date-window filtering: created_at within range
+      query = query.gte('created_at', rangeStart).lt('created_at', rangeEnd);
 
       // Filter out expired posts
       const now = new Date().toISOString();
@@ -93,9 +87,7 @@ export function useFeed(options: UseFeedOptions = {}) {
         return;
       }
 
-      // Get unique user IDs (skip nulls for anonymous posts)
       const userIds = [...new Set((postsData as any[]).map((p: any) => p.user_id).filter(Boolean))];
-
       let profileMap = new Map();
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
@@ -105,7 +97,6 @@ export function useFeed(options: UseFeedOptions = {}) {
         profileMap = new Map((profiles as any[] || []).map((p: any) => [p.id, p]));
       }
 
-      // Get like counts from post_likes
       const postIds = (postsData as any[]).map((p: any) => p.id);
       const { data: likes } = await supabase
         .from('post_likes' as any)
@@ -119,7 +110,6 @@ export function useFeed(options: UseFeedOptions = {}) {
         if (user && l.user_id === user.id) myLikes.add(l.post_id);
       });
 
-      // Filter by radius if coordinates provided (and no city filter)
       let filtered = postsData as any[];
       if (!options.cityId && !options.city && options.latitude && options.longitude && options.radiusMiles) {
         filtered = filtered.filter((p: any) => {
@@ -129,7 +119,7 @@ export function useFeed(options: UseFeedOptions = {}) {
         });
       }
 
-      let enriched: FeedPost[] = filtered.map((p: any) => {
+      const enriched: FeedPost[] = filtered.map((p: any) => {
         const profile = p.user_id ? profileMap.get(p.user_id) : null;
         return {
           ...p,
@@ -147,24 +137,16 @@ export function useFeed(options: UseFeedOptions = {}) {
         };
       });
 
-      // Tab-specific sorting
-      if (options.tab === 'trending') {
-        enriched.sort((a, b) => b.like_count - a.like_count || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      }
-
       setPosts(enriched);
     } catch (err) {
       console.error('Feed fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, [options.cityId, options.city, options.postType, options.tab, options.latitude, options.longitude, options.radiusMiles, user?.id]);
+  }, [options.cityId, options.city, options.postType, options.timeframe, options.latitude, options.longitude, options.radiusMiles, user?.id]);
 
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  useEffect(() => { fetchPosts(); }, [fetchPosts]);
 
-  // Realtime subscription on feed_posts
   useEffect(() => {
     const channel = supabase
       .channel('feed-realtime')
@@ -172,7 +154,6 @@ export function useFeed(options: UseFeedOptions = {}) {
         fetchPosts();
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [fetchPosts]);
 
