@@ -72,7 +72,7 @@ const PrivacyPolicy = () => {
 
           <Section title="8. Contact">
             <p className="text-muted-foreground">
-              Email: <a href="mailto:support@youpick.app" className="text-primary hover:underline">support@youpick.app</a>
+              Email: <a href="mailto:Youpicklive@gmail.com" className="text-primary hover:underline">Youpicklive@gmail.com</a>
             </p>
           </Section>
         </div>
